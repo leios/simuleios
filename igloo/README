@@ -1,0 +1,30 @@
+Avalanches and igloos: How to choose survivors.
+
+The premise of this code is simple: Imagine you are in some arctic area of 
+the world, with beautiful white snow and tall icy mountains looming overhead. 
+You live in a small village with a single cement igloo, but plenty of small 
+wooden shacks. One day, you hear a rumbling from the top of an icy mountain, 
+it's an avalanche! You and the rest of the town gather to optimally fill the 
+cement igloo. But how do you do that? Well, this code is meant for just that 
+purpose. woo! 
+
+So, in the off chance that you find yourself in an arctic town with a single
+cement igloo under the threat of an avalanche, be sure to keep it in mind!
+
+Implementation:
+In the c++ directory (with other directories potentially coming soon), we need
+to learn how to do a few things:
+    1. Integrate the area of a half-sphere (igloo)
+    2. Figure out how tall everyone in the town is
+    3. Figure out where to place everyone
+In and of themselves, none of these questions should pose a problem; however, 
+this is a good example of how different coding logic is when compared to the
+logic we use every day. 
+
+Notes:
+Please think about this problem on your own before checking it out here! There
+is no point in this excersize if it doesn't get you to think!
+
+The formula for a sphere is x*x + y*y + z*z = 1
+
+Toodles!
