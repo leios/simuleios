@@ -13,15 +13,40 @@
 *-----------------------------------------------------------------------------*/
 
 #include<iostream>
+#include<vector>
+#include<cstdlib>
+#include<time.h>
+#include<cmath>
 
 using namespace std;
 
 double integrate_sphere();
+vector <double> populate();
+vector <double> arrange(vector <double> people);
+vector <double> find_height(double width);
+int who_fits(vector <double> heights, vector<double> people);
 
 int main(){
 
-    double variable = integrate_sphere();
-    cout << "the final integral is: " << variable << "! Woo!" << endl;
+    // initialize random seed based on time
+    srand (time(NULL));
+
+    // Find peolep
+    vector <double> people = populate();
+
+    // organize people
+    vector <double> organized_people = arrange(people);
+
+    // figure out how much space each person could use in the igloo
+    vector <double> igloo_h = find_height(0.1);
+    
+    // organize those heights
+    vector <double> organized_heights = arrange(igloo_h);
+
+    // squish everyone inside
+    int saved_people = who_fits(organized_people, organized_heights);
+    cout << organized_people.size() << '\t' << saved_people << endl;
+
 }
 
 // This function will integrate a half-sphere.
@@ -46,3 +71,74 @@ double integrate_sphere(){
 
     return integral;
 }
+
+// Finds the population of the village
+vector <double> populate(){
+    vector <double> population;
+    int people_num = rand() % 100;
+
+    for (int i = 0; i < people_num; i++){
+
+        population.push_back((rand() % 1000) / 1000.0);
+    }
+
+    return population;
+}
+
+// Arranges the population in the village
+vector <double> arrange(vector <double> people){
+
+    vector <double> dummy = people;
+    int chosen;
+    double max;
+
+    for (int id = 0; id< dummy.size(); id++){
+        max = 0;
+        for (int ip = 0; ip< people.size(); ip++){
+            if (people[ip] > max){
+                max = people[ip];
+                chosen = ip;
+            }
+        }
+        dummy[id] = max;
+        people.erase(people.begin() + chosen);
+    }
+   
+return dummy;
+}
+
+// Finds heights of igloo
+vector <double> find_height(double width){
+
+    vector<double> heights;
+    int res = 2 / width;
+    double x, y, height;
+
+    for (int ix = 0; ix < res; ix++){
+        for (int iy = 0; iy < res; iy++){
+            x = (2.0 * ix / res) - 1;
+            y = (2.0 * iy / res) - 1;
+            if (x*x + y*y < 1){
+                height = sqrt(1 - (x*x) - (y*y));
+                heights.push_back(height);
+            }
+        }
+    }
+    return heights;
+}
+
+// Find how many people fit into igloo
+int who_fits(vector <double> heights, vector<double> people){
+    int fitting_people = 0;
+
+    for (int ip = 0; ip < people.size(); ip++){
+        if (people[ip] < heights[0]){
+            fitting_people += 1;
+            heights.erase(heights.begin());
+        }
+        
+    }
+
+    return fitting_people;
+}
+
