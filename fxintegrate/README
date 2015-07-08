@@ -1,0 +1,6 @@
+This code attempts to integrate a random polynomial, given to you in a string.
+
+That's all. 
+
+Notes: We are assuming our polynomial is in the following form:
+           3x^3^+2x^2^-13x+4
