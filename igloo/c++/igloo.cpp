@@ -21,6 +21,7 @@
 using namespace std;
 
 double integrate_sphere();
+double integrate_monte(int resolution);
 vector <double> populate();
 vector <double> arrange(vector <double> people);
 vector <double> find_height(double width);
@@ -45,7 +46,12 @@ int main(){
 
     // squish everyone inside
     int saved_people = who_fits(organized_people, organized_heights);
-    cout << organized_people.size() << '\t' << saved_people << endl;
+    //cout << organized_people.size() << '\t' << saved_people << endl;
+
+    // integrates a half-sphere with MONTE CARLO!
+    double integral = integrate_monte(10000);
+    cout << integral << endl;
+    cout << "this is off by: " << (4.0 / 6.0) * M_PI - integral << endl;
 
 }
 
@@ -67,7 +73,27 @@ double integrate_sphere(){
         }
     }
 
-    integral = (count * (2 / 1000.0) * (2 / 1000.0) * (2 / 500.0));
+    integral = (count * (2.0 / 1000.0) * (2.0 / 1000.0) * (2.0 / 500.0));
+
+    return integral;
+}
+
+// This function will integrate a half-sphere with MONTE CARLO INTEGRATION!!!
+double integrate_monte(int resolution){
+
+    double x, y, z, integral;
+    int count = 0;
+    for (int i = 0; i < resolution; i++){
+        x = ((rand() % 10000) * (2.0 / 10000.0)) - 1;
+        y = ((rand() % 10000) * (2.0 / 10000.0)) - 1;
+        z = ((rand() % 10000) * (1.0 / 10000.0));
+        if (x*x +y*y + z*z < 1){
+            count++;
+        }
+    }
+
+    // Scale factor is 4 because the range for (x,y,z) is (2,2,1)
+    integral = ((double) count / (double) resolution) * 4;
 
     return integral;
 }

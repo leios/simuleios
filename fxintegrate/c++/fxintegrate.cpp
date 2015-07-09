@@ -22,7 +22,7 @@ double integrate_poly(string polynomial, int resolution, double bound_a,
 
 int main(){
 
-    double final = integrate_poly("3x^3^-2x^2^+43x^10^-1", 100, 0, 1);
+    double final = integrate_poly("3x^3^-2x^2^+43x^10^-1", 1000, 0, 1);
 
     cout << final << endl;
 
@@ -66,6 +66,8 @@ double integrate_poly(string polynomial, int resolution, double bound_a,
     }
 */
 
+/*
+    // performs 2d integral
     for (int ix = 0; ix < resolution; ix++){
         x = bound_a + (ix * (bound_b - bound_a)) / resolution;
 
@@ -86,7 +88,69 @@ double integrate_poly(string polynomial, int resolution, double bound_a,
 
     integral = (count * ((bound_b - bound_a) / resolution) 
                       * ((bound_b - bound_a) / resolution));
+*/
+
+    for (int ir = 0; ir < resolution; ir ++){
+        x = ((rand() % 10000) / 10000.0) * (bound_b - bound_a) + bound_a;
+        y = ((rand() % 10000) / 10000.0) * (bound_b - bound_a) + bound_a;
+
+        // find height 
+        height = 0;
+        for (int il = 0; il < poly_double.size(); il +=2){
+            height += pow(x, poly_double[il + 1]) * poly_double[il]; 
+        }
+
+        if (y < height){
+            count++;
+        }
+
+    }
+
+    double area = (bound_b - bound_a) * (bound_b - bound_a);
+    integral = ((double) count / (double) resolution) * area;
 
     return integral;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
