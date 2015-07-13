@@ -1,0 +1,28 @@
+When I was younger, I was an awful fisherboy. I mean, I was really, really bad.
+I would often go fishing with my father and watch as he caught fish after fish, 
+while I failed to catch even one. There was, however, one fateful day where I
+managed to catch a bass. I unhooked it's jaw, and held it by the mouth-gill 
+area, like I was supposed to; however, my little boy hands were not able to hold
+the fish for long, and I accidentally dropped it from the boat. 
+
+I seemed to see the fish fall in slow motion, it was as if some deity from the
+heavens above wanted to cherish every drop of my remorse. I vowed that day to
+determine how long it actually took the fish to splash back into the water and
+saunter-swim away...
+
+Of course, this is quite an easy problem to solve. Heck, it takes two lines to 
+solve with basic algebra; however, I want to solve it with code. Not just any
+type of code either. Oh, no! For this, we will use one of the most useful
+computational tools in any programmer's arsenal:
+    Force Integration
+
+*Insert dramatic music here*
+
+Details:
+    We are dropping a ball -- err, bass from a set height the formula is:
+        x = x_0 + v_0 * t - 0.5 * 9.81 * t * t;
+
+    That's all you need to know for now. Do whatever you like with that 
+    information. There are many ways to integrate forces, and we will show at 
+    least one, if not more!
+
