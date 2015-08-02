@@ -2,7 +2,7 @@
 *
 *             MD.cpp -- a simple event-driven MD simulation
 *
-* Purpose: Figure out the pressuer on the interior of a box based on 
+* Purpose: Figure out the pressuer on the interior of a box based on
 *          Boltzmann's theory and stuff
 *
 *   Notes: This simulation will predominantly follow the logic of the link in
@@ -15,41 +15,45 @@
 #include <fstream>
 #include <random>
 
-using namespace std;
-using simtime = int;
+namespace sim{
+	/* putting our stuff in its own namespace so we can call "time" "time"
+	   without colliding with names from the standard library */
+	using time = int;
+}
 
 /*----------------------------------------------------------------------------//
 * STRUCTS AND FUNCTIONS
 *-----------------------------------------------------------------------------*/
 
 // Holds our data in a central struct, to be called mainly in a vector
-struct particle{
-    int PID, ts;
-    double pos_x, pos_y, pos_z, vel_x, vel_y, vel_z;
+struct Particle{
+	int PID;
+	sim::time ts;
+	double pos_x, pos_y, pos_z, vel_x, vel_y, vel_z;
 };
 
 // holds interaction data
-struct interact{
-    int ts, part1, part2;
+struct Interaction{
+	sim::time ts;
+	int part1, part2;
 };
 
 // Makes starting data
-vector <particle> populate(int pnum, double box_length, double max_vel);
+std::vector<Particle> populate(int pnum, double box_length, double max_vel);
 
 // Makes the list for our simulation later, required starting data
-vector <interact> make_list(vector <vector <particle> > curr_data);
+std::vector<Interaction> make_list(const std::vector<Particle> &curr_data);
 
 // This performs our MD simulation with a vector of interactions
 // Also writes simulation to file, specified by README
-void simulate(vector<int> interactions, vector <particle> curr_data);
+void simulate(std::vector<int> interactions, std::vector<Particle> curr_data);
 
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
 
-int main(void){
-
-    return 0;
+int main(){
+	//no void and no return 0 for main
 }
 
 /*----------------------------------------------------------------------------//
@@ -57,47 +61,53 @@ int main(void){
 *-----------------------------------------------------------------------------*/
 
 // Makes starting data
-vector <particle> populate(int pnum, double box_length, double max_vel){
-    vector <particle> curr_data;
-    particle temp;
+std::vector<Particle> populate(int pnum, double box_length, double max_vel){
+	std::vector<Particle> curr_data(pnum); //<- constructor instead of pushing
 
-    random_device rd;
-    mt19937 gen(rd());
-    uniform_real_distribution<double>dis(0.0, 1.0);
+	static std::random_device rd; //static to create only 1 random_device
+	static std::mt19937 gen(rd());
+	/* instead of doing % and * to get the correct distribution we directly
+	   specify which distribution we want */
+	std::uniform_real_distribution<double> box_length_distribution(0, box_length);
+	std::uniform_real_distribution<double> max_vel_distribution(0, max_vel);
 
+	int PID_counter = 0;
+	for (auto &p : curr_data){ //read: for all particles p in curr_data
+		p.PID = PID_counter++;
+		p.ts = 0;
 
-    for (int i = 0; i < pnum; i++){
+		/* maybe you like this version more than the loop below
+		p.pos_x = box_length_distribution(gen);
+		p.pos_y = box_length_distribution(gen);
+		p.pos_z = box_length_distribution(gen);
+		p.vel_x = max_vel_distribution(gen);
+		p.vel_y = max_vel_distribution(gen);
+		p.vel_z = max_vel_distribution(gen);
+		*/
+		for (auto &pos : { &p.pos_x, &p.pos_y, &p.pos_z })
+			*pos = box_length_distribution(gen);
+		for (auto &vel : { &p.vel_x, &p.vel_y, &p.vel_z })
+			*vel = max_vel_distribution(gen);
+	}
 
-        temp.PID = i;
-        temp.ts = 0;
-
-        temp.pos_x = dis(gen) * box_length;
-        temp.pos_y = dis(gen) * box_length;
-        temp.pos_z = dis(gen) * box_length;
-        temp.vel_x = dis(gen) * max_vel;
-        temp.vel_y = dis(gen) * max_vel;
-        temp.vel_z = dis(gen) * max_vel;
-
-        curr_data.push_back(temp);
-    
-    }
-
-    return curr_data;
+	return curr_data;
 }
 
 // Makes the list for our simulation later, required starting data
-// Step 1: Check interactions between particles, based on README link
+// Step 1: Check interactions between Particles, based on README link
 // Step 2: Update list.
-vector <interact> make_list(vector <particle> curr_data){
-    vector <interact> list;
+std::vector<Interaction> make_list(const std::vector<Particle> &curr_data){
+	/* passing curr_data as const reference to avoid the copy and accidental
+	   overwriting */
+	std::vector<Interaction> list;
 
-    return list;
+	return list;
 }
 
 // This performs our MD simulation with a vector of interactions
 // Also writes simulation to file, specified by README
 // Note: Time-loop here
-void simulate(vector<int> interactions, vector <particle> curr_data){
+void simulate(std::vector<int> interactions, std::vector<Particle> curr_data){
 
 
 }
