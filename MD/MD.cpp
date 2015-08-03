@@ -115,21 +115,22 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     std::vector<Interaction> list;
     Interaction test;
     int i = 0,j = 0;
+    double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_prime, rad_d;
 
     // Step 1 -- find interactions
     for (auto &ip : curr_data){
         for (auto &jp : curr_data){
-            double del_x = ip.pos_x - jp.pos_x;
-            double del_y = ip.pos_y - jp.pos_y;
-            double del_z = ip.pos_z - jp.pos_y;
+            del_x = ip.pos_x - jp.pos_x;
+            del_y = ip.pos_y - jp.pos_y;
+            del_z = ip.pos_z - jp.pos_y;
 
-            double del_vx = ip.vel_x - jp.vel_y;
-            double del_vy = ip.vel_y - jp.vel_y;
-            double del_vz = ip.vel_z - jp.vel_z;
+            del_vx = ip.vel_x - jp.vel_y;
+            del_vy = ip.vel_y - jp.vel_y;
+            del_vz = ip.vel_z - jp.vel_z;
 
-            double r_prime = 2 * radius;
+            r_prime = 2 * radius;
 
-            double rad_d = (pow(del_vx * del_x + del_vy * del_y 
+            rad_d = (pow(del_vx * del_x + del_vy * del_y 
                                  + del_vz * del_z, 2)
                     - 4 * (del_vx * del_vx + del_vy * del_vy + del_vz * del_vz)
                     * (del_x * del_x + del_y * del_y + del_z * del_z 
