@@ -14,7 +14,7 @@
 #include <vector>
 #include <fstream>
 #include <random>
-//#include <algorithm>
+#include <algorithm> // std::sort, etc..
 
 namespace sim{
 	/* putting our stuff in its own namespace so we can call "time" "time"
@@ -58,13 +58,23 @@ int main(void){
 
     int pnum = 100;
     double box_length = 10, max_vel = 0.01;
+		double r = 0.1; // i have no clue what would be a good particle radius...
 
     std::vector<Particle> curr_data = populate(pnum, box_length, max_vel);
+		std::vector<Interaction> inter_data = make_list(curr_data, box_length, r);
 
-    for (auto &p : curr_data){
+		// i tried to iterate through the sorted list
+		// All rtimes were NaN (not a number)
+		// I don't know much about physics so I'll leave it like that
+		// Sorting should work just like that though... Tested it with part1 (int)
+		// I tried without sorting, still all were NaN, so it's not that.
+    for (auto &i : inter_data){
+			//std::cout << i.part1 << std::endl;
 
-        std::cout << p.pos_x << std::endl;
-       
+			std::cout << " x: " << curr_data[i.part1].pos_x <<
+									 " y: " << curr_data[i.part1].pos_y <<
+									 " z: " << curr_data[i.part1].pos_z << std::endl;
+
     }
 
     return 0;
@@ -85,9 +95,9 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel){
     /* instead of doing % and * to get the correct distribution we directly
        specify which distribution we want */
 
-    std::uniform_real_distribution<double> 
+    std::uniform_real_distribution<double>
         box_length_distribution(0, box_length);
-    std::uniform_real_distribution<double> 
+    std::uniform_real_distribution<double>
        max_vel_distribution(0, max_vel);
 
     int PID_counter = 0;
@@ -115,26 +125,26 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     std::vector<Interaction> list;
     Interaction test;
     int i = 0,j = 0;
-    double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_prime, rad_d;
 
     // Step 1 -- find interactions
     for (auto &ip : curr_data){
         for (auto &jp : curr_data){
-            del_x = ip.pos_x - jp.pos_x;
-            del_y = ip.pos_y - jp.pos_y;
-            del_z = ip.pos_z - jp.pos_y;
+            double del_x = ip.pos_x - jp.pos_x;
+            double del_y = ip.pos_y - jp.pos_y;
+            double del_z = ip.pos_z - jp.pos_y;
 
-            del_vx = ip.vel_x - jp.vel_y;
-            del_vy = ip.vel_y - jp.vel_y;
-            del_vz = ip.vel_z - jp.vel_z;
+            double del_vx = ip.vel_x - jp.vel_y;
+            double del_vy = ip.vel_y - jp.vel_y;
+            double del_vz = ip.vel_z - jp.vel_z;
 
-            r_prime = 2 * radius;
+            double r_prime = 2 * radius;
 
-            rad_d = (pow(del_vx * del_x + del_vy * del_y 
-                                 + del_vz * del_z, 2)
-                    - 4 * (del_vx * del_vx + del_vy * del_vy + del_vz * del_vz)
-                    * (del_x * del_x + del_y * del_y + del_z * del_z 
-                       - r_prime * r_prime));
+            double rad_d = (pow(del_vx * del_x + del_vy * del_y
+                          		+ del_vz * del_z, 2)
+                    	 - 4 * (del_vx * del_vx + del_vy * del_vy
+											 				+ del_vz * del_vz)
+                    	 * (del_x * del_x + del_y * del_y + del_z * del_z
+                       				- r_prime * r_prime));
 
             sim::time check;
             if (del_x * del_vx >= 0 && del_y * del_vy >= 0 &&
@@ -147,7 +157,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             }
 
             else {
-                check = (-(del_vx * del_x + del_vy * del_y + del_vz * del_z) 
+                check = (-(del_vx * del_x + del_vy * del_y + del_vz * del_z)
                         + sqrt(rad_d)) / (2 * (del_vx * del_vx + del_vz * del_vz
                         + del_vy * del_vy));
             }
@@ -166,6 +176,17 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     }
 
     // Step 3 -- sort the list
+		// Our lambda expression acts as a rule for std::sort
+		// It will go through the list however the algorithm works
+		// And re-sort it so that lowest rtime is @ begin
+		// and highest @ end
+		// So it automatically makes those changes to input list
+		std::sort(list.begin(), list.end(),
+		[](const Interaction &il, const Interaction &ir)
+		{
+			   return il.rtime < ir.rtime;
+		}
+		);
 /*
     // std::sort()
     vector <Interaction> dummy;
@@ -173,7 +194,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     for (auto &ele : list){
     }
 
-std::sort(std::begin(vec), std::end(vec), [](const Particle 
+std::sort(std::begin(vec), std::end(vec), [](const Particle
                 &lhs, const Particle &rhs){ return lhs.ts < rhs.ts; });
 */
     return list;
@@ -186,4 +207,3 @@ void simulate(std::vector<int> interactions, std::vector<Particle> curr_data){
 
 
 }
-
