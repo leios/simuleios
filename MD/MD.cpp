@@ -56,7 +56,7 @@ void simulate(std::vector<int> interactions, std::vector<Particle> curr_data);
 
 int main(void){
 
-    int pnum = 100;
+    int pnum = 1000;
     double box_length = 10, max_vel = 0.01;
 
     std::vector<Particle> curr_data = populate(pnum, box_length, max_vel);
@@ -65,6 +65,14 @@ int main(void){
 
         std::cout << p.pos_x << std::endl;
        
+    }
+
+    std::vector<Interaction> list = make_list(curr_data, box_length,0.1);
+
+    std::cout << std::endl << std::endl;
+
+    for (auto &it : list){
+        std::cout << it.rtime << std::endl;
     }
 
     return 0;
@@ -115,67 +123,61 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     std::vector<Interaction> list;
     Interaction test;
     int i = 0,j = 0;
-    double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_prime, rad_d;
+    double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d;
 
     // Step 1 -- find interactions
     for (auto &ip : curr_data){
         for (auto &jp : curr_data){
-            del_x = ip.pos_x - jp.pos_x;
-            del_y = ip.pos_y - jp.pos_y;
-            del_z = ip.pos_z - jp.pos_y;
+            if (i != j){
+                del_x = ip.pos_x - jp.pos_x;
+                del_y = ip.pos_y - jp.pos_y;
+                del_z = ip.pos_z - jp.pos_y;
 
-            del_vx = ip.vel_x - jp.vel_y;
-            del_vy = ip.vel_y - jp.vel_y;
-            del_vz = ip.vel_z - jp.vel_z;
+                del_vx = ip.vel_x - jp.vel_y;
+                del_vy = ip.vel_y - jp.vel_y;
+                del_vz = ip.vel_z - jp.vel_z;
 
-            r_prime = 2 * radius;
+                r_tot = 2 * radius;
 
-            rad_d = (pow(del_vx * del_x + del_vy * del_y 
-                                 + del_vz * del_z, 2)
-                    - 4 * (del_vx * del_vx + del_vy * del_vy + del_vz * del_vz)
-                    * (del_x * del_x + del_y * del_y + del_z * del_z 
-                       - r_prime * r_prime));
+                rad_d = (pow(del_vx*del_x + del_vy*del_y + del_vz*del_z, 2)
+                        - 4 * (del_vx*del_vx + del_vy*del_vy + del_vz*del_vz)
+                        * (del_x*del_x + del_y*del_y + del_z*del_z 
+                           - r_tot*r_tot));
 
-            sim::time check;
-            if (del_x * del_vx >= 0 && del_y * del_vy >= 0 &&
-                del_z * del_vz >= 0){
-                check = 0;
-            }
+                sim::time check;
+                if (del_x * del_vx >= 0 && del_y * del_vy >= 0 &&
+                    del_z * del_vz >= 0){
+                    check = 0;
+                }
 
-            else if (rad_d > 0){
-                check = 0;
-            }
+                // NaN error here! Sorry about that ^^
+                else if (rad_d < 0){
+                    check = 0;
+                }
 
-            else {
-                check = (-(del_vx * del_x + del_vy * del_y + del_vz * del_z) 
-                        + sqrt(rad_d)) / (2 * (del_vx * del_vx + del_vz * del_vz
-                        + del_vy * del_vy));
-            }
+                else {
+                    check = (-(del_vx*del_x + del_vy*del_y + del_vz*del_z)
+                            + sqrt(rad_d)) / (2 * 
+                            (del_vx*del_vx + del_vz*del_vz + del_vy*del_vy));
+                            + del_vy*del_vy));
+                }
 
 
-            // Step 2 -- update list
-            if (check != 0){
-                test.rtime = check;
-                test.part1 = i;
-                test.part2 = j;
-                list.push_back(test);
+                // Step 2 -- update list
+                if (check != 0){
+                    std::cout << "found one!" << std::endl;
+                    test.rtime = check;
+                    test.part1 = i;
+                    test.part2 = j;
+                    list.push_back(test);
+                }
             }
             j++;
         }
         i++;
     }
 
-    // Step 3 -- sort the list
-/*
-    // std::sort()
-    vector <Interaction> dummy;
-
-    for (auto &ele : list){
-    }
-
-std::sort(std::begin(vec), std::end(vec), [](const Particle 
-                &lhs, const Particle &rhs){ return lhs.ts < rhs.ts; });
-*/
+    // Step 3 -- sort the list TODO
     return list;
 }
 
