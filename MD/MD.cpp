@@ -159,7 +159,6 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                     check = (-(del_vx*del_x + del_vy*del_y + del_vz*del_z)
                             + sqrt(rad_d)) / (2 * 
                             (del_vx*del_vx + del_vz*del_vz + del_vy*del_vy));
-                            + del_vy*del_vy));
                 }
 
 
