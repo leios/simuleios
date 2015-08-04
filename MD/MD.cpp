@@ -14,12 +14,12 @@
 #include <vector>
 #include <fstream>
 #include <random>
-//#include <algorithm>
+#include <algorithm>
 
 namespace sim{
-	/* putting our stuff in its own namespace so we can call "time" "time"
-	   without colliding with names from the standard library */
-	using time = double;
+    /* putting our stuff in its own namespace so we can call "time" "time"
+       without colliding with names from the standard library */
+    using time = double;
 }
 
 /*----------------------------------------------------------------------------//
@@ -28,15 +28,15 @@ namespace sim{
 
 // Holds our data in a central struct, to be called mainly in a vector
 struct Particle{
-	int PID;
-	sim::time ts;
-	double pos_x, pos_y, pos_z, vel_x, vel_y, vel_z;
+    int PID;
+    sim::time ts;
+    double pos_x, pos_y, pos_z, vel_x, vel_y, vel_z;
 };
 
 // holds interaction data
 struct Interaction{
-	sim::time rtime;
-	int part1, part2;
+    sim::time rtime;
+    int part1, part2;
 };
 
 // Makes starting data
@@ -44,7 +44,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel);
 
 // Makes the list for our simulation later, required starting data
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
-                                   double box_length, double radius);
+    double box_length, double radius);
 
 // This performs our MD simulation with a vector of interactions
 // Also writes simulation to file, specified by README
@@ -63,16 +63,16 @@ int main(void){
 
     for (auto &p : curr_data){
 
-        std::cout << p.pos_x << std::endl;
-       
+        std::cout << p.pos_x << '\n';
+
     }
 
-    std::vector<Interaction> list = make_list(curr_data, box_length,0.1);
+    std::vector<Interaction> list = make_list(curr_data, box_length, 0.1);
 
-    std::cout << std::endl << std::endl;
+    std::cout << '\n' << '\n';
 
     for (auto &it : list){
-        std::cout << it.rtime << std::endl;
+        std::cout << it.rtime << '\n';
     }
 
     return 0;
@@ -91,12 +91,12 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel){
     static std::mt19937 gen(rd());
 
     /* instead of doing % and * to get the correct distribution we directly
-       specify which distribution we want */
+    specify which distribution we want */
 
-    std::uniform_real_distribution<double> 
+    std::uniform_real_distribution<double>
         box_length_distribution(0, box_length);
-    std::uniform_real_distribution<double> 
-       max_vel_distribution(0, max_vel);
+    std::uniform_real_distribution<double>
+        max_vel_distribution(0, max_vel);
 
     int PID_counter = 0;
     for (auto &p : curr_data){ //read: for all particles p in curr_data
@@ -104,12 +104,12 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel){
         p.PID = PID_counter++;
 
         for (auto &pos : { &p.pos_x, &p.pos_y, &p.pos_z })
-           *pos = box_length_distribution(gen);
+            *pos = box_length_distribution(gen);
         for (auto &vel : { &p.vel_x, &p.vel_y, &p.vel_z })
-           *vel = max_vel_distribution(gen);
+            *vel = max_vel_distribution(gen);
     }
 
-return curr_data;
+    return curr_data;
 }
 
 // Makes the list for our simulation later, required starting data
@@ -117,66 +117,68 @@ return curr_data;
 // Step 2: Update list.
 // Step 3: Sort list, lowest first
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
-                                   double box_length, double radius){
+    double box_length, double radius){
     /* passing curr_data as const reference to avoid the copy and accidental
     overwriting */
     std::vector<Interaction> list;
-    Interaction test;
-    int i = 0,j = 0;
-    double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d;
 
     // Step 1 -- find interactions
-    for (auto &ip : curr_data){
-        for (auto &jp : curr_data){
-            if (i != j){
-                del_x = ip.pos_x - jp.pos_x;
-                del_y = ip.pos_y - jp.pos_y;
-                del_z = ip.pos_z - jp.pos_y;
+    /* The "for (auto &e : c)" syntax is not very useful when we need the
+    index and don't iterate over every element */
+    /* After we compute the pair i-j we don't need to compare the pair
+    j-i anymore, also no i-i comparison, so make j > i */
+    for (size_t i = 0; i < curr_data.size(); ++i){
+        for (size_t j = i + 1; j < curr_data.size(); ++j){
+            //think of this as giving "curr_data[i]" the new name "ip"
+            const auto &ip = curr_data[i];
+            const auto &jp = curr_data[j];
 
-                del_vx = ip.vel_x - jp.vel_y;
-                del_vy = ip.vel_y - jp.vel_y;
-                del_vz = ip.vel_z - jp.vel_z;
+            const double delta_x = ip.pos_x - jp.pos_x;
+            const double delta_y = ip.pos_y - jp.pos_y;
+            const double delta_z = ip.pos_z - jp.pos_y;
 
-                r_tot = 2 * radius;
+            const double delta_vx = ip.vel_x - jp.vel_y;
+            const double delta_vy = ip.vel_y - jp.vel_y;
+            const double delta_vz = ip.vel_z - jp.vel_z;
 
-                rad_d = (pow(del_vx*del_x + del_vy*del_y + del_vz*del_z, 2)
-                        - 4 * (del_vx*del_vx + del_vy*del_vy + del_vz*del_vz)
-                        * (del_x*del_x + del_y*del_y + del_z*del_z 
-                           - r_tot*r_tot));
-
-                sim::time check;
-                if (del_x * del_vx >= 0 && del_y * del_vy >= 0 &&
-                    del_z * del_vz >= 0){
-                    check = 0;
-                }
-
-                // NaN error here! Sorry about that ^^
-                else if (rad_d < 0){
-                    check = 0;
-                }
-
-                else {
-                    check = (-(del_vx*del_x + del_vy*del_y + del_vz*del_z)
-                            + sqrt(rad_d)) / (2 * 
-                            (del_vx*del_vx + del_vz*del_vz + del_vy*del_vy));
-                }
-
-
-                // Step 2 -- update list
-                if (check != 0){
-                    std::cout << "found one!" << std::endl;
-                    test.rtime = check;
-                    test.part1 = i;
-                    test.part2 = j;
-                    list.push_back(test);
-                }
+            if (delta_x * delta_vx >= 0 && delta_y * delta_vy >= 0 &&
+                delta_z * delta_vz >= 0){
+                continue;
             }
-            j++;
+
+            const double r_tot = 2 * radius;
+            //change "r_tot" and "rad_d" to a more descriptive name?
+            const double delta = delta_vx*delta_x + delta_vy*delta_y + delta_vz*delta_z;
+            const double rad_d = (delta * delta
+                - 4 * (delta_vx*delta_vx + delta_vy*delta_vy + delta_vz*delta_vz)
+                * (delta_x*delta_x + delta_y*delta_y + delta_z*delta_z
+                - r_tot*r_tot));
+
+            // NaN error here! Sorry about that ^^
+            if (rad_d < 0){
+                continue;
+            }
+
+            // Step 2 -- update list
+            std::cout << "found one!" << '\n';
+            const auto check = (-(delta_vx*delta_x + delta_vy*delta_y + delta_vz*delta_z)
+                + sqrt(rad_d)) / (2 *
+                (delta_vx*delta_vx + delta_vz*delta_vz + delta_vy*delta_vy));
+            Interaction test;
+            test.rtime = check;
+            test.part1 = i;
+            test.part2 = j;
+            list.push_back(test);
         }
-        i++;
     }
 
-    // Step 3 -- sort the list TODO
+    // Step 3 -- sort the list by rtime
+    /* given 2 objects, std::sort needs to know if the first one is smaller */
+    std::sort(std::begin(list), std::end(list),
+        [](const Interaction &lhs, const Interaction &rhs){
+            return lhs.rtime < rhs.rtime;
+        }
+    );
     return list;
 }
 
