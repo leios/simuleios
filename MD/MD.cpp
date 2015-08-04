@@ -48,8 +48,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 
 // This performs our MD simulation with a vector of interactions
 // Also writes simulation to file, specified by README
-void simulate(std::vector<Interaction> interactions, 
-              std::vector<Particle> curr_data, 
+void simulate(std::vector<Interaction> &interactions,
+              std::vector<Particle> &curr_data,
               double radius, double mass, double box_length);
 
 // Update list during simulate
@@ -61,24 +61,24 @@ std::vector<Interaction> update_list(const std::vector<Particle> &curr_data,
 * MAIN
 *-----------------------------------------------------------------------------*/
 
-int main(void){
+int main() {
 
     int pnum = 1000;
     double box_length = 10, max_vel = 0.01;
 
     std::vector<Particle> curr_data = populate(pnum, box_length, max_vel);
 
-    for (auto &p : curr_data){
+    for (const auto &p : curr_data){
 
         std::cout << p.pos_x << std::endl;
-       
+
     }
 
     std::vector<Interaction> list = make_list(curr_data, box_length,0.1);
 
     std::cout << std::endl << std::endl;
 
-    for (auto &it : list){
+    for (const auto &it : list){
         std::cout << it.rtime << std::endl;
     }
 
@@ -100,9 +100,9 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel){
     /* instead of doing % and * to get the correct distribution we directly
        specify which distribution we want */
 
-    std::uniform_real_distribution<double> 
+    std::uniform_real_distribution<double>
         box_length_distribution(0, box_length);
-    std::uniform_real_distribution<double> 
+    std::uniform_real_distribution<double>
        max_vel_distribution(0, max_vel);
 
     int PID_counter = 0;
@@ -136,8 +136,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d, del_vtot;
 
     // Step 1 -- find interactions
-    for (auto &ip : curr_data){
-        for (auto &jp : curr_data){
+    for (const auto &ip : curr_data){
+        for (const auto &jp : curr_data){
             if (i != j){
 
                 // simple definitions to make things easier later
@@ -157,7 +157,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                 // This is under the radical in quad eq., thus "rad_d"
                 rad_d = (del_vtot * del_vtot
                         - 4 * (del_vx*del_vx + del_vy*del_vy + del_vz*del_vz)
-                        * (del_x*del_x + del_y*del_y + del_z*del_z 
+                        * (del_x*del_x + del_y*del_y + del_z*del_z
                            - r_tot*r_tot));
 
                 sim::time check;
@@ -173,7 +173,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 
                 else {
                     check = (-(del_vx*del_x + del_vy*del_y + del_vz*del_z)
-                            + sqrt(rad_d)) / (2 * 
+                            + sqrt(rad_d)) / (2 *
                             (del_vx*del_vx + del_vz*del_vz + del_vy*del_vy));
                 }
 
@@ -198,7 +198,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     //     1. Where to start sorting
     //     2. Where to stop sorting
     //     3. Which element value is greater
-    // 
+    //
     // To check #3, we create a lambda (on-the-fly) function that reads in the
     //     two previous variables as dum1 and dum2 and checks which element is
     //     lesser. That's it.
@@ -218,8 +218,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 // Step 3: update list
 // Step 4: output positions to file
 // UNCHECKED
-void simulate(std::vector<Interaction>& interactions, 
-              std::vector<Particle>& curr_data, 
+void simulate(std::vector<Interaction>& interactions,
+              std::vector<Particle>& curr_data,
               double radius, double mass, double box_length){
 
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot;
@@ -227,22 +227,22 @@ void simulate(std::vector<Interaction>& interactions,
 
     // Note that these are all defined in the material linked in README
     // Step 1
-    for (double simtime = 0; simtime < interactions.back().rtime; 
+    for (double simtime = 0; simtime < interactions.back().rtime;
          simtime += interactions[0].rtime){
 
-        del_x = (curr_data[interactions[0].part1].pos_x 
+        del_x = (curr_data[interactions[0].part1].pos_x
                  + curr_data[interactions[0].part1].vel_x * simtime)
-                 - (curr_data[interactions[0].part2].pos_x 
+                 - (curr_data[interactions[0].part2].pos_x
                  + curr_data[interactions[0].part2].vel_x * simtime);
 
-        del_y = (curr_data[interactions[0].part1].pos_y 
+        del_y = (curr_data[interactions[0].part1].pos_y
                  + curr_data[interactions[0].part1].vel_y * simtime)
-                 - (curr_data[interactions[0].part2].pos_y 
+                 - (curr_data[interactions[0].part2].pos_y
                  + curr_data[interactions[0].part2].vel_y * simtime);
 
-        del_z = (curr_data[interactions[0].part1].pos_z 
+        del_z = (curr_data[interactions[0].part1].pos_z
                  + curr_data[interactions[0].part1].vel_z * simtime)
-                 - (curr_data[interactions[0].part2].pos_z 
+                 - (curr_data[interactions[0].part2].pos_z
                  + curr_data[interactions[0].part2].vel_z * simtime);
 
         del_vx = (curr_data[interactions[0].part1].vel_x)
@@ -315,7 +315,7 @@ std::vector<Interaction> update_list(const std::vector<Particle> &curr_data,
                 // This is under the radical in quad eq., thus "rad_d"
                 rad_d = (del_vtot * del_vtot
                         - 4 * (del_vx*del_vx + del_vy*del_vy + del_vz*del_vz)
-                        * (del_x*del_x + del_y*del_y + del_z*del_z 
+                        * (del_x*del_x + del_y*del_y + del_z*del_z
                            - r_tot*r_tot));
 
                 sim::time check;
@@ -331,7 +331,7 @@ std::vector<Interaction> update_list(const std::vector<Particle> &curr_data,
 
                 else {
                     check = (-(del_vx*del_x + del_vy*del_y + del_vz*del_z)
-                            + sqrt(rad_d)) / (2 * 
+                            + sqrt(rad_d)) / (2 *
                             (del_vx*del_vx + del_vz*del_vz + del_vy*del_vy));
                 }
 
