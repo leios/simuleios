@@ -190,6 +190,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             j++;
         }
         i++;
+        j = 0;
     }
 
     // Step 3 -- sort the list
