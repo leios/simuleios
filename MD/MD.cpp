@@ -15,11 +15,18 @@
 #include <fstream>
 #include <random>
 #include <algorithm>
+<<<<<<< HEAD
 #include "Vec.h"
 
 namespace sim{
     /* putting our stuff in its own namespace so we can call "time" "time"
     without colliding with names from the standard library */
+=======
+
+namespace sim{
+    /* putting our stuff in its own namespace so we can call "time" "time"
+       without colliding with names from the standard library */
+>>>>>>> bcd5da5553db6a4ef9f94126e54cef9050810718
     using time = double;
 }
 
@@ -31,9 +38,13 @@ namespace sim{
 struct Particle{
     int PID;
     sim::time ts;
+<<<<<<< HEAD
     //double pos_x, pos_y, pos_z, vel_x, vel_y, vel_z;
     sim::Vec pos{ 0, 0, 0 }, vel{ 0, 0, 0 };
     //initializing pos and vel to 0 is not ideal
+=======
+    double pos_x, pos_y, pos_z, vel_x, vel_y, vel_z;
+>>>>>>> bcd5da5553db6a4ef9f94126e54cef9050810718
 };
 
 // holds interaction data
@@ -73,16 +84,20 @@ int main(void){
 
     for (auto &p : curr_data){
 
+<<<<<<< HEAD
         std::cout << p.pos.x << std::endl;
+=======
+        std::cout << p.pos_x << '\n';
+>>>>>>> bcd5da5553db6a4ef9f94126e54cef9050810718
 
     }
 
     std::vector<Interaction> list = make_list(curr_data, box_length, 0.1);
 
-    std::cout << std::endl << std::endl;
+    std::cout << '\n' << '\n';
 
     for (auto &it : list){
-        std::cout << it.rtime << std::endl;
+        std::cout << it.rtime << '\n';
     }
 
     return 0;
@@ -113,6 +128,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel){
         p.ts = 0;
         p.PID = PID_counter++;
 
+<<<<<<< HEAD
         for (auto &pos : { &p.pos.x, &p.pos.y, &p.pos.z }){
             *pos = box_length_distribution(gen);
         }
@@ -120,6 +136,12 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel){
         for (auto &vel : { &p.vel.x, &p.vel.y, &p.vel.z }){
             *vel = max_vel_distribution(gen);
         }
+=======
+        for (auto &pos : { &p.pos_x, &p.pos_y, &p.pos_z })
+            *pos = box_length_distribution(gen);
+        for (auto &vel : { &p.vel_x, &p.vel_y, &p.vel_z })
+            *vel = max_vel_distribution(gen);
+>>>>>>> bcd5da5553db6a4ef9f94126e54cef9050810718
     }
 
     return curr_data;
@@ -134,6 +156,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     /* passing curr_data as const reference to avoid the copy and accidental
     overwriting */
     std::vector<Interaction> list;
+<<<<<<< HEAD
     Interaction test;
     int i = 0, j = 0;
     //double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d, del_vtot;
@@ -214,12 +237,60 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                     test.part2 = j;
                     list.push_back(test);
                 }
+=======
+
+    // Step 1 -- find interactions
+    /* The "for (auto &e : c)" syntax is not very useful when we need the
+    index and don't iterate over every element */
+    /* After we compute the pair i-j we don't need to compare the pair
+    j-i anymore, also no i-i comparison, so make j > i */
+    for (size_t i = 0; i < curr_data.size(); ++i){
+        for (size_t j = i + 1; j < curr_data.size(); ++j){
+            //think of this as giving "curr_data[i]" the new name "ip"
+            const auto &ip = curr_data[i];
+            const auto &jp = curr_data[j];
+
+            const double delta_x = ip.pos_x - jp.pos_x;
+            const double delta_y = ip.pos_y - jp.pos_y;
+            const double delta_z = ip.pos_z - jp.pos_y;
+
+            const double delta_vx = ip.vel_x - jp.vel_y;
+            const double delta_vy = ip.vel_y - jp.vel_y;
+            const double delta_vz = ip.vel_z - jp.vel_z;
+
+            if (delta_x * delta_vx >= 0 && delta_y * delta_vy >= 0 &&
+                delta_z * delta_vz >= 0){
+                continue;
             }
-            j++;
+
+            const double r_tot = 2 * radius;
+            //change "r_tot" and "rad_d" to a more descriptive name?
+            const double delta = delta_vx*delta_x + delta_vy*delta_y + delta_vz*delta_z;
+            const double rad_d = (delta * delta
+                - 4 * (delta_vx*delta_vx + delta_vy*delta_vy + delta_vz*delta_vz)
+                * (delta_x*delta_x + delta_y*delta_y + delta_z*delta_z
+                - r_tot*r_tot));
+
+            // NaN error here! Sorry about that ^^
+            if (rad_d < 0){
+                continue;
+>>>>>>> bcd5da5553db6a4ef9f94126e54cef9050810718
+            }
+
+            // Step 2 -- update list
+            std::cout << "found one!" << '\n';
+            const auto check = (-(delta_vx*delta_x + delta_vy*delta_y + delta_vz*delta_z)
+                + sqrt(rad_d)) / (2 *
+                (delta_vx*delta_vx + delta_vz*delta_vz + delta_vy*delta_vy));
+            Interaction test;
+            test.rtime = check;
+            test.part1 = i;
+            test.part2 = j;
+            list.push_back(test);
         }
-        i++;
     }
 
+<<<<<<< HEAD
     // Step 3 -- sort the list
 
     // The std::sort command wants to know 3 things:
@@ -235,6 +306,15 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
         [](const Interaction &dum1, const Interaction &dum2)
     {return dum1.rtime < dum2.rtime; });
 
+=======
+    // Step 3 -- sort the list by rtime
+    /* given 2 objects, std::sort needs to know if the first one is smaller */
+    std::sort(std::begin(list), std::end(list),
+        [](const Interaction &lhs, const Interaction &rhs){
+            return lhs.rtime < rhs.rtime;
+        }
+    );
+>>>>>>> bcd5da5553db6a4ef9f94126e54cef9050810718
     return list;
 }
 
