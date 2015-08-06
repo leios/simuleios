@@ -145,34 +145,37 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                 del_vx = ip.vel_x - jp.vel_y;
                 del_vy = ip.vel_y - jp.vel_y;
                 del_vz = ip.vel_z - jp.vel_z;
-
+                
+				// sigma ?
                 r_tot = 2 * radius;
 
-                // This is actually the sqrt(del_vtot)
-                del_vtot = del_vx*del_x + del_vy*del_y + del_vz*del_z;
+				// This is actually the sqrt(del_vtot)
+				// del_v * del_r ?
+				del_vtot = del_vx*del_x + del_vy*del_y + del_vz*del_z;
+				// del_r * del_ r = del_x^2 + del_y^2 + del_z^2 ?
+				// del_v * delv_v = del_vx^2 + del_vy^2 + del_vz^2 ?
 
-                // This is under the radical in quad eq., thus "rad_d"
-                rad_d = (del_vtot * del_vtot
-                        - 4 * (del_vx*del_vx + del_vy*del_vy + del_vz*del_vz)
-                        * (del_x*del_x + del_y*del_y + del_z*del_z 
-                           - r_tot*r_tot));
+				// This is under the radical in quad eq., thus "rad_d"
+				// d ?
+				rad_d = (del_vtot * del_vtot
+					- (del_vx*del_vx + del_vy*del_vy + del_vz*del_vz)
+					* (del_x*del_x + del_y*del_y + del_z*del_z
+					- r_tot*r_tot));
 
-                double taptime;
-                if (del_x * del_vx >= 0 && del_y * del_vy >= 0 &&
-                    del_z * del_vz >= 0){
-                    taptime = 0;
-                }
+				double taptime;
+				if (del_vtot >= 0){
+					taptime = 0;
+				}
 
-                // NaN error here! Sorry about that ^^, lt was gt (oops!)
-                else if (rad_d < 0){
-                    taptime = 0;
-                }
+				// NaN error here! Sorry about that ^^, lt was gt (oops!)
+				else if (rad_d < 0){
+					taptime = 0;
+				}
 
-                else {
-                    taptime = (-(del_vx*del_x + del_vy*del_y + del_vz*del_z)
-                            + sqrt(rad_d)) / (2 * 
-                            (del_vx*del_vx + del_vz*del_vz + del_vy*del_vy));
-                }
+				else {
+					taptime = -(del_vtot + sqrt(rad_d)) /
+						(del_vx*del_vx + del_vy*del_vy + del_vz*del_vz);
+				}
 
 
                 // Step 2 -- update list
