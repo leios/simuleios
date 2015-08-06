@@ -11,6 +11,9 @@
 *          This file was written live by Leios on twitch.tv/simuleios
 *          Please note that the efficiency of this code cannot be guaranteed.
 *
+*   ERROR: simulate function in infinite loop, make_list remains untested for
+*              simulate function. New function mau be written in the future.
+*
 *-----------------------------------------------------------------------------*/
 
 #include <iostream>
@@ -37,17 +40,17 @@ struct Interaction{
 
 // Makes starting data
 std::vector<Particle> populate(int pnum, double box_length, double max_vel,
-                                double radius);
+                               double radius);
 
 // Makes the list for our simulation later, required starting data
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
-                                   double box_length, double radius);
+                                   double box_length, double radius, int pnum);
 
 // This performs our MD simulation with a vector of interactions
 // Also writes simulation to file, specified by README
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
-              double radius, double mass, double box_length);
+              double radius, double mass, double box_length, double pnum);
 
 // Update list during simulate
 std::vector<Interaction> update_list(const std::vector<Particle> &curr_data,
@@ -60,24 +63,34 @@ std::vector<Interaction> update_list(const std::vector<Particle> &curr_data,
 
 int main(void){
 
-    int pnum = 1000;
-    double box_length = 10, max_vel = 0.01, radius = 0.1;
+    // opens file for writing
+    std::ofstream output("out.dat", std::ofstream::out);
 
-    std::vector<Particle> curr_data = populate(pnum, box_length, max_vel, radius);
+    int pnum = 100;
+    double box_length = 10, max_vel = 0.01, radius = 0.0001, mass = 0.1;
+
+    std::vector<Particle> curr_data = populate(pnum, box_length, max_vel, 
+                                               radius);
 
     for (const auto &p : curr_data){
 
-        std::cout << p.pos_x << std::endl;
+        std::cout << p.pos_x << '\t' << p.pid << std::endl;
        
     }
 
-    std::vector<Interaction> list = make_list(curr_data, box_length, radius);
+    std::vector<Interaction> list = make_list(curr_data, box_length,0.1, pnum);
 
     std::cout << std::endl << std::endl;
 
+    int count = 0;
     for (const auto &it : list){
-        std::cout << it.rtime << std::endl;
+        std::cout << count << '\t' << it.rtime << '\t' << it.part1  
+                  << '\t' << it.part2 << std::endl;
+        count++;
+        
     }
+
+    //simulate(list, curr_data, radius, mass, box_length, pnum);
 
     return 0;
 }
@@ -88,7 +101,7 @@ int main(void){
 
 // Makes starting data
 std::vector<Particle> populate(int pnum, double box_length, double max_vel,
-                                double radius){
+                               double radius){
     std::vector<Particle> curr_data(pnum);
 
     // static to create only 1 random_device
@@ -99,7 +112,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
        specify which distribution we want */
 
     std::uniform_real_distribution<double> 
-        box_length_distribution(radius, box_length-radius);
+        box_length_distribution(radius, box_length - radius);
     std::uniform_real_distribution<double> 
        max_vel_distribution(0, max_vel);
 
@@ -114,24 +127,25 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
             for (auto &pos : { &p.pos_x, &p.pos_y, &p.pos_z }){
                 *pos = box_length_distribution(gen);
             }
+
             for (int i = 0; i < p.pid; i++){
-				auto& other_p = curr_data[i];
-				// Distance < Radius * 2 Particle
-				// Distance^2 < (Radius*2)^2
-				if ( ((other_p.pos_x - p.pos_x)*(other_p.pos_x - p.pos_x) +
-					  (other_p.pos_y - p.pos_y)*(other_p.pos_y - p.pos_y) +
-					  (other_p.pos_z - p.pos_z)*(other_p.pos_z - p.pos_z))
-					  < ((2*radius)*(2*radius)) ) {
-					incorrectGeneration = true;
-				}
-			}
+                auto& other_p = curr_data[i];
+                // Distance < Radius * 2 Particle
+                // Distance^2 < (Radius*2)^2
+                if ( ((other_p.pos_x - p.pos_x)*(other_p.pos_x - p.pos_x) +
+                    (other_p.pos_y - p.pos_y)*(other_p.pos_y - p.pos_y) +
+                    (other_p.pos_z - p.pos_z)*(other_p.pos_z - p.pos_z))
+                     < ((2*radius)*(2*radius)) ) {
+                    incorrectGeneration = true;
+                }
+            }
         }
         
         for (auto &vel : { &p.vel_x, &p.vel_y, &p.vel_z }){
             *vel = max_vel_distribution(gen);
         }
     }
-    
+
     return curr_data;
 }
 
@@ -140,70 +154,119 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 // Step 2: Update list.
 // Step 3: Sort list, lowest first
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
-                                   double box_length, double radius){
+                                   double box_length, double radius, int pnum){
     /* passing curr_data as const reference to avoid the copy and accidental
     overwriting */
-    std::vector<Interaction> list;
+    std::vector<Interaction> list(pnum), walltime(6);
     Interaction test;
-    int i = 0, j;
     double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d, del_vtot;
+    double vdotr;
 
     // Step 1 -- find interactions
-    for (const auto &ip : curr_data){
-        j = 0;
-        for (const auto &jp : curr_data){
+    for (int i = 0; i < pnum; i++){
+
+        for (int k = 0; k < 6; k++ ){
+            // setting arbitrarily high... 
+            walltime[k].rtime = std::numeric_limits<double>::infinity();
+            walltime[k].part1 = i;
+            walltime[k].part2 = -k - 1;
+        }
+
+        // checking for interactions with the wall.
+        if (curr_data[i].vel_x > 0){
+            walltime[0].rtime = (box_length - curr_data[i].pos_x) 
+                                / curr_data[i].vel_x;
+            walltime[0].part2 = -1;
+        }
+
+        if (curr_data[i].vel_x < 0){
+            walltime[1].rtime = - curr_data[i].pos_x / curr_data[i].vel_x;
+            walltime[1].part2 = -2;
+        }
+
+        if (curr_data[i].vel_y > 0){
+            walltime[2].rtime = (box_length - curr_data[i].pos_y) 
+                                / curr_data[i].vel_y;
+            walltime[2].part2 = -3;
+        }
+
+        if (curr_data[i].vel_y < 0){
+            walltime[3].rtime = - curr_data[i].pos_y / curr_data[i].vel_y;
+            walltime[3].part2 = -4;
+        }
+
+        if (curr_data[i].vel_z > 0){
+            walltime[4].rtime = (box_length - curr_data[i].pos_z) 
+                                / curr_data[i].vel_z;
+            walltime[4].part2 = -5;
+        }
+
+        if (curr_data[i].vel_z < 0){
+            walltime[5].rtime = - curr_data[i].pos_z / curr_data[i].vel_z;
+            walltime[5].part2 = -6;
+        }
+
+        std::sort(std::begin(walltime), std::end(walltime),
+                  [](const Interaction &dum1, const Interaction &dum2)
+                     {return dum1.rtime < dum2.rtime;});
+
+        for (int j = 0; j < pnum; j++){
             if (i != j){
 
                 // simple definitions to make things easier later
-                del_x = ip.pos_x - jp.pos_x;
-                del_y = ip.pos_y - jp.pos_y;
-                del_z = ip.pos_z - jp.pos_y;
+                del_x = curr_data[i].pos_x - curr_data[j].pos_x;
+                del_y = curr_data[i].pos_y - curr_data[j].pos_y;
+                del_z = curr_data[i].pos_z - curr_data[j].pos_z;
 
-                del_vx = ip.vel_x - jp.vel_y;
-                del_vy = ip.vel_y - jp.vel_y;
-                del_vz = ip.vel_z - jp.vel_z;
+                del_vx = curr_data[i].vel_x - curr_data[j].vel_x;
+                del_vy = curr_data[i].vel_y - curr_data[j].vel_y;
+                del_vz = curr_data[i].vel_z - curr_data[j].vel_z;
 
                 r_tot = 2 * radius;
 
-                // This is actually the sqrt(del_vtot)
-                del_vtot = del_vx*del_x + del_vy*del_y + del_vz*del_z;
+                // change in velocity * change in r
+                vdotr = del_vx*del_x + del_vy*del_y + del_vz*del_z;
+                del_vtot = del_vx*del_vx + del_vy*del_vy + del_vz*del_vz;
 
                 // This is under the radical in quad eq., thus "rad_d"
-                rad_d = (del_vtot * del_vtot
-                        - 4 * (del_vx*del_vx + del_vy*del_vy + del_vz*del_vz)
+                rad_d = (vdotr * vdotr) -  del_vtot
                         * (del_x*del_x + del_y*del_y + del_z*del_z 
-                           - r_tot*r_tot));
+                           - r_tot*r_tot);
 
                 double taptime;
-                if (del_x * del_vx >= 0 && del_y * del_vy >= 0 &&
-                    del_z * del_vz >= 0){
+                if (vdotr >=0){
                     taptime = 0;
                 }
 
-                // NaN error here! Sorry about that ^^, lt was gt (oops!)
                 else if (rad_d < 0){
                     taptime = 0;
                 }
 
                 else {
-                    taptime = (-(del_vx*del_x + del_vy*del_y + del_vz*del_z)
-                            + sqrt(rad_d)) / (2 * 
-                            (del_vx*del_vx + del_vz*del_vz + del_vy*del_vy));
+                    taptime = (-(vdotr) + sqrt(rad_d)) / (del_vtot);
                 }
-
 
                 // Step 2 -- update list
-                if (taptime != 0){
+                if (taptime > 0 && taptime < walltime[0].rtime &&
+                    taptime < list[i].rtime){
+
                     std::cout << "found one!" << std::endl;
                     test.rtime = taptime;
-                    test.part1 = i;
-                    test.part2 = j;
-                    list.push_back(test);
+                    test.part1 = i; //curr_data[i].pid;
+                    test.part2 = curr_data[j].pid;
+                    list[i] = test;
                 }
             }
-            j++;
+
         }
-        i++;
+        if (walltime[0].rtime < list[i].rtime || list[i].rtime == 0){
+            list[i] = walltime[0];
+        }
+        std::cout << '\n' ;
+        std::cout << list[i].rtime << '\t' << list[i].part1 << '\t' << i << '\t'
+                  << list[i].part2 << '\t' << walltime[0].rtime << '\t'
+                  << walltime[0].part1 << '\t' << walltime[0].part2 <<'\n';
+
     }
 
     // Step 3 -- sort the list
@@ -231,68 +294,128 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 // Step 2: model the interaction of particles that interact
 // Step 3: update list
 // Step 4: output positions to file
-// UNCHECKED
+// UNCHECKED -- CERTAINLY BUG
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
-              double radius, double mass, double box_length){
+              double radius, double mass, double box_length, double pnum){
+
+    // opens file for writing
+    std::ofstream output("out.dat", std::ofstream::out);
 
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot;
     double del_vx, del_vy, del_vz, del_vtot;
+    int count = 0;
 
     // Note that these are all defined in the material linked in README
     // Step 1
-    for (double simtime = 0; simtime < interactions.back().rtime; 
-         simtime += interactions[0].rtime){
+    double final_time = interactions.back().rtime;
+    for (double simtime = 0; simtime < final_time; 
+        simtime += interactions[0].rtime){
 
-        del_x = (curr_data[interactions[0].part1].pos_x 
-                 + curr_data[interactions[0].part1].vel_x * simtime)
-                 - (curr_data[interactions[0].part2].pos_x 
-                 + curr_data[interactions[0].part2].vel_x * simtime);
+        // changing the 
+        for ( int i = 0; i < pnum; i++){
+            curr_data[i].pos_x += curr_data[i].vel_x * simtime;
+            curr_data[i].pos_y += curr_data[i].vel_y * simtime;
+            curr_data[i].pos_z += curr_data[i].vel_z * simtime;
 
-        del_y = (curr_data[interactions[0].part1].pos_y 
-                 + curr_data[interactions[0].part1].vel_y * simtime)
-                 - (curr_data[interactions[0].part2].pos_y 
-                 + curr_data[interactions[0].part2].vel_y * simtime);
+            output << curr_data[i].pid << '\t' << simtime << '\t' 
+                   << curr_data[i].pos_x << '\t' << curr_data[i].pos_y
+                   << curr_data[i].pos_y << '\t' << curr_data[i].vel_x
+                   << curr_data[i].vel_y << '\t' << curr_data[i].vel_z
+                   << '\n';
 
-        del_z = (curr_data[interactions[0].part1].pos_z 
-                 + curr_data[interactions[0].part1].vel_z * simtime)
-                 - (curr_data[interactions[0].part2].pos_z 
-                 + curr_data[interactions[0].part2].vel_z * simtime);
+        }
 
-        del_vx = (curr_data[interactions[0].part1].vel_x)
-                 - (curr_data[interactions[0].part2].vel_x);
+        output << '\n' << '\n';
 
-        del_vy = (curr_data[interactions[0].part1].vel_y)
-                 - (curr_data[interactions[0].part2].vel_y);
+        if (interactions[0].rtime > 0){
+            del_x = (curr_data[interactions[0].part1].pos_x 
+                     + curr_data[interactions[0].part1].vel_x * simtime)
+                     - (curr_data[interactions[0].part2].pos_x 
+                     + curr_data[interactions[0].part2].vel_x * simtime);
 
-        del_vz = (curr_data[interactions[0].part1].vel_z)
-                 - (curr_data[interactions[0].part2].vel_z);
+	    del_y = (curr_data[interactions[0].part1].pos_y 
+                     + curr_data[interactions[0].part1].vel_y * simtime)
+                     - (curr_data[interactions[0].part2].pos_y 
+                     + curr_data[interactions[0].part2].vel_y * simtime);
 
+            del_z = (curr_data[interactions[0].part1].pos_z 
+                     + curr_data[interactions[0].part1].vel_z * simtime)
+                     - (curr_data[interactions[0].part2].pos_z 
+                     + curr_data[interactions[0].part2].vel_z * simtime);
+    
+            del_vx = (curr_data[interactions[0].part1].vel_x)
+                     - (curr_data[interactions[0].part2].vel_x);
+    
+            del_vy = (curr_data[interactions[0].part1].vel_y)
+                     - (curr_data[interactions[0].part2].vel_y);
+    
+            del_vz = (curr_data[interactions[0].part1].vel_z)
+                     - (curr_data[interactions[0].part2].vel_z);
+    
+    
+            rtot = sqrt(del_x*del_x + del_y*del_y + del_z*del_z);
+            del_vtot = sqrt(del_vx*del_vx + del_vy*del_vy + del_vz*del_vz);
+    
+            // Step 2
+            J_tot = (2 * mass*mass* del_vtot * rtot) / (2*radius * (2 * mass));
+    
+            J_x = J_tot * del_x / (2 * radius);
+            J_y = J_tot * del_y / (2 * radius);
+            J_z = J_tot * del_z / (2 * radius);
+    
+            curr_data[interactions[0].part1].vel_x += J_x / mass;
+            curr_data[interactions[0].part1].vel_y += J_y / mass;
+            curr_data[interactions[0].part1].vel_z += J_z / mass;
+    
+            curr_data[interactions[0].part2].vel_x -= J_x / mass;
+            curr_data[interactions[0].part2].vel_y -= J_y / mass;
+            curr_data[interactions[0].part2].vel_z -= J_z / mass;
+        }
 
-        rtot = sqrt(del_x * del_x + del_y * del_y + del_z * del_z);
-        del_vtot = sqrt(del_vx * del_vx + del_vy * del_vy + del_vz * del_vz);
+        if (interactions[0].rtime < 0){
+            switch(interactions[0].part2){
+                case -1:
+                    curr_data[interactions[0].part1].pos_x -= box_length;
+                
+                case -2:
+                    curr_data[interactions[0].part1].pos_x += box_length;
+                
+                case -3:
+                    curr_data[interactions[0].part1].pos_y -= box_length;
+                
+                case -4:
+                    curr_data[interactions[0].part1].pos_y += box_length;
+                
+                case -5:
+                    curr_data[interactions[0].part1].pos_z -= box_length;
+                
+                case -6:
+                    curr_data[interactions[0].part1].pos_z += box_length;
+                
+            }
 
-        // Step 2
-        J_tot = (2 * mass * mass * del_vtot * rtot) / (2 * radius * (2 * mass));
+        
+        }
 
-        J_x = J_tot * del_x / (2 * radius);
-        J_y = J_tot * del_y / (2 * radius);
-        J_z = J_tot * del_z / (2 * radius);
-
-        curr_data[interactions[0].part1].vel_x += J_x / mass;
-        curr_data[interactions[0].part1].vel_y += J_y / mass;
-        curr_data[interactions[0].part1].vel_z += J_z / mass;
-
-        curr_data[interactions[0].part2].vel_x -= J_x / mass;
-        curr_data[interactions[0].part2].vel_y -= J_y / mass;
-        curr_data[interactions[0].part2].vel_z -= J_z / mass;
 
         // Step 3 -- update list; TODO
         // UNCHECKED
-        interactions = update_list(curr_data, box_length, radius, interactions);
+        interactions = make_list(curr_data, box_length, radius, pnum);
+ 
+
+        for (const auto &it : interactions){
+            std::cout << it.rtime << std::endl;
+        }
+
+        std::cout << '\n' << '\n';
+
+        std::cout << simtime << '\t' << count << '\n';
+        count++;
 
     }
 
+    output.close();
 
 }
 
@@ -301,71 +424,6 @@ void simulate(std::vector<Interaction> &interactions,
 std::vector<Interaction> update_list(const std::vector<Particle> &curr_data,
                                      double box_length, double radius,
                                      std::vector<Interaction> list){
-
-    Interaction test;
-    int i = 0;
-    double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d, del_vtot;
-
-    // Copied from above in make_list
-    for (const auto &ip : curr_data){
-        for (int j = 0; j < 2; j++){
-            if (i != 0){
-                auto &jp = curr_data[list[j].part1];
-
-                // simple definitions to make things easier later
-                del_x = ip.pos_x - jp.pos_x;
-                del_y = ip.pos_y - jp.pos_y;
-                del_z = ip.pos_z - jp.pos_y;
-
-                del_vx = ip.vel_x - jp.vel_y;
-                del_vy = ip.vel_y - jp.vel_y;
-                del_vz = ip.vel_z - jp.vel_z;
-
-                r_tot = 2 * radius;
-
-                // This is actually the sqrt(del_vtot)
-                del_vtot = del_vx*del_x + del_vy*del_y + del_vz*del_z;
-
-                // This is under the radical in quad eq., thus "rad_d"
-                rad_d = (del_vtot * del_vtot
-                        - 4 * (del_vx*del_vx + del_vy*del_vy + del_vz*del_vz)
-                        * (del_x*del_x + del_y*del_y + del_z*del_z 
-                           - r_tot*r_tot));
-
-                double taptime;
-                if (del_x * del_vx >= 0 && del_y * del_vy >= 0 &&
-                    del_z * del_vz >= 0){
-                    taptime = 0;
-                }
-
-                // NaN error here! Sorry about that ^^, lt was gt (oops!)
-                else if (rad_d < 0){
-                    taptime = 0;
-                }
-
-                else {
-                    taptime = (-(del_vx*del_x + del_vy*del_y + del_vz*del_z)
-                            + sqrt(rad_d)) / (2 * 
-                            (del_vx*del_vx + del_vz*del_vz + del_vy*del_vy));
-                }
-
-
-                // Step 2 -- update list
-                if (taptime != 0){
-                    std::cout << "found one!" << std::endl;
-                    test.rtime = taptime;
-                    test.part1 = i;
-                    test.part2 = j;
-                    list.push_back(test);
-                }
-            }
-        }
-        i++;
-    }
-
-    std::sort(std::begin(list), std::end(list),
-              [](const Interaction &dum1, const Interaction &dum2)
-                 {return dum1.rtime < dum2.rtime;});
 
     return list;
 }
