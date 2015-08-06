@@ -36,7 +36,8 @@ struct Interaction{
 };
 
 // Makes starting data
-std::vector<Particle> populate(int pnum, double box_length, double max_vel);
+std::vector<Particle> populate(int pnum, double box_length, double max_vel,
+                                double radius);
 
 // Makes the list for our simulation later, required starting data
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
@@ -59,10 +60,10 @@ std::vector<Interaction> update_list(const std::vector<Particle> &curr_data,
 
 int main(void){
 
-    int pnum = 10000;
-    double box_length = 10, max_vel = 0.01;
+    int pnum = 1000;
+    double box_length = 10, max_vel = 0.01, radius = 0.1;
 
-    std::vector<Particle> curr_data = populate(pnum, box_length, max_vel);
+    std::vector<Particle> curr_data = populate(pnum, box_length, max_vel, radius);
 
     for (const auto &p : curr_data){
 
@@ -70,7 +71,7 @@ int main(void){
        
     }
 
-    std::vector<Interaction> list = make_list(curr_data, box_length,0.1);
+    std::vector<Interaction> list = make_list(curr_data, box_length, radius);
 
     std::cout << std::endl << std::endl;
 
@@ -86,7 +87,8 @@ int main(void){
 *-----------------------------------------------------------------------------*/
 
 // Makes starting data
-std::vector<Particle> populate(int pnum, double box_length, double max_vel){
+std::vector<Particle> populate(int pnum, double box_length, double max_vel,
+                                double radius){
     std::vector<Particle> curr_data(pnum);
 
     // static to create only 1 random_device
@@ -97,7 +99,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel){
        specify which distribution we want */
 
     std::uniform_real_distribution<double> 
-        box_length_distribution(0, box_length);
+        box_length_distribution(radius, box_length-radius);
     std::uniform_real_distribution<double> 
        max_vel_distribution(0, max_vel);
 
@@ -106,15 +108,30 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel){
         p.time = 0;
         p.pid = pid_counter++;
 
-        for (auto &pos : { &p.pos_x, &p.pos_y, &p.pos_z }){
-            *pos = box_length_distribution(gen);
+        bool incorrectGeneration = true;
+        while (incorrectGeneration){
+            incorrectGeneration = false;
+            for (auto &pos : { &p.pos_x, &p.pos_y, &p.pos_z }){
+                *pos = box_length_distribution(gen);
+            }
+            for (int i = 0; i < p.pid; i++){
+				auto& other_p = curr_data[i];
+				// Distance < Radius * 2 Particle
+				// Distance^2 < (Radius*2)^2
+				if ( ((other_p.pos_x - p.pos_x)*(other_p.pos_x - p.pos_x) +
+					  (other_p.pos_y - p.pos_y)*(other_p.pos_y - p.pos_y) +
+					  (other_p.pos_z - p.pos_z)*(other_p.pos_z - p.pos_z))
+					  < ((2*radius)*(2*radius)) ) {
+					incorrectGeneration = true;
+				}
+			}
         }
-
+        
         for (auto &vel : { &p.vel_x, &p.vel_y, &p.vel_z }){
             *vel = max_vel_distribution(gen);
         }
     }
-
+    
     return curr_data;
 }
 
