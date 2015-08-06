@@ -297,7 +297,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 // UNCHECKED -- CERTAINLY BUG
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
-              double radius, double mass, double box_length, pnum){
+              double radius, double mass, double box_length, int pnum){
 
     // opens file for writing
     std::ofstream output("out.dat", std::ofstream::out);
