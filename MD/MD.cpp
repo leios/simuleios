@@ -93,7 +93,10 @@ int main(void){
 
     simulate(list, curr_data, radius, mass, box_length, pnum, output);
 
+    output.close();
+
     return 0;
+
 }
 
 /*----------------------------------------------------------------------------//
@@ -413,8 +416,6 @@ void simulate(std::vector<Interaction> &interactions,
         count++;
 
     }
-
-    output.close();
 
 }
 
