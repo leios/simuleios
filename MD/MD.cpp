@@ -50,7 +50,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 // Also writes simulation to file, specified by README
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
-              double radius, double mass, double box_length, int pnum);
+              double radius, double mass, double box_length, int pnum,
+              std::ofstream &output);
 
 // Update list during simulate
 std::vector<Interaction> update_list(const std::vector<Particle> &curr_data,
@@ -90,7 +91,7 @@ int main(void){
         
     }
 
-    //simulate(list, curr_data, radius, mass, box_length, pnum);
+    simulate(list, curr_data, radius, mass, box_length, pnum, output);
 
     return 0;
 }
@@ -297,10 +298,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 // UNCHECKED -- CERTAINLY BUG
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
-              double radius, double mass, double box_length, int pnum){
-
-    // opens file for writing
-    std::ofstream output("out.dat", std::ofstream::out);
+              double radius, double mass, double box_length, int pnum,
+              std::ofstream &output){
 
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot;
     double del_vx, del_vy, del_vz, del_vtot;
