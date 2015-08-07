@@ -91,7 +91,7 @@ int main(void){
         
     }
 
-    simulate(list, curr_data, radius, mass, box_length, pnum, output);
+    //simulate(list, curr_data, radius, mass, box_length, pnum, output);
 
     output.close();
 
@@ -165,6 +165,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     Interaction test;
     double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d, del_vtot;
     double vdotr;
+    int count = 0;
 
     // Step 1 -- find interactions
     for (int i = 0; i < pnum; i++){
@@ -173,41 +174,36 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             // setting arbitrarily high... 
             walltime[k].rtime = std::numeric_limits<double>::infinity();
             walltime[k].part1 = i;
-            walltime[k].part2 = -k - 1;
+            walltime[k].part2 = - k - 1;
+            count++;
         }
 
         // checking for interactions with the wall.
         if (curr_data[i].vel_x > 0){
             walltime[0].rtime = (box_length - curr_data[i].pos_x) 
                                 / curr_data[i].vel_x;
-            walltime[0].part2 = -1;
         }
 
         if (curr_data[i].vel_x < 0){
             walltime[1].rtime = - curr_data[i].pos_x / curr_data[i].vel_x;
-            walltime[1].part2 = -2;
         }
 
         if (curr_data[i].vel_y > 0){
             walltime[2].rtime = (box_length - curr_data[i].pos_y) 
                                 / curr_data[i].vel_y;
-            walltime[2].part2 = -3;
         }
 
         if (curr_data[i].vel_y < 0){
             walltime[3].rtime = - curr_data[i].pos_y / curr_data[i].vel_y;
-            walltime[3].part2 = -4;
         }
 
         if (curr_data[i].vel_z > 0){
             walltime[4].rtime = (box_length - curr_data[i].pos_z) 
                                 / curr_data[i].vel_z;
-            walltime[4].part2 = -5;
         }
 
         if (curr_data[i].vel_z < 0){
             walltime[5].rtime = - curr_data[i].pos_z / curr_data[i].vel_z;
-            walltime[5].part2 = -6;
         }
 
         std::sort(std::begin(walltime), std::end(walltime),
@@ -266,10 +262,12 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
         if (walltime[0].rtime < list[i].rtime || list[i].rtime == 0){
             list[i] = walltime[0];
         }
+/*
         std::cout << '\n' ;
         std::cout << list[i].rtime << '\t' << list[i].part1 << '\t' << i << '\t'
                   << list[i].part2 << '\t' << walltime[0].rtime << '\t'
                   << walltime[0].part1 << '\t' << walltime[0].part2 <<'\n';
+*/
 
     }
 
