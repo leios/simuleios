@@ -45,7 +45,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 // Makes the list for our simulation later, required starting data
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                                    double box_length, double radius, int pnum,
-                                   std::vector <int> parts);
+                                   const std::vector <int> &parts);
 
 // This performs our MD simulation with a vector of interactions
 // Also writes simulation to file, specified by README
@@ -53,11 +53,6 @@ void simulate(std::vector<Interaction> &interactions,
               std::vector<Particle> &curr_data, 
               double radius, double mass, double box_length, int pnum,
               std::ofstream &output);
-
-// Update list during simulate
-std::vector<Interaction> update_list(const std::vector<Particle> &curr_data,
-                                     double box_length, double radius,
-                                     std::vector<Interaction> list);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -85,8 +80,8 @@ int main(void){
         parts[i] = i;
     }
 
-    std::vector<Interaction> list = make_list(curr_data, box_length,0.1, pnum,
-                                              parts);
+    std::vector<Interaction> list(pnum);
+    list = make_list(curr_data, box_length,0.1, pnum, parts);
 
     std::cout << std::endl << std::endl;
 
@@ -98,7 +93,7 @@ int main(void){
         
     }
 
-    //simulate(list, curr_data, radius, mass, box_length, pnum, output);
+    simulate(list, curr_data, radius, mass, box_length, pnum, output);
 
     output.close();
 
@@ -166,120 +161,126 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 // Step 3: Sort list, lowest first
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                                    double box_length, double radius, int pnum,
-                                   std::vector <int> parts){
+                                   const std::vector <int> &parts){
 
     /* passing curr_data as const reference to avoid the copy and accidental
     overwriting */
-    std::vector<Interaction> list(pnum), walltime(6);
+    std::vector<Interaction> walltime(6), list(pnum);
     Interaction test;
     double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d, del_vtot;
     double vdotr;
-    int count = 0, ip;
+    int count = 0, i;
 
     // Step 1 -- find interactions
-    for (unsigned int i = 0; i < parts.size(); i++){
+    for (int ip = 0; ip < pnum; ip++){
 
-        ip = parts[i];
+        i = ip;
 
-        for (int k = 0; k < 6; k++ ){
-            // setting arbitrarily high... 
-            walltime[k].rtime = std::numeric_limits<double>::infinity();
-            walltime[k].part1 = ip;
-            walltime[k].part2 = - k - 1;
-            count++;
-        }
-
-        // checking for interactions with the wall.
-        if (curr_data[ip].vel_x > 0){
-            walltime[0].rtime = (box_length - curr_data[ip].pos_x) 
-                                / curr_data[ip].vel_x;
-        }
-
-        if (curr_data[ip].vel_x < 0){
-            walltime[1].rtime = - curr_data[ip].pos_x / curr_data[ip].vel_x;
-        }
-
-        if (curr_data[ip].vel_y > 0){
-            walltime[2].rtime = (box_length - curr_data[ip].pos_y) 
-                                / curr_data[ip].vel_y;
-        }
-
-        if (curr_data[ip].vel_y < 0){
-            walltime[3].rtime = - curr_data[ip].pos_y / curr_data[ip].vel_y;
-        }
-
-        if (curr_data[ip].vel_z > 0){
-            walltime[4].rtime = (box_length - curr_data[ip].pos_z) 
-                                / curr_data[ip].vel_z;
-        }
-
-        if (curr_data[ip].vel_z < 0){
-            walltime[5].rtime = - curr_data[ip].pos_z / curr_data[ip].vel_z;
-        }
-
-        std::sort(std::begin(walltime), std::end(walltime),
-                  [](const Interaction &dum1, const Interaction &dum2)
-                     {return dum1.rtime < dum2.rtime;});
-
-        for (int j = 0; j < pnum; j++){
-            if (ip != j){
-
-                // simple definitions to make things easier later
-                del_x = curr_data[ip].pos_x - curr_data[j].pos_x;
-                del_y = curr_data[ip].pos_y - curr_data[j].pos_y;
-                del_z = curr_data[ip].pos_z - curr_data[j].pos_z;
-
-                del_vx = curr_data[ip].vel_x - curr_data[j].vel_x;
-                del_vy = curr_data[ip].vel_y - curr_data[j].vel_y;
-                del_vz = curr_data[ip].vel_z - curr_data[j].vel_z;
-
-                r_tot = 2 * radius;
-
-                // change in velocity * change in r
-                vdotr = del_vx*del_x + del_vy*del_y + del_vz*del_z;
-                del_vtot = del_vx*del_vx + del_vy*del_vy + del_vz*del_vz;
-
-                // This is under the radical in quad eq., thus "rad_d"
-                rad_d = (vdotr * vdotr) -  del_vtot
-                        * (del_x*del_x + del_y*del_y + del_z*del_z 
-                           - r_tot*r_tot);
-
-                double taptime;
-                if (vdotr >=0){
-                    taptime = 0;
+        if (ip >= 0){
+            for (int k = 0; k < 6; k++ ){
+                // setting arbitrarily high... 
+                walltime[k].rtime = std::numeric_limits<double>::infinity();
+                walltime[k].part1 = ip;
+                walltime[k].part2 = - k - 1;
+                count++;
+            }
+    
+            // checking for interactions with the wall.
+            if (curr_data[ip].vel_x > 0){
+                walltime[0].rtime = (box_length - curr_data[ip].pos_x) 
+                                    / curr_data[ip].vel_x;
+            }
+    
+            if (curr_data[ip].vel_x < 0){
+                walltime[1].rtime = - curr_data[ip].pos_x / curr_data[ip].vel_x;
+            }
+    
+            if (curr_data[ip].vel_y > 0){
+                walltime[2].rtime = (box_length - curr_data[ip].pos_y) 
+                                    / curr_data[ip].vel_y;
+            }
+    
+            if (curr_data[ip].vel_y < 0){
+                walltime[3].rtime = - curr_data[ip].pos_y / curr_data[ip].vel_y;
+            }
+    
+            if (curr_data[ip].vel_z > 0){
+                walltime[4].rtime = (box_length - curr_data[ip].pos_z) 
+                                    / curr_data[ip].vel_z;
+            }
+    
+            if (curr_data[ip].vel_z < 0){
+                walltime[5].rtime = - curr_data[ip].pos_z / curr_data[ip].vel_z;
+            }
+    
+            std::sort(std::begin(walltime), std::end(walltime),
+                      [](const Interaction &dum1, const Interaction &dum2)
+                         {return dum1.rtime < dum2.rtime;});
+    
+            for (int j = 0; j < pnum; j++){
+                if (ip != j){
+    
+                    // simple definitions to make things easier later
+                    del_x = curr_data[ip].pos_x - curr_data[j].pos_x;
+                    del_y = curr_data[ip].pos_y - curr_data[j].pos_y;
+                    del_z = curr_data[ip].pos_z - curr_data[j].pos_z;
+    
+                    del_vx = curr_data[ip].vel_x - curr_data[j].vel_x;
+                    del_vy = curr_data[ip].vel_y - curr_data[j].vel_y;
+                    del_vz = curr_data[ip].vel_z - curr_data[j].vel_z;
+    
+                    r_tot = 2 * radius;
+    
+                    // change in velocity * change in r
+                    vdotr = del_vx*del_x + del_vy*del_y + del_vz*del_z;
+                    del_vtot = del_vx*del_vx + del_vy*del_vy + del_vz*del_vz;
+    
+                    // This is under the radical in quad eq., thus "rad_d"
+                    rad_d = (vdotr * vdotr) -  del_vtot
+                            * (del_x*del_x + del_y*del_y + del_z*del_z 
+                               - r_tot*r_tot);
+    
+                    double taptime;
+                    if (vdotr >=0){
+                        taptime = 0;
+                    }
+    
+                    else if (rad_d < 0){
+                        taptime = 0;
+                    }
+    
+                    else {
+                        taptime = (-(vdotr) + sqrt(rad_d)) / (del_vtot);
+                    }
+    
+                    // Step 2 -- update list
+                    if (taptime > 0 && taptime < walltime[0].rtime &&
+                        taptime < list[i].rtime){
+    
+                        std::cout << "found one!" << std::endl;
+                        test.rtime = taptime;
+                        test.part1 = ip;
+                        test.part2 = curr_data[j].pid;
+                        list[i] = test;
+                    }
                 }
-
-                else if (rad_d < 0){
-                    taptime = 0;
-                }
-
-                else {
-                    taptime = (-(vdotr) + sqrt(rad_d)) / (del_vtot);
-                }
-
-                // Step 2 -- update list
-                if (taptime > 0 && taptime < walltime[0].rtime &&
-                    taptime < list[ip].rtime){
-
-                    std::cout << "found one!" << std::endl;
-                    test.rtime = taptime;
-                    test.part1 = ip; //curr_data[ip].pid;
-                    test.part2 = curr_data[j].pid;
-                    list[ip] = test;
-                }
+    
             }
 
-        }
-        if (walltime[0].rtime < list[ip].rtime || list[ip].rtime == 0){
-            list[ip] = walltime[0];
-        }
+            if (walltime[0].rtime < list[i].rtime || list[i].rtime == 0){
+                list[i] = walltime[0];
+            }
+    
 /*
-        std::cout << '\n' ;
-        std::cout << list[ip].rtime << '\t' << list[ip].part1 << '\t' 
-                  << ip << '\t'
-                  << list[ip].part2 << '\t' << walltime[0].rtime << '\t'
-                  << walltime[0].part1 << '\t' << walltime[0].part2 <<'\n';
+            std::cout << '\n' ;
+
+            std::cout << list[ip].rtime << '\t' << list[ip].part1 << '\t' 
+                      << ip << '\t'
+                      << list[ip].part2 << '\t' << walltime[0].rtime << '\t'
+                      << walltime[0].part1 << '\t' << walltime[0].part2 <<'\n';
 */
+    
+        }
 
     }
 
@@ -297,6 +298,14 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     std::sort(std::begin(list), std::end(list),
               [](const Interaction &dum1, const Interaction &dum2)
                  {return dum1.rtime < dum2.rtime;});
+
+    for (auto &p : list){
+
+        std::cout << p.rtime << '\t' << p.part1 << '\t' 
+                  << p.part2 << '\n';
+
+    }
+
 
     return list;
 }
@@ -316,50 +325,52 @@ void simulate(std::vector<Interaction> &interactions,
 
     std::vector <int> teract(2);
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot;
-    double del_vx, del_vy, del_vz, del_vtot, simtime = 0;
+    double del_vx, del_vy, del_vz, del_vtot, simtime = 0, tdiff;
     //int count = 0;
 
     // Note that these are all defined in the material linked in README
     // Step 1
     double final_time = interactions[10].rtime;
     while ( simtime < final_time ){
+        tdiff = interactions[0].rtime;
         simtime += interactions[0].rtime;
-        std::cout << interactions[0].rtime << '\n';
+        //std::cout << interactions[0].rtime << '\n';
 
         teract[0] = interactions[0].part1;
         teract[1] = interactions[0].part2;
 
         // changing the 
         for ( int i = 0; i < pnum; i++){
-            curr_data[i].pos_x += curr_data[i].vel_x * simtime;
-            curr_data[i].pos_y += curr_data[i].vel_y * simtime;
-            curr_data[i].pos_z += curr_data[i].vel_z * simtime;
+            curr_data[i].pos_x += curr_data[i].vel_x * tdiff;
+            curr_data[i].pos_y += curr_data[i].vel_y * tdiff;
+            curr_data[i].pos_z += curr_data[i].vel_z * tdiff;
 
+/*
             output << curr_data[i].pid << '\t' << simtime << '\t' 
                    << curr_data[i].pos_x << '\t' << curr_data[i].pos_y
                    << curr_data[i].pos_y << '\t' << curr_data[i].vel_x
                    << curr_data[i].vel_y << '\t' << curr_data[i].vel_z
                    << '\n';
-
+*/
         }
 
-        output << '\n' << '\n';
+        std::cout << simtime << '\n'<< '\n';
 
-        if (interactions[0].rtime > 0){
+        if (interactions[0].part2 > 0){
             del_x = (curr_data[interactions[0].part1].pos_x 
-                     + curr_data[interactions[0].part1].vel_x * simtime)
+                     + curr_data[interactions[0].part1].vel_x * tdiff)
                      - (curr_data[interactions[0].part2].pos_x 
-                     + curr_data[interactions[0].part2].vel_x * simtime);
+                     + curr_data[interactions[0].part2].vel_x * tdiff);
 
 	    del_y = (curr_data[interactions[0].part1].pos_y 
-                     + curr_data[interactions[0].part1].vel_y * simtime)
+                     + curr_data[interactions[0].part1].vel_y * tdiff)
                      - (curr_data[interactions[0].part2].pos_y 
-                     + curr_data[interactions[0].part2].vel_y * simtime);
+                     + curr_data[interactions[0].part2].vel_y * tdiff);
 
             del_z = (curr_data[interactions[0].part1].pos_z 
-                     + curr_data[interactions[0].part1].vel_z * simtime)
+                     + curr_data[interactions[0].part1].vel_z * tdiff)
                      - (curr_data[interactions[0].part2].pos_z 
-                     + curr_data[interactions[0].part2].vel_z * simtime);
+                     + curr_data[interactions[0].part2].vel_z * tdiff);
     
             del_vx = (curr_data[interactions[0].part1].vel_x)
                      - (curr_data[interactions[0].part2].vel_x);
@@ -388,27 +399,47 @@ void simulate(std::vector<Interaction> &interactions,
             curr_data[interactions[0].part2].vel_x -= J_x / mass;
             curr_data[interactions[0].part2].vel_y -= J_y / mass;
             curr_data[interactions[0].part2].vel_z -= J_z / mass;
+            std::cout << "check_interaction" << '\n';
         }
 
-        if (interactions[0].rtime < 0){
+        if (interactions[0].part2 < 0){
+            std::cout << "wall check" << std::endl;
             switch(interactions[0].part2){
                 case -1:
                     curr_data[interactions[0].part1].pos_x -= box_length;
+                    std::cout << curr_data[interactions[0].part1].pos_x << '\t'
+                              << -1 << '\n';
+                    break;
                 
                 case -2:
                     curr_data[interactions[0].part1].pos_x += box_length;
+                    std::cout << curr_data[interactions[0].part1].pos_x << '\t'
+                              << -2 << '\n';
+                    break;
                 
                 case -3:
                     curr_data[interactions[0].part1].pos_y -= box_length;
+                    std::cout << curr_data[interactions[0].part1].pos_y << '\t'
+                              << -3 << '\n';
+                    break;
                 
                 case -4:
                     curr_data[interactions[0].part1].pos_y += box_length;
+                    std::cout << curr_data[interactions[0].part1].pos_y << '\t'
+                              << -4 << '\n';
+                    break;
                 
                 case -5:
                     curr_data[interactions[0].part1].pos_z -= box_length;
+                    std::cout << curr_data[interactions[0].part1].pos_z << '\t'
+                              << -5 << '\n';
+                    break;
                 
                 case -6:
                     curr_data[interactions[0].part1].pos_z += box_length;
+                    std::cout << curr_data[interactions[0].part1].pos_z << '\t'
+                              << -6 << '\n';
+                    break;
                 
             }
 
@@ -419,12 +450,13 @@ void simulate(std::vector<Interaction> &interactions,
         // Step 3 -- update list; TODO
         // UNCHECKED
         interactions = make_list(curr_data, box_length, radius, pnum, teract);
+        
  
-/*
+
         for (const auto &it : interactions){
             std::cout << it.rtime << std::endl;
         }
-*/
+
 
 //        std::cout << '\n' << '\n';
 
@@ -433,13 +465,4 @@ void simulate(std::vector<Interaction> &interactions,
 
     }
 
-}
-
-// Update list during simulate
-// NOT FINISHED
-std::vector<Interaction> update_list(const std::vector<Particle> &curr_data,
-                                     double box_length, double radius,
-                                     std::vector<Interaction> list){
-
-    return list;
 }
