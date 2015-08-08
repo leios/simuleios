@@ -52,7 +52,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
               double radius, double mass, double box_length, int pnum,
-              std::ofstream &output);
+              std::ofstream &output, double timeres);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -65,6 +65,7 @@ int main(void){
 
     int pnum = 100;
     double box_length = 10, max_vel = 0.01, radius = 0.01, mass = 0.1;
+    double timeres = 1.0;
     std::vector <int> parts(pnum);
 
     std::vector<Particle> curr_data = populate(pnum, box_length, max_vel, 
@@ -93,7 +94,7 @@ int main(void){
         
     }
 
-    simulate(list, curr_data, radius, mass, box_length, pnum, output);
+    simulate(list, curr_data, radius, mass, box_length, pnum, output, timeres);
 
     output.close();
 
@@ -174,7 +175,9 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     // Step 1 -- find interactions
     for (int ip = 0; ip < pnum; ip++){
 
+        // i = parts[i];
         i = ip;
+        // list[i].rtime = std::numeric_limits<double>::infinity();
 
         if (ip >= 0){
             for (int k = 0; k < 6; k++ ){
@@ -321,17 +324,39 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
               double radius, double mass, double box_length, int pnum,
-              std::ofstream &output){
+              std::ofstream &output, double timeres){
 
     std::vector <int> teract(2);
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot;
     double del_vx, del_vy, del_vz, del_vtot, simtime = 0, tdiff;
+    double timestep;
     //int count = 0;
+    int on = 10, heldtime;
 
     // Note that these are all defined in the material linked in README
     // Step 1
     double final_time = interactions[10].rtime;
     while ( simtime < final_time ){
+
+        // output data from previous time interaction step
+        heldtime = 0;
+        while (timestep <= simtime){
+
+            heldtime += timeres;
+            timestep += timeres;
+
+            output << curr_data[on].pid << '\t' << timestep << '\t' 
+                   << curr_data[on].pos_x + curr_data[on].vel_x*heldtime << '\t'
+                   << curr_data[on].pos_y + curr_data[on].vel_y*heldtime << '\t'
+                   << curr_data[on].pos_z + curr_data[on].vel_z*heldtime << '\t'
+                   << curr_data[on].vel_x << '\t'
+                   << curr_data[on].vel_y << '\t' << curr_data[on].vel_z << '\t'
+                   << '\n';
+
+            // heldtime += timeres;
+            // timestep += timeres;
+        }
+
         tdiff = interactions[0].rtime;
         simtime += interactions[0].rtime;
         //std::cout << interactions[0].rtime << '\n';
@@ -347,9 +372,9 @@ void simulate(std::vector<Interaction> &interactions,
 
 /*
             output << curr_data[i].pid << '\t' << simtime << '\t' 
-                   << curr_data[i].pos_x << '\t' << curr_data[i].pos_y
-                   << curr_data[i].pos_y << '\t' << curr_data[i].vel_x
-                   << curr_data[i].vel_y << '\t' << curr_data[i].vel_z
+                   << curr_data[i].pos_x << '\t' << curr_data[i].pos_y << '\t'
+                   << curr_data[i].pos_y << '\t' << curr_data[i].vel_x << '\t'
+                   << curr_data[i].vel_y << '\t' << curr_data[i].vel_z << '\t'
                    << '\n';
 */
         }
@@ -357,20 +382,20 @@ void simulate(std::vector<Interaction> &interactions,
         std::cout << simtime << '\n'<< '\n';
 
         if (interactions[0].part2 > 0){
-            del_x = (curr_data[interactions[0].part1].pos_x 
-                     + curr_data[interactions[0].part1].vel_x * tdiff)
-                     - (curr_data[interactions[0].part2].pos_x 
-                     + curr_data[interactions[0].part2].vel_x * tdiff);
+            del_x = (curr_data[interactions[0].part1].pos_x) 
+                     // + curr_data[interactions[0].part1].vel_x * tdiff)
+                     - (curr_data[interactions[0].part2].pos_x); 
+                     // + curr_data[interactions[0].part2].vel_x * tdiff);
 
-	    del_y = (curr_data[interactions[0].part1].pos_y 
-                     + curr_data[interactions[0].part1].vel_y * tdiff)
-                     - (curr_data[interactions[0].part2].pos_y 
-                     + curr_data[interactions[0].part2].vel_y * tdiff);
+	    del_y = (curr_data[interactions[0].part1].pos_y) 
+                     // + curr_data[interactions[0].part1].vel_y * tdiff)
+                     - (curr_data[interactions[0].part2].pos_y); 
+                     // + curr_data[interactions[0].part2].vel_y * tdiff);
 
-            del_z = (curr_data[interactions[0].part1].pos_z 
-                     + curr_data[interactions[0].part1].vel_z * tdiff)
-                     - (curr_data[interactions[0].part2].pos_z 
-                     + curr_data[interactions[0].part2].vel_z * tdiff);
+            del_z = (curr_data[interactions[0].part1].pos_z) 
+                     // + curr_data[interactions[0].part1].vel_z * tdiff)
+                     - (curr_data[interactions[0].part2].pos_z); 
+                     // + curr_data[interactions[0].part2].vel_z * tdiff);
     
             del_vx = (curr_data[interactions[0].part1].vel_x)
                      - (curr_data[interactions[0].part2].vel_x);
