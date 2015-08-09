@@ -9,5 +9,6 @@ into account before actually performing the simulation.
 
 Data in the following format:
 
-    PID, t, x, y, z, vx, vy, vz
+    pid, t, x, y, z, vx, vy, vz
 
+This will be found in "out.dat"
