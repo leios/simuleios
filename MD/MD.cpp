@@ -334,7 +334,7 @@ void simulate(std::vector<Interaction> &interactions,
     std::vector <int> teract(1);
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot;
     double del_vx, del_vy, del_vz, del_vtot, simtime = 0, tdiff;
-    double timestep, excess, first;
+    double timestep = 0, excess, first;
     int on = 10, count = 0;
     Particle temp = curr_data[on];
 
