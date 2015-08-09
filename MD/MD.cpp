@@ -179,9 +179,10 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     int count = 0, ip;
 
     // Step 1 -- find interactions
-    for (size_t i = 0; i < parts.size(); i++){
+    for (int i = 0; i < pnum; i++){
 
-        ip = parts[i];
+        //ip = parts[i];
+        ip = i;
 
         if (ip >= 0){
             list[i].rtime = std::numeric_limits<double>::infinity();
@@ -279,14 +280,10 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                 list[i] = walltime[0];
             }
     
-/*
             std::cout << '\n' ;
 
             std::cout << list[ip].rtime << '\t' << list[ip].part1 << '\t' 
-                      << ip << '\t'
-                      << list[ip].part2 << '\t' << walltime[0].rtime << '\t'
-                      << walltime[0].part1 << '\t' << walltime[0].part2 <<'\n';
-*/
+                      << list[ip].part2 << '\n'; 
     
         }
 
@@ -307,14 +304,16 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
               [](const Interaction &dum1, const Interaction &dum2)
                  {return dum1.rtime < dum2.rtime;});
 
-/*
+
+    std::cout << '\n' << '\n';
+
     for (auto &p : list){
 
         std::cout << p.rtime << '\t' << p.part1 << '\t' 
                   << p.part2 << '\n';
 
     }
-*/
+
 
     return list;
 }
@@ -341,7 +340,7 @@ void simulate(std::vector<Interaction> &interactions,
 
     // Note that these are all defined in the material linked in README
     // Step 1
-    double final_time = interactions[10].rtime;
+    double final_time = interactions[80].rtime;
     while ( simtime < final_time ){
 
         // output data from previous time interaction step
