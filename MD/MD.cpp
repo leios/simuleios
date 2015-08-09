@@ -45,7 +45,8 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 // Makes the list for our simulation later, required starting data
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                                    double box_length, double radius, int pnum,
-                                   const std::vector <int> &parts);
+                                   const std::vector <int> &parts, 
+                                   std::vector<Interaction> &list);
 
 // This performs our MD simulation with a vector of interactions
 // Also writes simulation to file, specified by README
@@ -71,21 +72,24 @@ int main(void){
     std::vector<Particle> curr_data = populate(pnum, box_length, max_vel, 
                                                radius);
 
+/*
     for (const auto &p : curr_data){
 
         std::cout << p.pos_x << '\t' << p.pid << std::endl;
        
     }
+*/
 
     for (int i = 0; i < pnum; i++){
         parts[i] = i;
     }
 
     std::vector<Interaction> list(pnum);
-    list = make_list(curr_data, box_length,0.1, pnum, parts);
+    list = make_list(curr_data, box_length,0.1, pnum, parts, list);
 
-    std::cout << std::endl << std::endl;
+    //std::cout << std::endl << std::endl;
 
+/*
     int count = 0;
     for (const auto &it : list){
         std::cout << count << '\t' << it.rtime << '\t' << it.part1  
@@ -93,6 +97,7 @@ int main(void){
         count++;
         
     }
+*/
 
     simulate(list, curr_data, radius, mass, box_length, pnum, output, timeres);
 
@@ -162,24 +167,24 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 // Step 3: Sort list, lowest first
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                                    double box_length, double radius, int pnum,
-                                   const std::vector <int> &parts){
+                                   const std::vector <int> &parts, 
+                                   std::vector<Interaction> &list){
 
     /* passing curr_data as const reference to avoid the copy and accidental
     overwriting */
-    std::vector<Interaction> walltime(6), list(pnum);
+    std::vector<Interaction> walltime(6);
     Interaction test;
     double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d, del_vtot;
     double vdotr;
-    int count = 0, i;
+    int count = 0, ip;
 
     // Step 1 -- find interactions
-    for (int ip = 0; ip < pnum; ip++){
+    for (size_t i = 0; i < parts.size(); i++){
 
-        // i = parts[i];
-        i = ip;
-        // list[i].rtime = std::numeric_limits<double>::infinity();
+        ip = parts[i];
 
         if (ip >= 0){
+            list[i].rtime = std::numeric_limits<double>::infinity();
             for (int k = 0; k < 6; k++ ){
                 // setting arbitrarily high... 
                 walltime[k].rtime = std::numeric_limits<double>::infinity();
@@ -258,13 +263,13 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     
                     // Step 2 -- update list
                     if (taptime > 0 && taptime < walltime[0].rtime &&
-                        taptime < list[i].rtime){
+                        taptime < list[ip].rtime){
     
-                        std::cout << "found one!" << std::endl;
+                        //std::cout << "found one!" << std::endl;
                         test.rtime = taptime;
                         test.part1 = ip;
                         test.part2 = curr_data[j].pid;
-                        list[i] = test;
+                        list[ip] = test;
                     }
                 }
     
@@ -302,13 +307,14 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
               [](const Interaction &dum1, const Interaction &dum2)
                  {return dum1.rtime < dum2.rtime;});
 
+/*
     for (auto &p : list){
 
         std::cout << p.rtime << '\t' << p.part1 << '\t' 
                   << p.part2 << '\n';
 
     }
-
+*/
 
     return list;
 }
@@ -326,10 +332,10 @@ void simulate(std::vector<Interaction> &interactions,
               double radius, double mass, double box_length, int pnum,
               std::ofstream &output, double timeres){
 
-    std::vector <int> teract(2);
+    std::vector <int> teract(1);
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot;
     double del_vx, del_vy, del_vz, del_vtot, simtime = 0, tdiff;
-    double timestep, excess;
+    double timestep, excess, first;
     int on = 10, count = 0;
     Particle temp = curr_data[on];
 
@@ -390,6 +396,12 @@ void simulate(std::vector<Interaction> &interactions,
         tdiff = interactions[0].rtime;
         simtime += interactions[0].rtime;
 
+        // now let's update our interactions list
+        first = interactions[0].rtime;
+        for ( int q = 0; q < pnum; q++){
+            interactions[q].rtime -= first;
+            //std::cout << interactions[q].rtime << '\n';
+        }
 
         teract[0] = interactions[0].part1;
         teract[1] = interactions[0].part2;
@@ -409,7 +421,7 @@ void simulate(std::vector<Interaction> &interactions,
 */
         }
 
-        std::cout << simtime << '\n'<< '\n';
+        //std::cout << simtime << '\n'<< '\n';
 
         if (interactions[0].part2 > 0){
             del_x = (curr_data[interactions[0].part1].pos_x) 
@@ -454,46 +466,46 @@ void simulate(std::vector<Interaction> &interactions,
             curr_data[interactions[0].part2].vel_x -= J_x / mass;
             curr_data[interactions[0].part2].vel_y -= J_y / mass;
             curr_data[interactions[0].part2].vel_z -= J_z / mass;
-            std::cout << "check_interaction" << '\n';
+            //std::cout << "check_interaction" << '\n';
         }
 
         if (interactions[0].part2 < 0){
-            std::cout << "wall check" << std::endl;
+            //std::cout << "wall check" << std::endl;
             switch(interactions[0].part2){
                 case -1:
                     curr_data[interactions[0].part1].pos_x -= box_length;
-                    std::cout << curr_data[interactions[0].part1].pos_x << '\t'
-                              << -1 << '\n';
+                    //std::cout << curr_data[interactions[0].part1].pos_x <<'\t'
+                    //          << -1 << '\n';
                     break;
                 
                 case -2:
                     curr_data[interactions[0].part1].pos_x += box_length;
-                    std::cout << curr_data[interactions[0].part1].pos_x << '\t'
-                              << -2 << '\n';
+                    //std::cout << curr_data[interactions[0].part1].pos_x <<'\t'
+                    //          << -2 << '\n';
                     break;
                 
                 case -3:
                     curr_data[interactions[0].part1].pos_y -= box_length;
-                    std::cout << curr_data[interactions[0].part1].pos_y << '\t'
-                              << -3 << '\n';
+                    //std::cout << curr_data[interactions[0].part1].pos_y <<'\t'
+                    //          << -3 << '\n';
                     break;
                 
                 case -4:
                     curr_data[interactions[0].part1].pos_y += box_length;
-                    std::cout << curr_data[interactions[0].part1].pos_y << '\t'
-                              << -4 << '\n';
+                    //std::cout << curr_data[interactions[0].part1].pos_y <<'\t'
+                    //          << -4 << '\n';
                     break;
                 
                 case -5:
                     curr_data[interactions[0].part1].pos_z -= box_length;
-                    std::cout << curr_data[interactions[0].part1].pos_z << '\t'
-                              << -5 << '\n';
+                    //std::cout << curr_data[interactions[0].part1].pos_z <<'\t'
+                    //          << -5 << '\n';
                     break;
                 
                 case -6:
                     curr_data[interactions[0].part1].pos_z += box_length;
-                    std::cout << curr_data[interactions[0].part1].pos_z << '\t'
-                              << -6 << '\n';
+                    //std::cout << curr_data[interactions[0].part1].pos_z <<'\t'
+                    //          << -6 << '\n';
                     break;
                 
             }
@@ -504,13 +516,15 @@ void simulate(std::vector<Interaction> &interactions,
 
         // Step 3 -- update list; TODO
         // UNCHECKED
-        interactions = make_list(curr_data, box_length, radius, pnum, teract);
+        interactions = make_list(curr_data, box_length, radius, pnum, teract,
+                                 interactions);
         
  
-
+/*
         for (const auto &it : interactions){
             std::cout << it.rtime << std::endl;
         }
+*/
 
     }
 
