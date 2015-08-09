@@ -329,9 +329,9 @@ void simulate(std::vector<Interaction> &interactions,
     std::vector <int> teract(2);
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot;
     double del_vx, del_vy, del_vz, del_vtot, simtime = 0, tdiff;
-    double timestep;
-    //int count = 0;
-    int on = 10, heldtime;
+    double timestep, excess;
+    int on = 10, count = 0;
+    Particle temp = curr_data[on];
 
     // Note that these are all defined in the material linked in README
     // Step 1
@@ -339,27 +339,57 @@ void simulate(std::vector<Interaction> &interactions,
     while ( simtime < final_time ){
 
         // output data from previous time interaction step
-        heldtime = 0;
-        while (timestep <= simtime){
+        // First, update the velocities of out temp vector and define a count
+        // so we can specially calculate the first step of our loop.
+        temp.vel_x = curr_data[on].vel_x;
+        temp.vel_y = curr_data[on].vel_y;
+        temp.vel_z = curr_data[on].vel_z;
+        count = 0;
 
-            heldtime += timeres;
+        // simtime has yet to be updated, so we are running until our timestep
+        // values are *just* under our next simtime value, but we are keeping
+        // the old value for the first loop step
+        while (timestep <= simtime + interactions[0].rtime){
+
             timestep += timeres;
+            if (count < 1){
 
-            output << curr_data[on].pid << '\t' << timestep << '\t' 
-                   << curr_data[on].pos_x + curr_data[on].vel_x*heldtime << '\t'
-                   << curr_data[on].pos_y + curr_data[on].vel_y*heldtime << '\t'
-                   << curr_data[on].pos_z + curr_data[on].vel_z*heldtime << '\t'
-                   << curr_data[on].vel_x << '\t'
-                   << curr_data[on].vel_y << '\t' << curr_data[on].vel_z << '\t'
-                   << '\n';
+                excess = timestep - simtime;
 
-            // heldtime += timeres;
-            // timestep += timeres;
+                temp.pos_x = curr_data[on].pos_x + temp.vel_x*(excess);
+                temp.pos_y = curr_data[on].pos_y + temp.vel_y*(excess);
+                temp.pos_z = curr_data[on].pos_z + temp.vel_z*(excess);
+
+                output << temp.pid << '\t' << timestep << '\t' 
+                       << temp.pos_x << '\t'
+                       << temp.pos_y << '\t'
+                       << temp.pos_z << '\t'
+                       << temp.vel_x << '\t'
+                       << temp.vel_y << '\t' << temp.vel_z
+                       << '\n';
+            }
+
+            else{
+                temp.pos_x += temp.vel_x*(timeres);
+                temp.pos_y += temp.vel_y*(timeres);
+                temp.pos_z += temp.vel_z*(timeres);
+
+                output << temp.pid << '\t' << timestep << '\t' 
+                       << temp.pos_x << '\t'
+                       << temp.pos_y << '\t'
+                       << temp.pos_z << '\t'
+                       << temp.vel_x << '\t'
+                       << temp.vel_y << '\t' << temp.vel_z
+                       << '\n';
+            }
+            count++;
         }
+
+        // Now we are updating simtime and moving on with interactions and such
 
         tdiff = interactions[0].rtime;
         simtime += interactions[0].rtime;
-        //std::cout << interactions[0].rtime << '\n';
+
 
         teract[0] = interactions[0].part1;
         teract[1] = interactions[0].part2;
@@ -481,12 +511,6 @@ void simulate(std::vector<Interaction> &interactions,
         for (const auto &it : interactions){
             std::cout << it.rtime << std::endl;
         }
-
-
-//        std::cout << '\n' << '\n';
-
-//        std::cout << simtime << '\t' << count << '\n';
-//        count++;
 
     }
 
