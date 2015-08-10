@@ -90,13 +90,14 @@ int main(void){
         parts[i] = i;
     }
 
-    //std::vector<Interaction> list(pnum);
+    std::vector<Interaction> list_1(pnum);
+    std::vector<Interaction> list_2(pnum);
+
     
-    std::vector<Interaction> list_1 = make_list(box_1, box_length,rad_1, pnum, 
-                                                parts, list_1);
+    list_1 = make_list(box_1, box_length,rad_1, pnum, parts, list_1);
+
     std::cout << "check list_1" << '\n';
-    std::vector<Interaction> list_2 = make_list(box_2, box_length,rad_2, pnum, 
-                                                parts, list_2);
+    list_2 = make_list(box_2, box_length,rad_2, pnum, parts, list_2);
 
     std::cout << "check list_2" << '\n';
 
