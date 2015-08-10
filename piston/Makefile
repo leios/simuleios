@@ -13,7 +13,7 @@ clean:
 	#should clean remove out.dat as well? 
 	# rm out.dat
 run: compile
-	/MD
+	./MD
 upload:
 	git commit
 	git push
