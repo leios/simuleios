@@ -30,7 +30,12 @@
 // Holds our data in a central struct, to be called mainly in a vector
 struct Particle{
     int pid;
-    double pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, time;
+    double pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, time, mass, rad;
+};
+
+// Holds data for wall
+struct Wall{
+    double pos_x, vel_x, mass, time;
 };
 
 // holds interaction data
@@ -41,60 +46,57 @@ struct Interaction{
 
 // Makes starting data
 std::vector<Particle> populate(int pnum, double box_length, double max_vel,
-                               double max_vel2, double rad_1, double rad_2);
+                               double max_vel2, double radius, double rad_2, 
+                               double mass_1, double mass_2, double ratio);
 
 // Makes the list for our simulation later, required starting data
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
-                                   double box_length, double radius, 
-                                   double rad_2, int pnum,
+                                   double box_length, int pnum, 
                                    const std::vector <int> &parts, 
-                                   std::vector<Interaction> &list);
+                                   std::vector<Interaction> &list, Wall &walle);
 
 // This performs our MD simulation with a vector of interactions
 // Also writes simulation to file, specified by README
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
-              double radius, double rad_2, double mass, double mass_2, 
-              double masswall, double box_length, int pnum,
-              std::ofstream &output, double timeres);
+              double box_length, int pnum, Wall &walle,
+              double timeres, std::ofstream &output);
 
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
-
 int main(void){
 
     // opens file for writing
     std::ofstream output("out.dat", std::ofstream::out);
 
-    int pnum = 100; // must be divisible by 4
+    int pnum = 100; // must be divisible by 1/ratio
     double box_length = 10, max_vel = 0.01, max_vel2 = 0.1, rad_1 = 0.01;
-    double rad_2 = 0.1, timeres = 1.0, mass = 0.1, mass_2 = 0.01;
+    double rad_2 = 0.1, timeres = 1.0, mass = 0.1, mass_2 = 0.01, ratio = 0.25;
     double masswall = 1000;
-    std::vector <int> parts(pnum);
+    std::vector<int> parts(pnum);
 
     std::cout << "populate" << '\n';
     std::vector<Particle> curr_data = populate(pnum, box_length, max_vel, 
-                                               max_vel2, rad_1, rad_2);
+                                               max_vel2, rad_1, rad_2, mass, 
+                                               mass_2, ratio);
 
     std::cout << "the heck?" << '\n';
 
-/*
     for (const auto &p : curr_data){
 
         std::cout << p.pos_x << '\t' << p.pid << std::endl;
        
     }
-*/
 
-    for (int i = 0; i < pnum; i++){
-        parts[i] = i;
-    }
+    // defining wall
+    Wall walle = {};
+    walle.mass = masswall;
 
     std::cout << "is the list right?" << '\n';
     std::vector<Interaction> list(pnum +1);
     std::cout << "before" << std::endl;
-    list = make_list(curr_data, box_length, rad_1, rad_2, pnum, parts, list);
+    list = make_list(curr_data, box_length, pnum, parts, list, walle);
     std::cout << "after list made" << std::endl;
 
     //std::cout << std::endl << std::endl;
@@ -109,8 +111,7 @@ int main(void){
     }
 */
 
-    simulate(list, curr_data, rad_1, rad_2, mass, mass_2, masswall,  box_length,
-             pnum, output, timeres);
+    simulate(list, curr_data, box_length, pnum, walle, timeres, output);
 
     output.close();
 
@@ -124,10 +125,12 @@ int main(void){
 
 // Makes starting data
 std::vector<Particle> populate(int pnum, double box_length, double max_vel,
-                               double max_vel2, double radius, double rad_2){
+                               double max_vel2, double radius, double rad_2,
+                               double mass_1, double mass_2, double ratio){
 
+    int pid_counter = 0;
     std::vector<Particle> curr_data(pnum);
-    std::vector<Particle> left_data(pnum * 0.25), right_data(pnum * 0.75);
+    std::vector<Particle> left_data(pnum * ratio), right_data(pnum * (1-ratio));
 
     std::cout << pnum * 0.25 << '\t' << pnum * 0.75 << '\n';
 
@@ -142,25 +145,30 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
         box_length_distribution(radius, box_length - radius);
 
     std::uniform_real_distribution<double>
-        box_left_distribution(rad_2, rad_2 - box_length);
+        box_left_distribution(rad_2 - box_length, rad_2);
 
     std::uniform_real_distribution<double> 
-       max_vel_distribution(0, max_vel);
+       max_vel_distribution(-max_vel, max_vel);
 
     std::uniform_real_distribution<double>
-       max_velleft_distribution(0, max_vel2);
+       max_velleft_distribution(-max_vel2, max_vel2);
 
-    // For the Left side of the box
-    int pid_counter = 0;
+    // For the left side of the box =)
     for (auto &p : left_data){ //read: for all particles p in left_data
         p.time = 0;
         p.pid = pid_counter++;
+        p.mass = mass_2;
+        p.rad = rad_2;
 
         bool incorrectGeneration = true;
         while (incorrectGeneration){
             incorrectGeneration = false;
-            for (auto &pos : { &p.pos_x, &p.pos_y, &p.pos_z }){
+            for (auto &pos : { &p.pos_x }){
                 *pos = box_left_distribution(gen);
+            }
+
+            for (auto &pos : { &p.pos_y, &p.pos_z }){
+                *pos = box_length_distribution(gen);
             }
 
             for (int i = 0; i < p.pid; i++){
@@ -180,11 +188,13 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
             *vel = max_velleft_distribution(gen);
         }
     }
- 
+
     // For the Right data in the box
     for (auto &p : right_data){ //read: for all particles p in left_data
         p.time = 0;
         p.pid = pid_counter++;
+        p.mass = mass_1;
+        p.rad = radius;
 
         bool incorrectGeneration = true;
         while (incorrectGeneration){
@@ -211,22 +221,20 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
         }
     }
 
+
     std::cout << "got to here" << '\n';
     // now concatenating the two!
     for (size_t ip = 0; ip < curr_data.size() - 1; ip++){
-        if (ip < pnum * 0.25){
+        if (ip < pnum * ratio){
             curr_data[ip] = left_data[ip];
         }
 
         else{
-            curr_data[ip] = right_data[ip - pnum * 0.25];
+            curr_data[ip] = right_data[ip - pnum * ratio];
         }
         std::cout << ip << '\n';
     }
     std::cout << "got past the loop of terror" << '\n';
-
-    curr_data[pnum+1] = {};
-    curr_data[pnum+1].pid = -7;
 
     for (int i = 0; i < curr_data.size(); i++){
         std::cout << curr_data[i].pos_x << '\t' << i << std::endl;
@@ -242,17 +250,16 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 // Step 2: Update list.
 // Step 3: Sort list, lowest first
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
-                                   double box_length, double radius, 
-                                   double rad_2, int pnum,
-                                   const std::vector <int> &parts, 
-                                   std::vector<Interaction> &list){
+                                   double box_length, int pnum, 
+                                   const std::vector<int> &parts, 
+                                   std::vector<Interaction> &list, Wall &walle){
 
     /* passing curr_data as const reference to avoid the copy and accidental
     overwriting */
     std::vector<Interaction> walltime(6);
     Interaction test;
     double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d, del_vtot;
-    double vdotr;
+    double vdotr, taptime;
     int count = 0, ip;
 
     // Step 1 -- find interactions
@@ -274,51 +281,75 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             // checking for interactions with the wall.
             // We need to take into account the velocity of the piston
 
+            // case -1
+
             if (curr_data[ip].vel_x > 0){
-                if (curr_data[ip].pos_x < curr_data[pnum+1].pos_x){
-                    walltime[0].rtime = (curr_data[pnum+1].pos_x - 
-                                         curr_data[ip].pos_x) 
-                                         / (curr_data[pnum+1].vel_x -
+                if (curr_data[ip].pos_x < walle.pos_x){
+                    walltime[0].rtime = -(walle.pos_x - 
+                                         curr_data[ip].pos_x - 
+                                         curr_data[ip].rad) 
+                                         / (walle.vel_x -
                                             curr_data[ip].vel_x);
                     walltime[0].part2 = -7;
+                    std::cout << walltime[0].rtime << " if vel is positive"
+                              << '\t' << curr_data[ip].pos_x << '\t'
+                              << curr_data[ip].vel_x << std::endl;
                 }
+
                 else{
                     walltime[0].rtime = (box_length - curr_data[ip].pos_x) 
                                         / curr_data[ip].vel_x;
                 }
             }
+
+            // case -2
     
             if (curr_data[ip].vel_x < 0){
-                if (curr_data[ip].pos_x > curr_data[pnum+1].pos_x){
-                    walltime[0].rtime = (curr_data[pnum+1].pos_x - 
-                                         curr_data[ip].pos_x) 
-                                         / (curr_data[pnum+1].vel_x -
+                if (curr_data[ip].pos_x > walle.pos_x){
+                    walltime[1].rtime = (walle.pos_x - 
+                                         curr_data[ip].pos_x - 
+                                         curr_data[ip].rad) 
+                                         / (walle.vel_x -
                                             curr_data[ip].vel_x);
-                    walltime[1].rtime = -7;
+                    walltime[1].part2 = -7;
+                    std::cout << walltime[1].rtime << " if vel is negative"
+                              << curr_data[ip].pos_x << '\t'
+                              << curr_data[ip].vel_x << std::endl;
+
 
                 }
                 else{
-                    walltime[1].rtime = - box_length - curr_data[ip].pos_x 
+                    walltime[1].rtime = -curr_data[ip].pos_x 
                                         / curr_data[ip].vel_x;
                 }
             }
+
+            // case -3
     
             if (curr_data[ip].vel_y > 0){
                 walltime[2].rtime = (box_length - curr_data[ip].pos_y) 
                                     / curr_data[ip].vel_y;
             }
     
+            // case -4
+
             if (curr_data[ip].vel_y < 0){
-                walltime[3].rtime = - curr_data[ip].pos_y / curr_data[ip].vel_y;
+                walltime[3].rtime = -curr_data[ip].pos_y 
+                                    / curr_data[ip].vel_y;
             }
     
+            // case -5
+
             if (curr_data[ip].vel_z > 0){
                 walltime[4].rtime = (box_length - curr_data[ip].pos_z) 
                                     / curr_data[ip].vel_z;
             }
     
+            // case -6
+
             if (curr_data[ip].vel_z < 0){
-                walltime[5].rtime = - curr_data[ip].pos_z / curr_data[ip].vel_z;
+                walltime[5].rtime = -curr_data[ip].pos_z 
+                                    / curr_data[ip].vel_z;
             }
     
             std::sort(std::begin(walltime), std::end(walltime),
@@ -337,7 +368,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                     del_vy = curr_data[ip].vel_y - curr_data[j].vel_y;
                     del_vz = curr_data[ip].vel_z - curr_data[j].vel_z;
     
-                    r_tot = 2 * radius;
+                    r_tot = curr_data[ip].rad + curr_data[j].rad;
     
                     // change in velocity * change in r
                     vdotr = del_vx*del_x + del_vy*del_y + del_vz*del_z;
@@ -399,7 +430,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     //     two previous variables as dum1 and dum2 and checks which element is
     //     lesser. That's it.
 
-    std::sort(std::begin(list), std::end(list) - 1,
+    std::sort(std::begin(list), std::end(list),
               [](const Interaction &dum1, const Interaction &dum2)
                  {return dum1.rtime < dum2.rtime;});
 
@@ -427,21 +458,19 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 // UNCHECKED -- CERTAINLY BUG => infinite loop
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
-              double radius, double rad_2, double mass, double mass_2, 
-              double masswall, double box_length, int pnum,
-              std::ofstream &output, double timeres){
-
+              double box_length, int pnum, Wall &walle,
+              double timeres, std::ofstream &output){
 
     std::vector <int> teract(2);
-    double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot;
+    double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot, sigma, mass_tot;
     double del_vx, del_vy, del_vz, del_vtot, simtime = 0, tdiff;
     double timestep = 0, excess, first;
-    int on = 101, count = 0;
+    int on = 1, count = 0;
     Particle temp = curr_data[on];
 
     // Note that these are all defined in the material linked in README
     // Step 1
-    double final_time = interactions[80].rtime;
+    double final_time = interactions[0].rtime;
     while ( simtime < final_time ){
         std::cout << "simtime is: " << simtime << '\n';
 
@@ -552,21 +581,33 @@ void simulate(std::vector<Interaction> &interactions,
     
             rtot = sqrt(del_x*del_x + del_y*del_y + del_z*del_z);
             del_vtot = sqrt(del_vx*del_vx + del_vy*del_vy + del_vz*del_vz);
+            sigma = curr_data[interactions[0].part1].rad + 
+                    curr_data[interactions[0].part2].rad;
+            mass_tot = curr_data[interactions[0].part1].mass +
+                       curr_data[interactions[0].part2].mass;
     
             // Step 2
-            J_tot = (2 * mass*mass* del_vtot * rtot) / (2*radius * (2 * mass));
+            J_tot = (2 * curr_data[interactions[0].part1].mass *
+                         curr_data[interactions[0].part2].mass *
+                         del_vtot * rtot) / (sigma * mass_tot);
     
-            J_x = J_tot * del_x / (2 * radius);
-            J_y = J_tot * del_y / (2 * radius);
-            J_z = J_tot * del_z / (2 * radius);
+            J_x = J_tot * del_x / (sigma);
+            J_y = J_tot * del_y / (sigma);
+            J_z = J_tot * del_z / (sigma);
     
-            curr_data[interactions[0].part1].vel_x += J_x / mass;
-            curr_data[interactions[0].part1].vel_y += J_y / mass;
-            curr_data[interactions[0].part1].vel_z += J_z / mass;
+            curr_data[interactions[0].part1].vel_x += J_x
+            / curr_data[interactions[0].part1].mass;
+            curr_data[interactions[0].part1].vel_y += J_y
+            / curr_data[interactions[0].part1].mass;
+            curr_data[interactions[0].part1].vel_z += J_z
+            / curr_data[interactions[0].part1].mass;
     
-            curr_data[interactions[0].part2].vel_x -= J_x / mass;
-            curr_data[interactions[0].part2].vel_y -= J_y / mass;
-            curr_data[interactions[0].part2].vel_z -= J_z / mass;
+            curr_data[interactions[0].part2].vel_x -= J_x
+            / curr_data[interactions[0].part2].mass;
+            curr_data[interactions[0].part2].vel_y -= J_y
+            / curr_data[interactions[0].part2].mass;
+            curr_data[interactions[0].part2].vel_z -= J_z
+            / curr_data[interactions[0].part2].mass;
             //std::cout << "check_interaction" << '\n';
         }
 
@@ -611,15 +652,23 @@ void simulate(std::vector<Interaction> &interactions,
 
                 case -7:
                     del_x = (curr_data[interactions[0].part1].pos_x) 
-                             - (curr_data[pnum+1].pos_x); 
+                              - (walle.pos_x); 
                     del_vx = (curr_data[interactions[0].part1].vel_x)
-                              - (curr_data[pnum+1].vel_x);
+                              - (walle.vel_x);
+
+                    sigma = curr_data[interactions[0].part1].rad;
+                    mass_tot = curr_data[interactions[0].part1].mass + 
+                               walle.mass;
+
  
-                    J_tot = (2 * mass*masswall* del_vx * del_x) 
-                            / ((radius + rad_2) * (mass + masswall));
-                    J_x = J_tot * del_x / (radius + rad_2);
-                    curr_data[interactions[0].part1].vel_x += J_x / mass;
-                    curr_data[pnum+1].vel_x -= J_x / masswall;
+                    J_tot = (2 * walle.mass * 
+                             curr_data[interactions[0].part1].mass * 
+                             del_vx * del_x) / (sigma * mass_tot);
+                    J_x = J_tot * del_x / (sigma);
+                    curr_data[interactions[0].part1].vel_x += J_x 
+                    / curr_data[interactions[0].part1].mass;;
+                    curr_data[pnum+1].vel_x -= J_x 
+                    / walle.mass;
                     break;
                     
 /*
@@ -630,9 +679,9 @@ void simulate(std::vector<Interaction> &interactions,
                               - (curr_data[pnum+1].vel_x); 
                     J_tot = (2 * mass*masswall* del_vx * del_x) 
                             / ((radius + rad_2) * (mass + masswall));
-                    J_x = J_tot * del_x / (radius + rad_2);
+                    J_x = J_tot * del_x / (sigma);
                     curr_data[interactions[0].part1].vel_x += J_x / mass;
-                    curr_data[pnum+1].vel_x -= J_x / masswall;
+                    walle.vel_x -= J_x / masswall;
                     break;
 */
                 
@@ -644,8 +693,8 @@ void simulate(std::vector<Interaction> &interactions,
 
         // Step 3 -- update list; TODO
         // UNCHECKED
-        interactions = make_list(curr_data, box_length, radius, rad_2, pnum,
-                                 teract, interactions);
+        interactions = make_list(curr_data, box_length, pnum,
+                                 teract, interactions, walle);
         
 /*
         for (const auto &it : interactions){
