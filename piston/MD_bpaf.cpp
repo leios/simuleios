@@ -224,7 +224,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 
     std::cout << "got to here" << '\n';
     // now concatenating the two!
-    for (size_t ip = 0; ip < curr_data.size() - 1; ip++){
+    for (size_t ip = 0; ip < curr_data.size(); ip++){
         if (ip < pnum * ratio){
             curr_data[ip] = left_data[ip];
         }
@@ -306,7 +306,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     
             if (curr_data[ip].vel_x < 0){
                 if (curr_data[ip].pos_x > walle.pos_x){
-                    walltime[1].rtime = (walle.pos_x - 
+                    walltime[1].rtime = -(walle.pos_x - 
                                          curr_data[ip].pos_x - 
                                          curr_data[ip].rad) 
                                          / (walle.vel_x -
@@ -319,7 +319,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 
                 }
                 else{
-                    walltime[1].rtime = -curr_data[ip].pos_x 
+                    walltime[1].rtime = curr_data[ip].pos_x 
                                         / curr_data[ip].vel_x;
                 }
             }
