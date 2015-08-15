@@ -236,7 +236,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
     }
     std::cout << "got past the loop of terror" << '\n';
 
-    for (int i = 0; i < curr_data.size(); i++){
+    for (size_t i = 0; i < curr_data.size(); i++){
         std::cout << curr_data[i].pos_x << '\t' << i << std::endl;
     }
 
@@ -322,7 +322,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 
                 }
                 else{
-                    walltime[1].rtime = curr_data[ip].pos_x 
+                    walltime[1].rtime = (-box_length - curr_data[ip].pos_x) 
                                         / curr_data[ip].vel_x;
                 }
             }
@@ -382,7 +382,6 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                             * (del_x*del_x + del_y*del_y + del_z*del_z 
                                - r_tot*r_tot);
     
-                    double taptime;
                     if (vdotr >=0){
                         taptime = 0;
                     }
@@ -412,11 +411,12 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             if (walltime[0].rtime < list[i].rtime || list[i].rtime == 0){
                 list[i] = walltime[0];
             }
-    
+/*    
             std::cout << '\n';
 
             std::cout << list[ip].rtime << '\t' << list[ip].part1 << '\t' 
                       << list[ip].part2 << '\n'; 
+*/
     
         }
 
@@ -440,12 +440,14 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 
     std::cout << '\n' << '\n';
 
+/*
     for (auto &p : list){
 
         std::cout << p.rtime << '\t' << p.part1 << '\t' 
                   << p.part2 << '\n';
 
     }
+*/
 
 
     return list;
@@ -470,6 +472,7 @@ void simulate(std::vector<Interaction> &interactions,
     double timestep = 0, excess, first;
     int on = 1, count = 0;
     Particle temp = curr_data[on];
+    Wall twall = walle;
 
     // Note that these are all defined in the material linked in README
     // Step 1
@@ -485,9 +488,13 @@ void simulate(std::vector<Interaction> &interactions,
         temp.vel_z = curr_data[on].vel_z;
         count = 0;
 
+        twall.vel_x = walle.vel_x;
+
         // simtime has yet to be updated, so we are running until our timestep
         // values are *just* under our next simtime value, but we are keeping
         // the old value for the first loop step
+
+/*
         while (timestep <= simtime + interactions[0].rtime){
 
             timestep += timeres;
@@ -524,6 +531,35 @@ void simulate(std::vector<Interaction> &interactions,
             count++;
         }
 
+*/
+        // Now to output the position of the wall
+        while (timestep <= simtime + interactions[0].rtime){
+
+            timestep += timeres;
+            if (count < 1){
+
+                excess = timestep - simtime;
+
+                twall.pos_x = walle.pos_x + walle.vel_x*(excess);
+
+                output << timestep << '\t' 
+                       << walle.pos_x << '\t'
+                       << walle.vel_x << '\t'
+                       << '\n';
+            }
+
+            else{
+                twall.pos_x += twall.vel_x*(timeres);
+
+                output << timestep << '\t' 
+                       << walle.pos_x << '\t'
+                       << temp.vel_x << '\t'
+                       << '\n';
+            }
+            count++;
+        }
+
+
         // Now we are updating simtime and moving on with interactions and such
 
         tdiff = interactions[0].rtime;
@@ -538,6 +574,9 @@ void simulate(std::vector<Interaction> &interactions,
 
         teract[0] = interactions[0].part1;
         teract[1] = interactions[0].part2;
+
+        // updating position of wall
+        walle.pos_x += walle.vel_x * tdiff;
 
         // updating positions in curr_data
         for ( int i = 0; i < pnum; i++){
@@ -625,9 +664,10 @@ void simulate(std::vector<Interaction> &interactions,
                     break;
                 
                 case -2:
+                    std::cout << curr_data[interactions[0].part1].vel_x << '\n';
                     curr_data[interactions[0].part1].vel_x *= -1.0; 
-                    //std::cout << curr_data[interactions[0].part1].pos_x <<'\t'
-                    //          << -2 << '\n';
+                    std::cout << curr_data[interactions[0].part1].vel_x <<'\t'
+                              << -2 << '\n';
 
                     break;
                 
@@ -658,7 +698,7 @@ void simulate(std::vector<Interaction> &interactions,
                 case -7:
                     del_x = (curr_data[interactions[0].part1].pos_x) 
                               - (walle.pos_x); 
-                    std::cout << "check position: " << del_x << '\n';
+                    //std::cout << "check position: " << del_x << '\n';
                     del_vx = (curr_data[interactions[0].part1].vel_x)
                               - (walle.vel_x);
 
