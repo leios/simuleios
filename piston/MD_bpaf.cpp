@@ -22,6 +22,7 @@
 #include <fstream>
 #include <random>
 #include <algorithm>
+#include <cassert>
 
 /*----------------------------------------------------------------------------//
 * STRUCTS AND FUNCTIONS
@@ -60,7 +61,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
               double box_length, int pnum, Wall &walle,
-              double timeres, std::ofstream &output);
+              double timeres, std::ofstream &output, std::ofstream &wallput);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -69,10 +70,11 @@ int main(void){
 
     // opens file for writing
     std::ofstream output("out.dat", std::ofstream::out);
+    std::ofstream wallput("wall.dat", std::ofstream::out);
 
     int pnum = 100; // must be divisible by 1/ratio
     double box_length = 10, max_vel = 0.01, max_vel2 = 0.1, rad_1 = 0.01;
-    double rad_2 = 0.1, timeres = 1.0, mass = 0.1, mass_2 = 0.01, ratio = 0.25;
+    double rad_2 = 0.1, timeres = 1, mass = 0.1, mass_2 = 0.01, ratio = 0.25;
     double masswall = 1000;
     std::vector<int> parts(pnum);
 
@@ -111,7 +113,8 @@ int main(void){
     }
 */
 
-    simulate(list, curr_data, box_length, pnum, walle, timeres, output);
+    simulate(list, curr_data, box_length, pnum, walle, timeres, output, 
+             wallput);
 
     output.close();
 
@@ -259,7 +262,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     std::vector<Interaction> walltime(6);
     Interaction test;
     double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d, del_vtot;
-    double vdotr, taptime;
+    double vdotr, taptime, epsilon = 0.001;
     int count = 0, ip;
 
     // Step 1 -- find interactions
@@ -286,8 +289,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             if (curr_data[ip].vel_x > 0){
                 if (curr_data[ip].pos_x < walle.pos_x){
                     walltime[0].rtime = -(walle.pos_x - 
-                                         curr_data[ip].pos_x - 
-                                         curr_data[ip].rad) 
+                                         curr_data[ip].pos_x -
+                                         curr_data[ip].rad - epsilon) 
                                          / (walle.vel_x -
                                             curr_data[ip].vel_x);
                     walltime[0].part2 = -7;
@@ -299,7 +302,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                 }
 
                 else{
-                    walltime[0].rtime = (box_length - curr_data[ip].pos_x) 
+                    walltime[0].rtime = (box_length - curr_data[ip].pos_x 
+                                         - curr_data[ip].rad - epsilon) 
                                         / curr_data[ip].vel_x;
                 }
             }
@@ -309,8 +313,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             if (curr_data[ip].vel_x < 0){
                 if (curr_data[ip].pos_x > walle.pos_x){
                     walltime[1].rtime = -(walle.pos_x - 
-                                         curr_data[ip].pos_x - 
-                                         curr_data[ip].rad) 
+                                         curr_data[ip].pos_x + 
+                                         curr_data[ip].rad + epsilon) 
                                          / (walle.vel_x -
                                             curr_data[ip].vel_x);
                     walltime[1].part2 = -7;
@@ -322,7 +326,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 
                 }
                 else{
-                    walltime[1].rtime = (-box_length - curr_data[ip].pos_x) 
+                    walltime[1].rtime = (-box_length - curr_data[ip].pos_x
+                                         + curr_data[ip].rad + epsilon) 
                                         / curr_data[ip].vel_x;
                 }
             }
@@ -330,28 +335,32 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             // case -3
     
             if (curr_data[ip].vel_y > 0){
-                walltime[2].rtime = (box_length - curr_data[ip].pos_y) 
+                walltime[2].rtime = (box_length - curr_data[ip].pos_y
+                                     - curr_data[ip].rad - epsilon)
                                     / curr_data[ip].vel_y;
             }
     
             // case -4
 
             if (curr_data[ip].vel_y < 0){
-                walltime[3].rtime = -curr_data[ip].pos_y 
+                walltime[3].rtime = (-curr_data[ip].pos_y + curr_data[ip].rad
+                                     + epsilon)
                                     / curr_data[ip].vel_y;
             }
     
             // case -5
 
             if (curr_data[ip].vel_z > 0){
-                walltime[4].rtime = (box_length - curr_data[ip].pos_z) 
+                walltime[4].rtime = (box_length - curr_data[ip].pos_z
+                                     -curr_data[ip].rad - epsilon)
                                     / curr_data[ip].vel_z;
             }
     
             // case -6
 
             if (curr_data[ip].vel_z < 0){
-                walltime[5].rtime = -curr_data[ip].pos_z 
+                walltime[5].rtime = (-curr_data[ip].pos_z + curr_data[ip].rad
+                                     + epsilon)
                                     / curr_data[ip].vel_z;
             }
     
@@ -464,12 +473,12 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
               double box_length, int pnum, Wall &walle,
-              double timeres, std::ofstream &output){
+              double timeres, std::ofstream &output, std::ofstream &wallput){
 
     std::vector <int> teract(2);
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot, sigma, mass_tot;
     double del_vx, del_vy, del_vz, del_vtot, simtime = 0, tdiff;
-    double timestep = 0, excess, first;
+    double timestep = 0, wallstep = 0, excess, first;
     int on = 1, count = 0;
     Particle temp = curr_data[on];
     Wall twall = walle;
@@ -477,7 +486,10 @@ void simulate(std::vector<Interaction> &interactions,
     // Note that these are all defined in the material linked in README
     // Step 1
     double final_time = interactions[80].rtime;
+
     while ( simtime < final_time ){
+ 
+        assert(interactions[0].rtime > 0.0);
         std::cout << "simtime is: " << simtime << '\n';
 
         // output data from previous time interaction step
@@ -490,21 +502,35 @@ void simulate(std::vector<Interaction> &interactions,
 
         twall.vel_x = walle.vel_x;
 
+        // output the interaction with the wall.
+        temp.pos_x = curr_data[on].pos_x;
+        temp.pos_y = curr_data[on].pos_y;
+        temp.pos_z = curr_data[on].pos_z;
+
+        output << temp.pid << '\t' << simtime << '\t' 
+               << temp.pos_x << '\t'
+               << temp.pos_y << '\t'
+               << temp.pos_z << '\t'
+               << temp.vel_x << '\t'
+               << temp.vel_y << '\t' << temp.vel_z
+               << '\n';
+
         // simtime has yet to be updated, so we are running until our timestep
         // values are *just* under our next simtime value, but we are keeping
         // the old value for the first loop step
 
-/*
-        while (timestep <= simtime + interactions[0].rtime){
+
+        if (timestep < interactions[0].rtime){
+        while (timestep < simtime + interactions[0].rtime){
 
             timestep += timeres;
             if (count < 1){
 
                 excess = timestep - simtime;
 
-                temp.pos_x = curr_data[on].pos_x + temp.vel_x*(excess);
-                temp.pos_y = curr_data[on].pos_y + temp.vel_y*(excess);
-                temp.pos_z = curr_data[on].pos_z + temp.vel_z*(excess);
+                temp.pos_x += temp.vel_x*(excess);
+                temp.pos_y += temp.vel_y*(excess);
+                temp.pos_z += temp.vel_z*(excess);
 
                 output << temp.pid << '\t' << timestep << '\t' 
                        << temp.pos_x << '\t'
@@ -531,18 +557,19 @@ void simulate(std::vector<Interaction> &interactions,
             count++;
         }
 
-*/
-        // Now to output the position of the wall
-        while (timestep <= simtime + interactions[0].rtime){
+        // Radioactive
 
-            timestep += timeres;
+        // Now to output the position of the wall
+        while (wallstep < simtime + interactions[0].rtime){
+
+            wallstep += timeres;
             if (count < 1){
 
-                excess = timestep - simtime;
+                excess = wallstep - simtime;
 
                 twall.pos_x = walle.pos_x + walle.vel_x*(excess);
 
-                output << timestep << '\t' 
+                wallput << wallstep << '\t' 
                        << walle.pos_x << '\t'
                        << walle.vel_x << '\t'
                        << '\n';
@@ -551,12 +578,13 @@ void simulate(std::vector<Interaction> &interactions,
             else{
                 twall.pos_x += twall.vel_x*(timeres);
 
-                output << timestep << '\t' 
+                wallput << wallstep << '\t' 
                        << walle.pos_x << '\t'
                        << temp.vel_x << '\t'
                        << '\n';
             }
             count++;
+        }
         }
 
 
@@ -710,8 +738,10 @@ void simulate(std::vector<Interaction> &interactions,
                              curr_data[interactions[0].part1].mass * 
                              del_vx * del_x) / (sigma * mass_tot);
                     J_x = J_tot * del_x / (sigma);
+
                     curr_data[interactions[0].part1].vel_x -= J_x 
                     / curr_data[interactions[0].part1].mass;
+
                     walle.vel_x += J_x / walle.mass;
                     break;
                     
