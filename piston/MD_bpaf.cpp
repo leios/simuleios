@@ -73,9 +73,9 @@ int main(void){
     std::ofstream wallput("wall.dat", std::ofstream::out);
 
     int pnum = 100; // must be divisible by 1/ratio
-    double box_length = 10, max_vel = 1, max_vel2 = 1, rad_1 = 0.1;
-    double rad_2 = 0.1, timeres = 1, mass = 0.1, mass_2 = 0.01, ratio = 0.25;
-    double masswall = 10;
+    double box_length = 10, max_vel = .1, max_vel2 = .1, rad_1 = 0.1;
+    double rad_2 = 0.01, timeres = 1, mass = 0.1, mass_2 = 0.01, ratio = 0.25;
+    double masswall = 1000;
     std::vector<int> parts(pnum);
 
     std::cout << "populate" << '\n';
@@ -139,7 +139,10 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 
     // static to create only 1 random_device
     static std::random_device rd;
-    static std::mt19937 gen(rd());
+    int seed = 1828792648;
+    static std::mt19937 gen(seed);
+
+    std::cout << seed << " Check this out!" << '\n';
 
     /* instead of doing % and * to get the correct distribution we directly
        specify which distribution we want */
@@ -289,7 +292,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             if (curr_data[ip].vel_x > 0){
                 if (curr_data[ip].pos_x < walle.pos_x){
                     walltime[0].rtime = -(walle.pos_x - 
-                                         curr_data[ip].pos_x)
+                                         curr_data[ip].pos_x -
+                                         curr_data[ip].rad)
                                          / (walle.vel_x -
                                             curr_data[ip].vel_x);
                     walltime[0].part2 = -7;
@@ -301,7 +305,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                 }
 
                 else{
-                    walltime[0].rtime = (box_length - curr_data[ip].pos_x)
+                    walltime[0].rtime = (box_length - curr_data[ip].pos_x
+                                         -curr_data[ip].rad)
                                         / curr_data[ip].vel_x;
                 }
             }
@@ -311,7 +316,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             if (curr_data[ip].vel_x < 0){
                 if (curr_data[ip].pos_x > walle.pos_x){
                     walltime[1].rtime = -(walle.pos_x - 
-                                         curr_data[ip].pos_x)
+                                         curr_data[ip].pos_x +
+                                         curr_data[ip].rad)
                                          / (walle.vel_x -
                                             curr_data[ip].vel_x);
                     walltime[1].part2 = -7;
@@ -323,7 +329,8 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 
                 }
                 else{
-                    walltime[1].rtime = (-box_length - curr_data[ip].pos_x)
+                    walltime[1].rtime = (-box_length - curr_data[ip].pos_x
+                                         + curr_data[ip].rad)
                                         / curr_data[ip].vel_x;
                 }
             }
@@ -331,29 +338,30 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             // case -3
     
             if (curr_data[ip].vel_y > 0){
-                walltime[2].rtime = (box_length - curr_data[ip].pos_y)
+                walltime[2].rtime = (box_length - curr_data[ip].pos_y
+                                     - curr_data[ip].rad)
                                     / curr_data[ip].vel_y;
             }
     
             // case -4
 
             if (curr_data[ip].vel_y < 0){
-                walltime[3].rtime = (-curr_data[ip].pos_y)
+                walltime[3].rtime = (-curr_data[ip].pos_y + curr_data[ip].rad)
                                     / curr_data[ip].vel_y;
             }
     
             // case -5
 
             if (curr_data[ip].vel_z > 0){
-                walltime[4].rtime = (box_length - curr_data[ip].pos_z)
+                walltime[4].rtime = (box_length - curr_data[ip].pos_z
+                                     - curr_data[ip].rad)
                                     / curr_data[ip].vel_z;
             }
     
             // case -6
 
             if (curr_data[ip].vel_z < 0){
-                walltime[5].rtime = (-curr_data[ip].pos_z + curr_data[ip].rad
-                                     + epsilon)
+                walltime[5].rtime = (-curr_data[ip].pos_z + curr_data[ip].rad)
                                     / curr_data[ip].vel_z;
             }
     
@@ -484,6 +492,7 @@ void simulate(std::vector<Interaction> &interactions,
  
 
         std::cout << interactions[0].rtime << '\n';
+        if (interactions[0].rtime < 0){
 
             std::cout << interactions[0].rtime << '\n';
             std::cout << interactions[0].part2 << '\t'
@@ -494,11 +503,14 @@ void simulate(std::vector<Interaction> &interactions,
                       << curr_data[interactions[0].part1].vel_x << '\t' 
                       << curr_data[interactions[0].part1].vel_y << '\t' 
                       << curr_data[interactions[0].part1].vel_z << '\t' 
-                      << curr_data[interactions[0].part1].rad << '\t' 
+                      << curr_data[interactions[0].part1].rad << '\t';
 
+            std::cout << '\n' << '\n';
+            std::cout << walle.pos_x << '\t' << walle.vel_x <<'\n'
                       << '\n';
 
-            assert(interactions[0].rtime != 0);
+            assert(interactions[0].rtime > 0);
+        }
         std::cout << "simtime is: " << simtime << '\n';
 
         // output data from previous time interaction step
