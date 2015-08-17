@@ -139,7 +139,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 
     // static to create only 1 random_device
     static std::random_device rd;
-    int seed = 1828792648;
+    int seed = rd();
     static std::mt19937 gen(seed);
 
     std::cout << seed << " Check this out!" << '\n';
@@ -297,6 +297,10 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                                          / (walle.vel_x -
                                             curr_data[ip].vel_x);
                     walltime[0].part2 = -7;
+
+                    if (walltime[0].rtime < 0){
+                        walltime[0].rtime = -1 * walltime[0].rtime;
+                    }
 /*
                     std::cout << walltime[0].rtime << " if vel is positive"
                               << '\t' << curr_data[ip].pos_x << '\t'
@@ -321,6 +325,11 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                                          / (walle.vel_x -
                                             curr_data[ip].vel_x);
                     walltime[1].part2 = -7;
+
+                    if (walltime[1].rtime < 0){
+                        walltime[1].rtime = -1 * walltime[1].rtime;
+                    }
+
 /*
                     std::cout << walltime[1].rtime << " if vel is negative"
                               << curr_data[ip].pos_x << '\t'
@@ -549,7 +558,7 @@ void simulate(std::vector<Interaction> &interactions,
 
         while (timestep < simtime + interactions[0].rtime){
 
-            if (count < 1){
+            if (count == 0){
 
                 excess = timestep - simtime;
 
@@ -564,6 +573,14 @@ void simulate(std::vector<Interaction> &interactions,
                        << temp.vel_x << '\t'
                        << temp.vel_y << '\t' << temp.vel_z
                        << '\n';
+
+                twall.pos_x += twall.vel_x*(excess);
+
+                wallput << timestep << '\t' 
+                       << twall.pos_x << '\t'
+                       << twall.vel_x << '\t'
+                       << '\n';
+
             }
 
             else{
@@ -578,6 +595,14 @@ void simulate(std::vector<Interaction> &interactions,
                        << temp.vel_x << '\t'
                        << temp.vel_y << '\t' << temp.vel_z
                        << '\n';
+ 
+                twall.pos_x += twall.vel_x * (timeres);
+
+                wallput << timestep << '\t' 
+                        << twall.pos_x << '\t'
+                        << twall.vel_x << '\t'
+                        << '\n';
+
             }
             count++;
             timestep += timeres;
@@ -587,35 +612,6 @@ void simulate(std::vector<Interaction> &interactions,
         // Radioactive
 
         // Now to output the position of the wall
-
-        count = 0;
-        while (wallstep < simtime + interactions[0].rtime){
-
-            wallstep += timeres;
-            if (count < 1){
-
-                excess = wallstep - simtime;
-
-                twall.pos_x = walle.pos_x + walle.vel_x*(excess);
-
-                wallput << wallstep << '\t' 
-                       << twall.pos_x << '\t'
-                       << twall.vel_x << '\t'
-                       << '\n';
-            }
-
-            else{
-                twall.pos_x += twall.vel_x*(timeres);
-
-                wallput << wallstep << '\t' 
-                       << twall.pos_x << '\t'
-                       << twall.vel_x << '\t'
-                       << '\n';
-            }
-            wallstep += timeres;
-            count++;
-        }
-
 
         // Now we are updating simtime and moving on with interactions and such
 
