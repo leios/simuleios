@@ -29,7 +29,7 @@
 
 // Holds our data in a central struct, to be called mainly in a vector
 struct Particle{
-    int pid;
+    int pid, type;
     double pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, time, mass, rad;
 };
 
@@ -47,7 +47,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 // Makes the list for our simulation later, required starting data
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                                    double box_length, int pnum, 
-                                   const std::vector <int> &parts, 
+                                   const std::vector <int> &parts, int flag, 
                                    std::vector<Interaction> &list);
 
 // This performs our MD simulation with a vector of interactions
@@ -66,6 +66,7 @@ int main(void){
     std::ofstream output("out.dat", std::ofstream::out);
 
     int pnum = 100; // must be divisible by 1/ratio
+    int type = 0;
     double box_length = 10, max_vel = .1, max_vel2 = .1, rad_1 = 0.1;
     double rad_2 = 0.01, timeres = 1, mass = 0.1, mass_2 = 0.01, ratio = 0.25;
     std::vector<int> parts(pnum);
@@ -86,7 +87,7 @@ int main(void){
     std::cout << "is the list right?" << '\n';
     std::vector<Interaction> list(pnum);
     std::cout << "before" << std::endl;
-    list = make_list(curr_data, box_length, pnum, parts, list);
+    list = make_list(curr_data, box_length, pnum, parts, type, list);
     std::cout << "after list made" << std::endl;
 
     //std::cout << std::endl << std::endl;
@@ -149,6 +150,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
     // For the left side of the box =)
     for (auto &p : left_data){ //read: for all particles p in left_data
         p.time = 0;
+        p.type = 0;
         p.pid = pid_counter++;
         p.mass = mass_2;
         p.rad = rad_2;
@@ -185,6 +187,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
     // For the Right data in the box
     for (auto &p : right_data){ //read: for all particles p in left_data
         p.time = 0;
+        p.type = 1;
         p.pid = pid_counter++;
         p.mass = mass_1;
         p.rad = radius;
@@ -244,7 +247,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 // Step 3: Sort list, lowest first
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                                    double box_length, int pnum, 
-                                   const std::vector<int> &parts, 
+                                   const std::vector<int> &parts, int flag, 
                                    std::vector<Interaction> &list){
 
     /* passing curr_data as const reference to avoid the copy and accidental
@@ -277,17 +280,51 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             // case -1
 
             if (curr_data[ip].vel_x > 0){
-                walltime[0].rtime = (box_length - curr_data[ip].pos_x
-                                     -curr_data[ip].rad)
-                                    / curr_data[ip].vel_x;
+                if (flag > 0){
+                    if (curr_data[ip].pos_x < 0){
+                        walltime[0].rtime = ( - curr_data[ip].pos_x
+                                             + curr_data[ip].rad)
+                                             / curr_data[ip].vel_x;
+
+                    }
+                    if (curr_data[ip].pos_x > 0){
+                        walltime[0].rtime = (box_length - curr_data[ip].pos_x
+                                             + curr_data[ip].rad)
+                                             / curr_data[ip].vel_x;
+
+                    }
+
+                }
+                else{
+                    walltime[0].rtime = (box_length - curr_data[ip].pos_x
+                                         -curr_data[ip].rad)
+                                        / curr_data[ip].vel_x;
+                }
             }
 
             // case -2
     
             if (curr_data[ip].vel_x < 0){
-                walltime[1].rtime = (-box_length - curr_data[ip].pos_x
-                                     + curr_data[ip].rad)
-                                     / curr_data[ip].vel_x;
+                if (flag > 0){
+                    if (curr_data[ip].pos_x > 0){
+                        walltime[1].rtime = ( - curr_data[ip].pos_x
+                                             + curr_data[ip].rad)
+                                             / curr_data[ip].vel_x;
+
+                    }
+                    if (curr_data[ip].pos_x < 0){
+                        walltime[1].rtime = (-box_length - curr_data[ip].pos_x
+                                             + curr_data[ip].rad)
+                                             / curr_data[ip].vel_x;
+
+                    }
+
+                }
+                else{
+                    walltime[1].rtime = (-box_length - curr_data[ip].pos_x
+                                         + curr_data[ip].rad)
+                                         / curr_data[ip].vel_x;
+                }
             }
 
             // case -3
@@ -435,12 +472,12 @@ void simulate(std::vector<Interaction> &interactions,
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot, sigma, mass_tot;
     double del_vx, del_vy, del_vz, del_vtot, simtime = 0, tdiff;
     double timestep = 0, excess, first;
-    int on = 1, count = 0;
+    int on = 1, count = 0, flag = 0;
     Particle temp = curr_data[on];
 
     // Note that these are all defined in the material linked in README
     // Step 1
-    double final_time = interactions[80].rtime;
+    double half_time = interactions[80].rtime, final_time = 2 * half_time;
 
     while ( simtime < final_time ){
  
@@ -669,11 +706,17 @@ void simulate(std::vector<Interaction> &interactions,
         // Step 3 -- update list; TODO
         // UNCHECKED
         interactions = make_list(curr_data, box_length, pnum,
-                                 teract, interactions);
+                                 teract, flag, interactions);
         
 /*
         for (const auto &it : interactions){
             std::cout << it.rtime << std::endl;
+        }
+*/
+
+/*
+        if (simtime > half_time){
+            flag = 1;
         }
 */
 
