@@ -546,7 +546,7 @@ void simulate(std::vector<Interaction> &interactions,
                << temp.vel_y << '\t' << temp.vel_z
                << '\n';
 
-        wallput << timestep << '\t' 
+        wallput << simtime << '\t' 
                 << twall.pos_x << '\t'
                 << twall.vel_x << '\t'
                 << '\n';
