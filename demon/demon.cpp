@@ -282,15 +282,31 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             if (curr_data[ip].vel_x > 0){
                 if (flag > 0){
                     if (curr_data[ip].pos_x < 0){
-                        walltime[0].rtime = ( - curr_data[ip].pos_x
-                                             + curr_data[ip].rad)
-                                             / curr_data[ip].vel_x;
+
+                        if (curr_data[ip].type == 0){
+                            walltime[0].rtime = ( - curr_data[ip].pos_x
+                                                  + curr_data[ip].rad)
+                                                  / curr_data[ip].vel_x;
+                        }
+
+                        else{
+                            walltime[0].rtime = 
+                                std::numeric_limits<double>::infinity();
+                        }
 
                     }
                     if (curr_data[ip].pos_x > 0){
-                        walltime[0].rtime = (box_length - curr_data[ip].pos_x
-                                             + curr_data[ip].rad)
-                                             / curr_data[ip].vel_x;
+                        if (curr_data[ip].type == 1){
+                            walltime[0].rtime = (box_length-curr_data[ip].pos_x
+                                                 + curr_data[ip].rad)
+                                                 / curr_data[ip].vel_x;
+
+                        }
+                        else{
+                            walltime[0].rtime = 
+                                std::numeric_limits<double>::infinity();
+                        }
+
 
                     }
 
@@ -477,7 +493,7 @@ void simulate(std::vector<Interaction> &interactions,
 
     // Note that these are all defined in the material linked in README
     // Step 1
-    double half_time = 100 * interactions[80].rtime, final_time = 2 * half_time;
+    double half_time = 10 * interactions[80].rtime, final_time = 2 * half_time;
 
     while ( simtime < final_time ){
  
