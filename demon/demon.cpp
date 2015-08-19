@@ -477,7 +477,7 @@ void simulate(std::vector<Interaction> &interactions,
 
     // Note that these are all defined in the material linked in README
     // Step 1
-    double half_time = interactions[80].rtime, final_time = 2 * half_time;
+    double half_time = 100 * interactions[80].rtime, final_time = 2 * half_time;
 
     while ( simtime < final_time ){
  
@@ -652,21 +652,21 @@ void simulate(std::vector<Interaction> &interactions,
                      - (curr_data[interactions[0].part2].vel_z);
     
     
-            rtot = sqrt(del_x*del_x + del_y*del_y + del_z*del_z);
-            del_vtot = sqrt(del_vx*del_vx + del_vy*del_vy + del_vz*del_vz);
+            rtot = (del_x*del_x + del_y*del_y + del_z*del_z);
+            del_vtot = (del_vx*del_vx + del_vy*del_vy + del_vz*del_vz);
             sigma = curr_data[interactions[0].part1].rad + 
                     curr_data[interactions[0].part2].rad;
             mass_tot = curr_data[interactions[0].part1].mass +
                        curr_data[interactions[0].part2].mass;
     
             // Step 2
-            J_tot = (2 * curr_data[interactions[0].part1].mass *
+            J_tot = ( curr_data[interactions[0].part1].mass *
                          curr_data[interactions[0].part2].mass *
                          del_vtot * rtot) / (sigma * mass_tot);
     
-            J_x = J_tot * del_x / (sigma);
-            J_y = J_tot * del_y / (sigma);
-            J_z = J_tot * del_z / (sigma);
+            J_x = J_tot * del_x / sigma;
+            J_y = J_tot * del_y / sigma;
+            J_z = J_tot * del_z / sigma;
     
             curr_data[interactions[0].part1].vel_x += J_x
             / curr_data[interactions[0].part1].mass;
