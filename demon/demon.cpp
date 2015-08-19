@@ -494,11 +494,40 @@ void simulate(std::vector<Interaction> &interactions,
                       << curr_data[interactions[0].part1].vel_x << '\t' 
                       << curr_data[interactions[0].part1].vel_y << '\t' 
                       << curr_data[interactions[0].part1].vel_z << '\t' 
-                      << curr_data[interactions[0].part1].rad << '\t';
+                      << curr_data[interactions[0].part1].rad << '\t'
+                      << half_time / 5 << '\t' << flag << '\n';
 
             assert(interactions[0].rtime > 0);
         }
+
+        if (interactions[0].rtime < 5e-10){
+
+            std::cout << interactions[0].rtime << '\n';
+            std::cout << interactions[0].part2 << '\t'
+                      << interactions[0].part1 << '\t' 
+                      << curr_data[interactions[0].part1].pos_x << '\t' 
+                      << curr_data[interactions[0].part1].pos_y << '\t' 
+                      << curr_data[interactions[0].part1].pos_z << '\t' 
+                      << curr_data[interactions[0].part1].vel_x << '\t' 
+                      << curr_data[interactions[0].part1].vel_y << '\t' 
+                      << curr_data[interactions[0].part1].vel_z << '\t' 
+                      << curr_data[interactions[0].part1].rad << '\t'
+                      << half_time / 5 << '\t' << flag << '\n';
+
+            assert(interactions[0].rtime > 5e-10);
+        }
+
         std::cout << "simtime is: " << simtime << '\n';
+        std::cout << "the particles are: " << interactions[0].part1 << '\t'
+                  << interactions[0].part2 << '\t'
+                  << curr_data[interactions[0].part1].pos_x << '\t'
+                  << curr_data[interactions[0].part1].pos_y << '\t' 
+                  << curr_data[interactions[0].part1].pos_z << '\t' 
+                  << curr_data[interactions[0].part1].vel_x << '\t' 
+                  << curr_data[interactions[0].part1].vel_y << '\t' 
+                  << curr_data[interactions[0].part1].vel_z << '\t' 
+                  << curr_data[interactions[0].part1].rad << '\n';
+
 
         // output data from previous time interaction step
         // First, update the velocities of out temp vector and define a count
@@ -532,9 +561,9 @@ void simulate(std::vector<Interaction> &interactions,
 
                 excess = timestep - simtime;
 
-                temp.pos_x += temp.vel_x*(excess);
-                temp.pos_y += temp.vel_y*(excess);
-                temp.pos_z += temp.vel_z*(excess);
+                temp.pos_x += temp.vel_x * excess;
+                temp.pos_y += temp.vel_y * excess;
+                temp.pos_z += temp.vel_z * excess;
 
                 output << temp.pid << '\t' << timestep << '\t' 
                        << temp.pos_x << '\t'
@@ -653,6 +682,36 @@ void simulate(std::vector<Interaction> &interactions,
             curr_data[interactions[0].part2].vel_z -= J_z
             / curr_data[interactions[0].part2].mass;
             //std::cout << "check_interaction" << '\n';
+
+        if (abs(curr_data[interactions[0].part1].vel_x) > 1000 ||
+            abs(curr_data[interactions[0].part1].vel_y) > 1000 ||
+            abs(curr_data[interactions[0].part1].vel_z) > 1000 ||
+            abs(curr_data[interactions[0].part2].vel_x) > 1000 ||
+            abs(curr_data[interactions[0].part2].vel_y) > 1000 ||
+            abs(curr_data[interactions[0].part2].vel_z) > 1000 ){
+
+            std::cout << interactions[0].rtime << '\n';
+            std::cout << interactions[0].part2 << '\t'
+                      << interactions[0].part1 << '\t' 
+                      << curr_data[interactions[0].part1].pos_x << '\t' 
+                      << curr_data[interactions[0].part1].pos_y << '\t' 
+                      << curr_data[interactions[0].part1].pos_z << '\t' 
+                      << curr_data[interactions[0].part1].vel_x << '\t' 
+                      << curr_data[interactions[0].part1].vel_y << '\t' 
+                      << curr_data[interactions[0].part1].vel_z << '\t' 
+                      << curr_data[interactions[0].part1].rad << '\t'
+                      << J_tot << '\t' << J_x << '\t' << J_y << '\t' << J_z 
+                      << '\n';
+
+            assert(abs(curr_data[interactions[0].part1].vel_x) < 1000);
+            assert(abs(curr_data[interactions[0].part1].vel_y) < 1000);
+            assert(abs(curr_data[interactions[0].part1].vel_z) < 1000);
+            assert(abs(curr_data[interactions[0].part2].vel_x) < 1000);
+            assert(abs(curr_data[interactions[0].part2].vel_y) < 1000);
+            assert(abs(curr_data[interactions[0].part2].vel_z) < 1000);
+
+        }
+
         }
 
         if (interactions[0].part2 < 0){
@@ -702,6 +761,26 @@ void simulate(std::vector<Interaction> &interactions,
         
         }
 
+        if (simtime > half_time ){ // &&
+            //simtime < half_time + interactions[0].rtime){
+            flag = 1;
+
+            for (int q = 0; q < pnum; q++){
+                del_x = (abs(curr_data[q].pos_x) - curr_data[q].rad);
+
+                if (del_x <= 0){
+                    if (curr_data[q].pos_x >= 0){
+                        curr_data[q].pos_x += curr_data[q].rad;
+                    }
+                    if (curr_data[q].pos_x < 0){
+                        curr_data[q].pos_x -= curr_data[q].rad;
+                    }
+
+                }
+            
+            }
+        }
+
 
         // Step 3 -- update list; TODO
         // UNCHECKED
@@ -711,12 +790,6 @@ void simulate(std::vector<Interaction> &interactions,
 /*
         for (const auto &it : interactions){
             std::cout << it.rtime << std::endl;
-        }
-*/
-
-/*
-        if (simtime > half_time){
-            flag = 1;
         }
 */
 
