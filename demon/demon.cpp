@@ -280,7 +280,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             // case -1
 
             if (curr_data[ip].vel_x > 0){
-                if (flag > 0){
+                if (flag == 1){
                     if (curr_data[ip].pos_x < 0){
 
                         if (curr_data[ip].type == 0){
@@ -296,16 +296,9 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 
                     }
                     if (curr_data[ip].pos_x > 0){
-                        if (curr_data[ip].type == 1){
-                            walltime[0].rtime = (box_length-curr_data[ip].pos_x
-                                                 + curr_data[ip].rad)
-                                                 / curr_data[ip].vel_x;
-
-                        }
-                        else{
-                            walltime[0].rtime = 
-                                std::numeric_limits<double>::infinity();
-                        }
+                        walltime[0].rtime = (box_length-curr_data[ip].pos_x
+                                             + curr_data[ip].rad)
+                                             / curr_data[ip].vel_x;
 
 
                     }
@@ -321,11 +314,20 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
             // case -2
     
             if (curr_data[ip].vel_x < 0){
-                if (flag > 0){
+                if (flag == 1){
                     if (curr_data[ip].pos_x > 0){
-                        walltime[1].rtime = ( - curr_data[ip].pos_x
-                                             + curr_data[ip].rad)
-                                             / curr_data[ip].vel_x;
+
+                        if (curr_data[ip].type == 1){
+                            walltime[1].rtime = ( - curr_data[ip].pos_x
+                                                 + curr_data[ip].rad)
+                                                 / curr_data[ip].vel_x;
+                        }
+
+                        else{
+                            walltime[1].rtime = 
+                                std::numeric_limits<double>::infinity();
+                        }
+
 
                     }
                     if (curr_data[ip].pos_x < 0){
@@ -777,16 +779,17 @@ void simulate(std::vector<Interaction> &interactions,
         
         }
 
-        if (simtime > half_time ){ // &&
+        if (simtime > half_time){
             //simtime < half_time + interactions[0].rtime){
+            if (flag == 0){
             flag = 1;
 
-            for (int q = 0; q < pnum; q++){
-                del_x = (abs(curr_data[q].pos_x) - curr_data[q].rad);
+                for (int q = 0; q < pnum; q++){
+                    del_x = (abs(curr_data[q].pos_x) - curr_data[q].rad);
 
-                if (del_x <= 0){
-                    if (curr_data[q].pos_x >= 0){
-                        curr_data[q].pos_x += curr_data[q].rad;
+                    if (del_x <= 0){
+                        if (curr_data[q].pos_x >= 0){
+                            curr_data[q].pos_x += curr_data[q].rad;
                     }
                     if (curr_data[q].pos_x < 0){
                         curr_data[q].pos_x -= curr_data[q].rad;
@@ -794,6 +797,7 @@ void simulate(std::vector<Interaction> &interactions,
 
                 }
             
+            }
             }
         }
 
