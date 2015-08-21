@@ -27,16 +27,23 @@
 * STRUCTS AND FUNCTIONS
 *-----------------------------------------------------------------------------*/
 
+// holds temperature for boxes
+struct Temp{
+    double tleft, tright;
+};
+
 // Holds our data in a central struct, to be called mainly in a vector
 struct Particle{
     int pid, type;
     double pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, time, mass, rad;
+    Temp T;
 };
 
 // holds interaction data
 struct Interaction{
     double rtime;
     int part1, part2;
+    Temp T;
 };
 
 // Makes starting data
@@ -46,15 +53,18 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 
 // Makes the list for our simulation later, required starting data
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
-                                   double box_length, int pnum, 
+                                   double box_length, int pnum, double velavg, 
                                    const std::vector <int> &parts, int flag, 
                                    std::vector<Interaction> &list);
+
+// Finds temperature
+Temp findtemp(std::vector<Particle> curr_data);
 
 // This performs our MD simulation with a vector of interactions
 // Also writes simulation to file, specified by README
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
-              double box_length, int pnum,
+              double box_length, int pnum, double velavg,
               double timeres, std::ofstream &output);
 
 /*----------------------------------------------------------------------------//
@@ -67,7 +77,9 @@ int main(void){
 
     int pnum = 100; // must be divisible by 1/ratio
     int type = 0;
-    double box_length = 10, max_vel = .1, max_vel2 = .1, rad_1 = 0.1;
+    double box_length = 10, max_vel = 0.01, max_vel2 = .1, rad_1 = 0.1;
+    double velavg = (sqrt(3 * max_vel*max_vel) + sqrt(3 * max_vel2*max_vel2))
+                     * 0.5;
     double rad_2 = 0.01, timeres = 1, mass = 0.1, mass_2 = 0.01, ratio = 0.25;
     std::vector<int> parts(pnum);
 
@@ -87,7 +99,7 @@ int main(void){
     std::cout << "is the list right?" << '\n';
     std::vector<Interaction> list(pnum);
     std::cout << "before" << std::endl;
-    list = make_list(curr_data, box_length, pnum, parts, type, list);
+    list = make_list(curr_data, box_length, pnum, velavg, parts, type, list);
     std::cout << "after list made" << std::endl;
 
     //std::cout << std::endl << std::endl;
@@ -102,7 +114,7 @@ int main(void){
     }
 */
 
-    simulate(list, curr_data, box_length, pnum, timeres, output);
+    simulate(list, curr_data, box_length, pnum, velavg, timeres, output);
 
     output.close();
 
@@ -120,6 +132,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
                                double mass_1, double mass_2, double ratio){
 
     int pid_counter = 0;
+    double Eleft, Eright;
     std::vector<Particle> curr_data(pnum);
     std::vector<Particle> left_data(pnum * ratio), right_data(pnum * (1-ratio));
 
@@ -182,7 +195,14 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
         for (auto &vel : { &p.vel_x, &p.vel_y, &p.vel_z }){
             *vel = max_velleft_distribution(gen);
         }
+
+        //Eleft += 0.5 * (p.vel_x*p.vel_x + p.vel_y*p.vel_y + p.vel_z*p.vel_z) 
+        //          * p.mass;
+
     }
+
+    //Eleft = Eleft / (double)right_data.size();
+    //curr_data[0].T.tleft = (0.666) *  Eleft / 1.380e-23;
 
     // For the Right data in the box
     for (auto &p : right_data){ //read: for all particles p in left_data
@@ -215,7 +235,13 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
         for (auto &vel : { &p.vel_x, &p.vel_y, &p.vel_z }){
             *vel = max_vel_distribution(gen);
         }
+
+        //Eright += 0.5 * (p.vel_x*p.vel_x + p.vel_y*p.vel_y + p.vel_z*p.vel_z) 
+        //          * p.mass;
     }
+
+    //Eright = Eright / (double)right_data.size();
+    //curr_data[0].T.tright = (0.666) *  Eright / 1.380e-23;
 
 
     std::cout << "got to here" << '\n';
@@ -246,7 +272,7 @@ std::vector<Particle> populate(int pnum, double box_length, double max_vel,
 // Step 2: Update list.
 // Step 3: Sort list, lowest first
 std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
-                                   double box_length, int pnum, 
+                                   double box_length, int pnum, double velavg,
                                    const std::vector<int> &parts, int flag, 
                                    std::vector<Interaction> &list){
 
@@ -255,7 +281,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     Interaction test;
     std::vector<Interaction> walltime(6);
     double del_x, del_y, del_z, del_vx, del_vy, del_vz, r_tot, rad_d, del_vtot;
-    double vdotr, taptime, epsilon = 0.001;
+    double vdotr, taptime, epsilon = 0.001, vel_t;
     int count = 0, ip;
 
     // Step 1 -- find interactions
@@ -283,9 +309,14 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                 if (flag == 1){
                     if (curr_data[ip].pos_x < 0){
 
-                        if (curr_data[ip].type == 0){
+                        vel_t = sqrt(curr_data[ip].vel_x * curr_data[ip].vel_x +
+                                     curr_data[ip].vel_y * curr_data[ip].vel_y +
+                                     curr_data[ip].vel_z * curr_data[ip].vel_z);
+
+                        //if (curr_data[ip].type == 0){
+                        if (vel_t <= velavg){
                             walltime[0].rtime = ( - curr_data[ip].pos_x
-                                                  + curr_data[ip].rad)
+                                                  - curr_data[ip].rad)
                                                   / curr_data[ip].vel_x;
                         }
 
@@ -299,14 +330,12 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                         walltime[0].rtime = (box_length-curr_data[ip].pos_x
                                              + curr_data[ip].rad)
                                              / curr_data[ip].vel_x;
-
-
                     }
 
                 }
                 else{
                     walltime[0].rtime = (box_length - curr_data[ip].pos_x
-                                         -curr_data[ip].rad)
+                                        - curr_data[ip].rad)
                                         / curr_data[ip].vel_x;
                 }
             }
@@ -317,7 +346,12 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
                 if (flag == 1){
                     if (curr_data[ip].pos_x > 0){
 
-                        if (curr_data[ip].type == 1){
+                        vel_t = sqrt(curr_data[ip].vel_x * curr_data[ip].vel_x +
+                                     curr_data[ip].vel_y * curr_data[ip].vel_y +
+                                     curr_data[ip].vel_z * curr_data[ip].vel_z);
+
+                        //if (curr_data[ip].type == 1){
+                        if (vel_t > velavg){
                             walltime[1].rtime = ( - curr_data[ip].pos_x
                                                  + curr_data[ip].rad)
                                                  / curr_data[ip].vel_x;
@@ -460,6 +494,7 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 
     std::cout << '\n' << '\n';
 
+
 /*
     for (auto &p : list){
 
@@ -469,8 +504,56 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
     }
 */
 
+    list[0].T = findtemp(curr_data);
 
     return list;
+}
+
+// Find Temperature
+Temp findtemp(std::vector <Particle> curr_data){
+
+    double Eleft = 0, Eright = 0, vel_t;
+    int cleft = 0, cright = 0;
+    Temp T;
+
+    for (size_t i = 0; i < curr_data.size(); i++){
+        if (curr_data[i].pos_x <= 0){
+            vel_t = curr_data[i].vel_x * curr_data[i].vel_x +
+                    curr_data[i].vel_y * curr_data[i].vel_y +
+                    curr_data[i].vel_z * curr_data[i].vel_z;
+            Eleft += (0.5 * curr_data[i].mass * vel_t);
+            cleft += 1;
+            if (Eleft < 0){
+                std::cout << curr_data[i].mass << vel_t << '\n';
+            }
+        }
+
+        if (curr_data[i].pos_x > 0){
+            vel_t = curr_data[i].vel_x * curr_data[i].vel_x +
+                    curr_data[i].vel_y * curr_data[i].vel_y +
+                    curr_data[i].vel_z * curr_data[i].vel_z;
+            Eright += (0.5 * curr_data[i].mass * vel_t);
+            cright += 1;
+            if (Eright < 0){
+                std::cout << curr_data[i].mass << vel_t <<'\n';
+            }
+
+        }
+
+    }
+
+    Eleft = Eleft / (double)cleft;
+    Eright = Eright / (double)cright;
+    if (Eleft < 0 || Eright < 0){
+        std::cout << Eright << '\t' << Eleft <<'\t' << cright << '\t' << cleft
+                  << '\n';
+        assert(Eleft > 0);
+        assert(Eright > 0);
+    }
+    T.tleft = (0.666 * Eleft); // 1.301e-23);
+    T.tright = (0.666 * Eright); // 1.301e-23);
+
+    return T;
 }
 
 // This performs our MD simulation with a vector of interactions
@@ -483,19 +566,19 @@ std::vector<Interaction> make_list(const std::vector<Particle> &curr_data,
 // UNCHECKED -- CERTAINLY BUG => infinite loop
 void simulate(std::vector<Interaction> &interactions, 
               std::vector<Particle> &curr_data, 
-              double box_length, int pnum,
+              double box_length, int pnum, double velavg,
               double timeres, std::ofstream &output){
 
     std::vector <int> teract(2);
     double del_x, del_y, del_z, J_x, J_y, J_z, J_tot, rtot, sigma, mass_tot;
     double del_vx, del_vy, del_vz, del_vtot, simtime = 0, tdiff;
     double timestep = 0, excess, first;
-    int on = 1, count = 0, flag = 0;
+    int on = 90, count = 0, flag = 0;
     Particle temp = curr_data[on];
 
     // Note that these are all defined in the material linked in README
     // Step 1
-    double half_time = 10 * interactions[80].rtime, final_time = 2 * half_time;
+    double half_time = 10 * interactions[80].rtime, final_time = 4 * half_time;
 
     while ( simtime < final_time ){
  
@@ -565,7 +648,9 @@ void simulate(std::vector<Interaction> &interactions,
                << temp.pos_y << '\t'
                << temp.pos_z << '\t'
                << temp.vel_x << '\t'
-               << temp.vel_y << '\t' << temp.vel_z
+               << temp.vel_y << '\t' << temp.vel_z << '\t'
+               << interactions[0].T.tright << '\t'
+               << interactions[0].T.tleft 
                << '\n';
 
         // simtime has yet to be updated, so we are running until our timestep
@@ -588,7 +673,9 @@ void simulate(std::vector<Interaction> &interactions,
                        << temp.pos_y << '\t'
                        << temp.pos_z << '\t'
                        << temp.vel_x << '\t'
-                       << temp.vel_y << '\t' << temp.vel_z
+                       << temp.vel_y << '\t' << temp.vel_z << '\t'
+                       << interactions[0].T.tright << '\t'
+                       << interactions[0].T.tleft 
                        << '\n';
 
             }
@@ -603,7 +690,9 @@ void simulate(std::vector<Interaction> &interactions,
                        << temp.pos_y << '\t'
                        << temp.pos_z << '\t'
                        << temp.vel_x << '\t'
-                       << temp.vel_y << '\t' << temp.vel_z
+                       << temp.vel_y << '\t' << temp.vel_z << '\t'
+                       << interactions[0].T.tright << '\t'
+                       << interactions[0].T.tleft 
                        << '\n';
  
             }
@@ -804,9 +893,9 @@ void simulate(std::vector<Interaction> &interactions,
 
         // Step 3 -- update list; TODO
         // UNCHECKED
-        interactions = make_list(curr_data, box_length, pnum,
+        interactions = make_list(curr_data, box_length, pnum, velavg,
                                  teract, flag, interactions);
-        
+
 /*
         for (const auto &it : interactions){
             std::cout << it.rtime << std::endl;
