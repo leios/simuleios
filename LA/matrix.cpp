@@ -17,18 +17,6 @@
 
 const int n = 2;
 
-/*
-// struct for array
-struct matrix2d{
-    std::array<std::array<double, n>, n> matrix;
-};
-
-// struct for ev, trace
-struct ev{
-    std::array<double, n> value;
-};
-*/
-
 // finds trace
 double trace(std::array<std::array<double, n>, n> matrix);
 
@@ -52,6 +40,7 @@ int main(){
 
     std::array<double, 2> value = eigen(matrix);
     std::cout << value[0] << '\t' << value[1] << '\n';
+
 }
 
 /*----------------------------------------------------------------------------//
