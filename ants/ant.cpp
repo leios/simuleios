@@ -25,7 +25,7 @@ struct coord{
 struct ant{
     coord pos;
     std::vector<coord> phepath, antpath;
-    int step;
+    int step, phenum, pernum;
 };
 
 struct grid{
@@ -35,9 +35,7 @@ struct grid{
 
 // Functions for ant movement
 // Chooses step
-ant step1(ant curr, grid landscape, coord spawn_point);
-
-ant step(ant curr, grid landscape, coord spawn_point);
+ant step(ant curr, grid landscape, coord spawn_point, int gen_flag);
 
 // Generates ants
 std::vector <ant> gen_ants(coord spawn_point);
@@ -57,7 +55,7 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // Chooses step
-ant step1(ant curr, grid landscape, coord spawn_point){
+ant step(ant curr, grid landscape, coord spawn_point, int gen_flag){
 
     coord next_step[3];
     coord up, down, left, right, next;
@@ -123,14 +121,32 @@ ant step1(ant curr, grid landscape, coord spawn_point){
     int seed = rd();
     static std::mt19937 gen(seed);
 
-    std::uniform_int_distribution<int> ant_distribution(0,3);
+    if (gen_flag == 0){
+        std::uniform_int_distribution<int> ant_distribution(0,3);
 
-    next = next_step[ant_distribution(gen)];
+        next = next_step[ant_distribution(gen)];
 
-    curr.antpath.push_back(curr.pos);
-    curr.pos = next;
+        curr.antpath.push_back(curr.pos);
+        curr.pos = next;
+    }
+
+// WORKING ON THIS TOMORROW
+/*
+    else{
+
+        double prob = curr.pernum / curr.phenum;
+        int choice;
+        std::uniform_real_distribution<double> ant_distribution(0,1);
+
+        next = next_step[choice];
+
+        curr.antpath.push_back(curr.pos);
+        curr.pos = next;
+
+    }
 
     return curr;
+*/
 
 }
 

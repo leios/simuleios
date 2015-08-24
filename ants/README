@@ -1,0 +1,9 @@
+This code intends to find the shortest path to a goal with some sort of 
+ant-like algorithm. The idea is that ants find the shortest path by step
+following pheremone trails and step counting. That's precisely what we are going
+to do!
+
+Each ant has a probability of random walks and following a pre-set trail.
+
+compiled with: g++ ant.cpp -std=c++11
+
