@@ -145,8 +145,9 @@ ant step(ant curr, grid landscape, coord spawn_point, int gen_flag){
 
     }
 
-    return curr;
 */
+    return curr;
+
 
 }
 
