@@ -6,6 +6,7 @@
 *
 *-----------------------------------------------------------------------------*/
 
+#include <array>
 #include <iostream>
 #include <vector>
 #include <random>
@@ -13,6 +14,9 @@
 /*----------------------------------------------------------------------------//
 * STRUCTS
 *-----------------------------------------------------------------------------*/
+
+template <typename T, size_t rows, size_t cols>
+using array2d = std::array<std::array<T, cols>, rows>;
 
 // grid size
 const int n = 5;
@@ -22,6 +26,14 @@ struct coord{
     int x, y;
 };
 
+inline bool operator==(const coord& lhs, const coord& rhs) {
+    return lhs.x == rhs.x && lhs.y == rhs.y;
+}
+
+inline bool operator!=(const coord& lhs, const coord& rhs) {
+    return !(lhs == rhs);
+}
+
 struct ant{
     coord pos;
     std::vector<coord> phepath, antpath;
@@ -29,7 +41,7 @@ struct ant{
 };
 
 struct grid{
-    bool wall[n][n];
+    array2d<bool, n, n> wall;
     coord prize;
 };
 
@@ -38,10 +50,10 @@ struct grid{
 ant step(ant curr, grid landscape, coord spawn_point, int gen_flag);
 
 // Generates ants
-std::vector <ant> gen_ants(coord spawn_point);
+std::vector<ant> gen_ants(coord spawn_point);
 
 // Moves simulation every timestep
-std::vector <ant> move(std::vector <ant> ants, grid landscape);
+std::vector<ant> move(std::vector <ant> ants, grid landscape);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -66,59 +78,33 @@ ant step(ant curr, grid landscape, coord spawn_point, int gen_flag){
     left.x = curr.pos.x - 1;    left.y = curr.pos.y;
     right.x = curr.pos.x + 1;   right.y = curr.pos.y;
 
+    coord last = curr.antpath.back();
     // determine possible movement
-    for (int i = 0; i < 4; i++){
-        switch(i){
-        // up case
-        case 0:
-            if (up.x == curr.antpath.back().x &&
-                up.y == curr.antpath.back().y){
-            }
-            else{
-                next_step[pcount] = up;
-                pcount++;
-            }
-            break;
+    // up case
+    if (last != up) {
+        next_step[pcount] = up;
+        pcount++;
+    }
 
-        // down case
-        case 1:
-            if (down.x == curr.antpath.back().x &&
-                down.y == curr.antpath.back().y){
-            }
-            else{
-                next_step[pcount] = down;
-                pcount++;
-            }
-            break;
+    // down case
+    if (last != down) {
+        next_step[pcount] = down;
+        pcount++;
+    }
 
-        // left case
-        case 2:
-            if (left.x == curr.antpath.back().x &&
-                left.y == curr.antpath.back().y){
-            }
-            else{
-                next_step[pcount] = left;
-                pcount++;
-            }
-            break;
+    if (last != left) {
+        next_step[pcount] = left;
+        pcount++;
+    }
 
-        // right case
-        case 3:
-            if (right.x == curr.antpath.back().x &&
-                right.y == curr.antpath.back().y){
-            }
-            else{
-                next_step[pcount] = right;
-                pcount++;
-            }
-            break;
-
-        }
-
+    // right case
+    if (last != right) {
+        next_step[pcount] = right;
+        pcount++;
     }
 
     static std::random_device rd;
-    int seed = rd();
+    auto seed = rd();
     static std::mt19937 gen(seed);
 
     if (gen_flag == 0){
