@@ -84,7 +84,7 @@ int main(){
     spawn.y = 0;
 
     // defining misc characters
-    int final_time = 10;
+    int final_time = 100;
     int pernum = 10;
 
     move(ants, landscape, spawn, pernum, final_time, output);
@@ -125,7 +125,7 @@ ant step(ant curr, grid landscape, int gen_flag){
     // determine possible movement
     // up case
     if (last != up) {
-        if (landscape.wall[up.x][up.y] == 0 && up.y < n){
+        if (up.y < n && landscape.wall[up.x][up.y] == 0){
             next_step[pcount] = up;
             pcount++;
         }
@@ -133,23 +133,23 @@ ant step(ant curr, grid landscape, int gen_flag){
 
     // down case
     if (last != down) {
-        if (landscape.wall[down.x][down.y] == 0 && down.y > 0){
-            next_step[pcount] = up;
+        if (down.y > 0 && landscape.wall[down.x][down.y] == 0){
+            next_step[pcount] = down;
             pcount++;
         }
     }
 
     if (last != left) {
-        if (landscape.wall[left.x][left.y] == 0 && left.x > 0){
-            next_step[pcount] = up;
+        if (left.x > 0 && landscape.wall[left.x][left.y] == 0){
+            next_step[pcount] = left;
             pcount++;
         }
     }
 
     // right case
     if (last != right) {
-        if (landscape.wall[right.x][right.y] == 0 && right.x < n){
-            next_step[pcount] = up;
+        if (right.x < n && landscape.wall[right.x][right.y] == 0){
+            next_step[pcount] = right;
             pcount++;
         }
     }
@@ -166,6 +166,7 @@ ant step(ant curr, grid landscape, int gen_flag){
         curr.antpath.push_back(curr.pos);
         curr.pos = next;
     }
+
     else{
 
         double prob = curr.pernum / curr.phenum, aprob[4], rn, psum = 0;
