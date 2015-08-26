@@ -10,6 +10,7 @@
 #include <iostream>
 #include <vector>
 #include <random>
+#include <fstream>
 
 /*----------------------------------------------------------------------------//
 * STRUCTS
@@ -40,7 +41,7 @@ struct ant{
     array2d<bool, n, n> phetus;
     coord pos;
     std::vector<coord> phepath, antpath;
-    int step, phenum, pernum;
+    int stepnum, phenum, pernum;
 };
 
 struct grid{
@@ -50,19 +51,46 @@ struct grid{
 
 // Functions for ant movement
 // Chooses step
-ant step(ant curr, grid landscape, coord spawn_point, int gen_flag);
+ant step(ant curr, grid landscape, int gen_flag);
 
 // Generates ants
-std::vector<ant> gen_ants(coord spawn_point);
+std::vector<ant> gen_ants(std::vector<ant> ants, ant plate);
+
+// Changes template ant
+ant plate_toss(ant winner);
 
 // Moves simulation every timestep
-std::vector<ant> move(std::vector <ant> ants, grid landscape);
+std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
+                      int pernum, int final_time, std::ofstream &output);
 
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
 
 int main(){
+
+    // defining output file
+    std::ofstream output("out.dat", std::ofstream::out);
+
+    // defining initial ant vector and grid
+    std::vector<ant> ants;
+    grid landscape;
+    landscape.wall = {};
+    landscape.prize.x = n;   landscape.prize.y = n;
+
+    // defining spawn point
+    coord spawn;
+    spawn.x = n; 
+    spawn.y = 0;
+
+    // defining misc characters
+    int final_time = 10;
+    int pernum = 10;
+
+    move(ants, landscape, spawn, pernum, final_time, output);
+
+    //output.close();
+
 }
 
 /*----------------------------------------------------------------------------//
@@ -70,7 +98,7 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // Chooses step
-ant step(ant curr, grid landscape, coord spawn_point, int gen_flag){
+ant step(ant curr, grid landscape, int gen_flag){
 
     coord next_step[3];
     coord up, down, left, right, next;
@@ -81,7 +109,17 @@ ant step(ant curr, grid landscape, coord spawn_point, int gen_flag){
     left.x = curr.pos.x - 1;    left.y = curr.pos.y;
     right.x = curr.pos.x + 1;   right.y = curr.pos.y;
 
-    coord last = curr.antpath.back();
+    std::cout << up.x << '\n' << up.y << '\n';
+
+    coord last;
+    if (curr.stepnum == 0){
+        last.x = -1;
+        last.y = -1;
+    }
+    else{
+        last = curr.antpath.back();
+    }
+
     // determine possible movement
     // up case
     if (last != up) {
@@ -168,9 +206,101 @@ ant step(ant curr, grid landscape, coord spawn_point, int gen_flag){
         curr.pos = next;
 
     }
+    curr.stepnum++;
 
     return curr;
-
-
 }
 
+// Generates ants
+std::vector<ant> gen_ants(std::vector<ant> ants, ant plate){
+    ant curr;
+    curr = plate;
+
+    ants.push_back(curr);
+
+    return ants;
+}
+
+// Changes template ant
+ant plate_toss(ant winner){
+
+    ant plate = winner;
+    plate.phenum = winner.stepnum;
+    plate.stepnum = 0;
+
+    // generate a new phetus
+    plate.phetus = {};
+
+    for (size_t i = 0; i < winner.antpath.size(); i++){
+        plate.phetus[winner.antpath[i].x][winner.antpath[i].y] = 1;
+    }
+
+    plate.antpath = {};
+
+    return plate;
+}
+
+// Moves simulation every timestep
+// step 1: create ants
+// step 2: move ants
+// step 3: profit?
+//         redefine all paths = to shortest path
+std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
+                      int pernum, int final_time, std::ofstream &output){
+
+    std::vector<int> killlist;
+    // Time loop
+
+    // setting template for first generate
+    ant plate;
+
+    plate.pos.x = spawn.x;
+    plate.pos.y = spawn.y;
+    plate.stepnum = 0;
+    plate.phenum = n*n;
+    plate.phetus = {};
+
+    // to be defined later
+    plate.pernum = pernum;
+
+/*
+    // define walls and prize at random spot
+    grid landscape;
+    landscape.wall = {};
+    landscape.prize.x = n;   landscape.prize.y = n;
+*/
+    
+    
+    for (size_t i = 0; i < final_time; i++){
+        std::cout << i << '\n';
+        int flag = 0;
+        // step 1: generate ant
+        ants = gen_ants(ants, plate);
+
+        // step 2: Move ants
+        for (size_t j = 0; j < ants.size(); j++){
+            ants[j] = step(ants[j], landscape, flag);
+            if (ants[j].stepnum > ants[j].phenum){
+                killlist.push_back(j);
+            }
+
+            if (ants[j].pos.x == landscape.prize.x &&
+                ants[j].pos.y == landscape.prize.y){
+                plate = plate_toss(ants[j]);
+            }
+
+        }
+
+        for (size_t k = 0; k < killlist.size(); k++){
+            ants.erase(ants.begin() + killlist[k]);
+        }
+
+        for (size_t l = 0; l < ants[0].phepath.size(); l++){
+            output << ants[0].phepath[l].x << '\t' 
+                   << ants[0].phepath[l].y << '\n';
+        }
+        output << '\n' << '\n';
+    }
+
+    return ants;
+}
