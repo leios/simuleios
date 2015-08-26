@@ -80,7 +80,7 @@ int main(){
 
     // defining spawn point
     coord spawn;
-    spawn.x = n; 
+    spawn.x = n - 1; 
     spawn.y = 0;
 
     // defining misc characters
@@ -125,7 +125,7 @@ ant step(ant curr, grid landscape, int gen_flag){
     // determine possible movement
     // up case
     if (last != up) {
-        if (landscape.wall[up.x][up.y] == 0 && up.y <= n){
+        if (landscape.wall[up.x][up.y] == 0 && up.y < n){
             next_step[pcount] = up;
             pcount++;
         }
@@ -133,14 +133,14 @@ ant step(ant curr, grid landscape, int gen_flag){
 
     // down case
     if (last != down) {
-        if (landscape.wall[down.x][down.y] == 0 && down.y >= 0){
+        if (landscape.wall[down.x][down.y] == 0 && down.y > 0){
             next_step[pcount] = up;
             pcount++;
         }
     }
 
     if (last != left) {
-        if (landscape.wall[left.x][left.y] == 0 && left.x >= 0){
+        if (landscape.wall[left.x][left.y] == 0 && left.x > 0){
             next_step[pcount] = up;
             pcount++;
         }
@@ -148,7 +148,7 @@ ant step(ant curr, grid landscape, int gen_flag){
 
     // right case
     if (last != right) {
-        if (landscape.wall[right.x][right.y] == 0 && right.x <= n){
+        if (landscape.wall[right.x][right.y] == 0 && right.x < n){
             next_step[pcount] = up;
             pcount++;
         }
@@ -159,14 +159,13 @@ ant step(ant curr, grid landscape, int gen_flag){
     static std::mt19937 gen(seed);
 
     if (gen_flag == 0 && curr.phetus[curr.pos.x][curr.pos.y] == 0){
-        std::uniform_int_distribution<int> ant_distribution(0,pcount);
+        std::uniform_int_distribution<int> ant_distribution(0,pcount - 1);
 
         next = next_step[ant_distribution(gen)];
 
         curr.antpath.push_back(curr.pos);
         curr.pos = next;
     }
-
     else{
 
         double prob = curr.pernum / curr.phenum, aprob[4], rn, psum = 0;
@@ -208,6 +207,7 @@ ant step(ant curr, grid landscape, int gen_flag){
         curr.pos = next;
 
     }
+
     curr.stepnum++;
 
     return curr;
