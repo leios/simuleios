@@ -11,6 +11,7 @@
 #include <vector>
 #include <random>
 #include <fstream>
+#include <algorithm>
 
 /*----------------------------------------------------------------------------//
 * STRUCTS
@@ -289,17 +290,27 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
             if (ants[j].pos.x == landscape.prize.x &&
                 ants[j].pos.y == landscape.prize.y){
                 plate = plate_toss(ants[j]);
+                flag = 1;
             }
 
         }
 
+        std::sort(std::begin(killlist), std::end(killlist),
+                  [](int &dum1, int &dum2)
+                     {return dum1 > dum2;});
+
+/*
+        std::cout << "size: " << killlist.size() << '\n';
         for (size_t k = 0; k < killlist.size(); k++){
             ants.erase(ants.begin() + killlist[k]);
         }
+*/
 
-        for (size_t l = 0; l < ants[0].phepath.size(); l++){
-            output << ants[0].phepath[l].x << '\t' 
-                   << ants[0].phepath[l].y << '\n';
+        if (flag == 1){
+            for (size_t l = 0; l < ants[0].phepath.size(); l++){
+                output << ants[0].phepath[l].x << '\t' 
+                       << ants[0].phepath[l].y << '\n';
+            }
         }
         output << '\n' << '\n';
     }
