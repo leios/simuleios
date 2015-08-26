@@ -100,16 +100,18 @@ int main(){
 // Chooses step
 ant step(ant curr, grid landscape, int gen_flag){
 
-    coord next_step[3];
+    coord next_step[4];
     coord up, down, left, right, next;
     int pcount = 0;
+
+    std::cout << curr.pos.x << '\t' << curr.pos.y << '\n' << '\n';
 
     up.x = curr.pos.x;          up.y = curr.pos.y + 1;
     down.x = curr.pos.x;        down.y = curr.pos.y - 1;
     left.x = curr.pos.x - 1;    left.y = curr.pos.y;
     right.x = curr.pos.x + 1;   right.y = curr.pos.y;
 
-    std::cout << up.x << '\n' << up.y << '\n';
+    //std::cout << up.x << '\t' << up.y << '\n';
 
     coord last;
     if (curr.stepnum == 0){
@@ -123,7 +125,7 @@ ant step(ant curr, grid landscape, int gen_flag){
     // determine possible movement
     // up case
     if (last != up) {
-        if (landscape.wall[up.x][up.y] == 0){
+        if (landscape.wall[up.x][up.y] == 0 && up.y <= n){
             next_step[pcount] = up;
             pcount++;
         }
@@ -131,14 +133,14 @@ ant step(ant curr, grid landscape, int gen_flag){
 
     // down case
     if (last != down) {
-        if (landscape.wall[down.x][down.y] == 0){
+        if (landscape.wall[down.x][down.y] == 0 && down.y >= 0){
             next_step[pcount] = up;
             pcount++;
         }
     }
 
     if (last != left) {
-        if (landscape.wall[left.x][left.y] == 0){
+        if (landscape.wall[left.x][left.y] == 0 && left.x >= 0){
             next_step[pcount] = up;
             pcount++;
         }
@@ -146,7 +148,7 @@ ant step(ant curr, grid landscape, int gen_flag){
 
     // right case
     if (last != right) {
-        if (landscape.wall[right.x][right.y] == 0){
+        if (landscape.wall[right.x][right.y] == 0 && right.x <= n){
             next_step[pcount] = up;
             pcount++;
         }
@@ -167,7 +169,7 @@ ant step(ant curr, grid landscape, int gen_flag){
 
     else{
 
-        double prob = curr.pernum / curr.phenum, aprob[pcount], rn, psum = 0;
+        double prob = curr.pernum / curr.phenum, aprob[4], rn, psum = 0;
         int choice = -1, cthulu;
         std::uniform_real_distribution<double> ant_distribution(0,1);
 
@@ -249,7 +251,6 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
                       int pernum, int final_time, std::ofstream &output){
 
     std::vector<int> killlist;
-    // Time loop
 
     // setting template for first generate
     ant plate;
