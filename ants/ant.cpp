@@ -25,7 +25,7 @@ struct coord{
     int x, y;
 };
 
-// Template for 2d boolean arrays 
+// Template for 2d boolean arrays
 template <typename T, size_t rows, size_t cols>
 using array2d = std::array<std::array<T, cols>, rows>;
 
@@ -81,7 +81,7 @@ int main(){
 
     // defining spawn point
     coord spawn;
-    spawn.x = n - 1; 
+    spawn.x = n - 1;
     spawn.y = 0;
 
     // defining misc characters
@@ -272,8 +272,8 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
     landscape.wall = {};
     landscape.prize.x = n;   landscape.prize.y = n;
 */
-    
-    
+
+
     for (size_t i = 0; i < final_time; i++){
         std::cout << i << '\n';
         int flag = 0;
@@ -295,19 +295,17 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
 
         }
 
-        std::sort(std::begin(killlist), std::end(killlist),
-                  [](int &dum1, int &dum2)
-                     {return dum1 > dum2;});
+        std::reverse(std::begin(killlist), std::end(killlist));
 
         std::cout << "size: " << killlist.size() << '\n';
         for (size_t k = 0; k < killlist.size(); k++){
             ants.erase(ants.begin() + killlist[k]);
         }
-        killlist = {};
+        killlist.clear();
 
         if (flag == 1){
             for (size_t l = 0; l < ants[0].phepath.size(); l++){
-                output << ants[0].phepath[l].x << '\t' 
+                output << ants[0].phepath[l].x << '\t'
                        << ants[0].phepath[l].y << '\n';
             }
         }
