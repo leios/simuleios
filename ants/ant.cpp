@@ -42,7 +42,7 @@ struct ant{
     array2d<bool, n, n> phetus;
     coord pos;
     std::vector<coord> phepath, antpath;
-    int stepnum, phenum, pernum;
+    int stepnum, phenum, pernum, flag;
 };
 
 struct grid{
@@ -52,7 +52,7 @@ struct grid{
 
 // Functions for ant movement
 // Chooses step
-ant step(ant curr, grid landscape, int gen_flag);
+ant step(ant curr, grid landscape);
 
 // Generates ants
 std::vector<ant> gen_ants(std::vector<ant> ants, ant plate);
@@ -77,7 +77,7 @@ int main(){
     std::vector<ant> ants;
     grid landscape;
     landscape.wall = {};
-    landscape.prize.x = n;   landscape.prize.y = n;
+    landscape.prize.x = 1;   landscape.prize.y = n - 1;
 
     // defining spawn point
     coord spawn;
@@ -90,7 +90,7 @@ int main(){
 
     move(ants, landscape, spawn, pernum, final_time, output);
 
-    //output.close();
+    output.close();
 
 }
 
@@ -99,13 +99,13 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // Chooses step
-ant step(ant curr, grid landscape, int gen_flag){
+ant step(ant curr, grid landscape){
 
     coord next_step[4];
     coord up, down, left, right, next;
     int pcount = 0;
 
-    std::cout << curr.pos.x << '\t' << curr.pos.y << '\n' << '\n';
+    //std::cout << curr.pos.x << '\t' << curr.pos.y << '\n' << '\n';
 
     up.x = curr.pos.x;          up.y = curr.pos.y + 1;
     down.x = curr.pos.x;        down.y = curr.pos.y - 1;
@@ -159,7 +159,7 @@ ant step(ant curr, grid landscape, int gen_flag){
     auto seed = rd();
     static std::mt19937 gen(seed);
 
-    if (gen_flag == 0 && curr.phetus[curr.pos.x][curr.pos.y] == 0){
+    if (curr.flag == 0 && curr.phetus[curr.pos.x][curr.pos.y] == 0){
         std::uniform_int_distribution<int> ant_distribution(0,pcount - 1);
 
         next = next_step[ant_distribution(gen)];
@@ -171,7 +171,7 @@ ant step(ant curr, grid landscape, int gen_flag){
     else{
 
         double prob = curr.pernum / curr.phenum, aprob[4], rn, psum = 0;
-        int choice = -1, cthulu;
+        int choice = -1, cthulu = 0;
         std::uniform_real_distribution<double> ant_distribution(0,1);
 
         // search through phepath to find ant's curr location
@@ -187,8 +187,8 @@ ant step(ant curr, grid landscape, int gen_flag){
         rn = ant_ddist(gen);
 
         for (size_t q = 0; q < pcount; q++){
-            if (next_step[q].x == curr.phepath[cthulu +1].x &&
-                next_step[q].y == curr.phepath[cthulu +1].y){
+            if (next_step[q].x == curr.phepath[cthulu].x &&
+                next_step[q].y == curr.phepath[cthulu].y){
                 aprob[q] = prob;
             }
             else{
@@ -231,6 +231,7 @@ ant plate_toss(ant winner){
     ant plate = winner;
     plate.phenum = winner.stepnum;
     plate.stepnum = 0;
+    plate.phepath = winner.antpath;
 
     // generate a new phetus
     plate.phetus = {};
@@ -253,6 +254,7 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
                       int pernum, int final_time, std::ofstream &output){
 
     std::vector<int> killlist;
+    int flag_tot = 0;
 
     // setting template for first generate
     ant plate;
@@ -262,6 +264,7 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
     plate.stepnum = 0;
     plate.phenum = n*n;
     plate.phetus = {};
+    plate.flag = 0;
 
     // to be defined later
     plate.pernum = pernum;
@@ -275,14 +278,14 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
 
 
     for (size_t i = 0; i < final_time; i++){
-        std::cout << i << '\n';
+        //std::cout << i << '\n';
         int flag = 0;
         // step 1: generate ant
         ants = gen_ants(ants, plate);
 
         // step 2: Move ants
         for (size_t j = 0; j < ants.size(); j++){
-            ants[j] = step(ants[j], landscape, flag);
+            ants[j] = step(ants[j], landscape);
             if (ants[j].stepnum > ants[j].phenum){
                 killlist.push_back(j);
             }
@@ -290,7 +293,8 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
             if (ants[j].pos.x == landscape.prize.x &&
                 ants[j].pos.y == landscape.prize.y){
                 plate = plate_toss(ants[j]);
-                flag = 1;
+                plate.flag = 1;
+                flag_tot = 1;
             }
 
         }
@@ -303,13 +307,22 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
         }
         killlist.clear();
 
-        if (flag == 1){
+/*
+        if (flag_tot == 0){
+            for (size_t l = 0; l < ants[0].antpath.size(); l++){
+                output << ants[0].antpath[l].x << '\t'
+                          << ants[0].antpath[l].y << '\n';
+            }
+            output << '\n' << '\n';
+        }
+*/
+
+        if (flag_tot == 1){
             for (size_t l = 0; l < ants[0].phepath.size(); l++){
-                output << ants[0].phepath[l].x << '\t'
-                       << ants[0].phepath[l].y << '\n';
+                std::cout << ants[0].phepath[l].x << '\t'
+                          << ants[0].phepath[l].y << '\n';
             }
         }
-        output << '\n' << '\n';
     }
 
     return ants;
