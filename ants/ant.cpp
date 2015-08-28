@@ -234,6 +234,7 @@ ant plate_toss(ant winner, coord spawn){
     plate.phenum = winner.stepnum;
     plate.stepnum = 0;
     plate.phepath = winner.antpath;
+    plate.phepath.push_back(winner.pos);
 
     // generate a new phetus
     plate.phetus = {};
@@ -288,7 +289,7 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
         // step 2: Move ants
         for (size_t j = 0; j < ants.size(); j++){
             ants[j] = step(ants[j], landscape);
-            if (ants[j].stepnum > ants[j].phenum){
+            if (ants[j].stepnum >= ants[j].phenum){
                 killlist.push_back(j);
             }
 
