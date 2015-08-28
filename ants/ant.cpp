@@ -58,7 +58,7 @@ ant step(ant curr, grid landscape);
 std::vector<ant> gen_ants(std::vector<ant> ants, ant plate);
 
 // Changes template ant
-ant plate_toss(ant winner);
+ant plate_toss(ant winner, coord spawn);
 
 // Moves simulation every timestep
 std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
@@ -85,7 +85,7 @@ int main(){
     spawn.y = 0;
 
     // defining misc characters
-    int final_time = 100;
+    int final_time = 200;
     int pernum = 10;
 
     move(ants, landscape, spawn, pernum, final_time, output);
@@ -226,9 +226,11 @@ std::vector<ant> gen_ants(std::vector<ant> ants, ant plate){
 }
 
 // Changes template ant
-ant plate_toss(ant winner){
+ant plate_toss(ant winner, coord spawn){
 
-    ant plate = winner;
+    ant plate;
+    plate.pos.x = spawn.x;
+    plate.pos.y = spawn.y;
     plate.phenum = winner.stepnum;
     plate.stepnum = 0;
     plate.phepath = winner.antpath;
@@ -292,7 +294,7 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
 
             if (ants[j].pos.x == landscape.prize.x &&
                 ants[j].pos.y == landscape.prize.y){
-                plate = plate_toss(ants[j]);
+                plate = plate_toss(ants[j], spawn);
                 plate.flag = 1;
                 flag_tot = 1;
             }
@@ -319,9 +321,10 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
 
         if (flag_tot == 1){
             for (size_t l = 0; l < ants[0].phepath.size(); l++){
-                std::cout << ants[0].phepath[l].x << '\t'
+                output << ants[0].phepath[l].x << '\t'
                           << ants[0].phepath[l].y << '\n';
             }
+            output << '\n' << '\n';
         }
     }
 
