@@ -77,6 +77,11 @@ int main(){
     std::vector<ant> ants;
     grid landscape;
     landscape.wall = {};
+
+    for (size_t i = 1; i < n; i+= 2){
+        landscape.wall[3][i] = 1;
+    }
+
     landscape.prize.x = 1;   landscape.prize.y = n - 1;
 
     // defining spawn point
@@ -160,9 +165,15 @@ ant step(ant curr, grid landscape){
     static std::mt19937 gen(seed);
 
     if (curr.flag == 0 && curr.phetus[curr.pos.x][curr.pos.y] == 0){
-        std::uniform_int_distribution<int> ant_distribution(0,pcount - 1);
 
-        next = next_step[ant_distribution(gen)];
+        if (pcount >= 1){
+            std::uniform_int_distribution<int> ant_distribution(0,pcount - 1);
+
+            next = next_step[ant_distribution(gen)];
+        }
+        else{
+           next = next_step[0];
+        }
 
         curr.antpath.push_back(curr.pos);
         curr.pos = next;
