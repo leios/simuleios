@@ -110,7 +110,7 @@ ant step(ant curr, grid landscape){
     coord up, down, left, right, next;
     int pcount = 0;
 
-    //std::cout << curr.pos.x << '\t' << curr.pos.y << '\n' << '\n';
+    std::cout << curr.pos.x << '\t' << curr.pos.y << '\n' << '\n';
 
     up.x = curr.pos.x;          up.y = curr.pos.y + 1;
     down.x = curr.pos.x;        down.y = curr.pos.y - 1;
@@ -164,22 +164,23 @@ ant step(ant curr, grid landscape){
     auto seed = rd();
     static std::mt19937 gen(seed);
 
-    if (curr.flag == 0 && curr.phetus[curr.pos.x][curr.pos.y] == 0){
+    if (pcount > 1){
+    if (curr.flag == 0 || curr.phetus[curr.pos.x][curr.pos.y] == 0){
 
-        if (pcount >= 1){
-            std::uniform_int_distribution<int> ant_distribution(0,pcount - 1);
+        std::cout << "block 1" << '\n';
 
-            next = next_step[ant_distribution(gen)];
-        }
-        else{
-           next = next_step[0];
-        }
+        std::uniform_int_distribution<int> ant_distribution(0,pcount - 1);
+
+        next = next_step[ant_distribution(gen)];
 
         curr.antpath.push_back(curr.pos);
         curr.pos = next;
     }
 
+// BUG HERE, NOT COUNTING PHEPATH
     else{
+
+        std::cout << "block 2" << '\n';
 
         double prob = curr.pernum / curr.phenum, aprob[4], rn, psum = 0;
         int choice = -1, cthulu = 0;
@@ -197,16 +198,25 @@ ant step(ant curr, grid landscape){
 
         rn = ant_ddist(gen);
 
-        for (size_t q = 0; q < pcount; q++){
-            if (next_step[q].x == curr.phepath[cthulu].x &&
-                next_step[q].y == curr.phepath[cthulu].y){
+        std::cout << "rn is: " << rn << '\n';
+
+        for (int q = 0; q < pcount; q++){
+            if (cthulu + 1 < curr.phepath.size() &&
+                next_step[q].x == curr.phepath[cthulu + 1].x &&
+                next_step[q].y == curr.phepath[cthulu + 1].y){
                 aprob[q] = prob;
             }
             else{
-                aprob[q] = (1 - prob) / (pcount - 1);
+                if (pcount > 1){
+                    aprob[q] = (1.0 -  prob) / (pcount - 1);
+                }
+                else{
+                    aprob[q] = 1.0;
+                }
             }
 
             psum += aprob[q];
+            std::cout << " psum is: " << psum << '\t' << aprob[q] << '\n';
 
             if (rn < psum && choice < 0){
                 choice = q;
@@ -214,11 +224,29 @@ ant step(ant curr, grid landscape){
 
         }
 
+        std::cout << "I chose: " << choice << '\n';
+
         next = next_step[choice];
 
         curr.antpath.push_back(curr.pos);
         curr.pos = next;
 
+    }
+    }
+    else if(pcount == 1){
+        std::cout << "block else" << '\n';
+
+        std::cout << pcount << '\t' << next_step[0].x << '\t' << next_step[0].y 
+        << '\n';
+
+        next = next_step[0];
+
+        curr.antpath.push_back(curr.pos);
+        curr.pos = next;
+
+    }
+    else{
+        curr.antpath.push_back(curr.pos);
     }
 
     curr.stepnum++;
@@ -246,12 +274,13 @@ ant plate_toss(ant winner, coord spawn){
     plate.stepnum = 0;
     plate.phepath = winner.antpath;
     plate.phepath.push_back(winner.pos);
+    plate.flag = 1;
 
     // generate a new phetus
     plate.phetus = {};
 
-    for (size_t i = 0; i < winner.antpath.size(); i++){
-        plate.phetus[winner.antpath[i].x][winner.antpath[i].y] = 1;
+    for (size_t i = 0; i < plate.phepath.size(); i++){
+        plate.phetus[plate.phepath[i].x][plate.phepath[i].y] = 1;
     }
 
     plate.antpath = {};
@@ -307,7 +336,6 @@ std::vector<ant> move(std::vector <ant> ants, grid landscape, coord spawn,
             if (ants[j].pos.x == landscape.prize.x &&
                 ants[j].pos.y == landscape.prize.y){
                 plate = plate_toss(ants[j], spawn);
-                plate.flag = 1;
                 flag_tot = 1;
             }
 
