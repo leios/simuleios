@@ -16,7 +16,7 @@
 *-----------------------------------------------------------------------------*/
 
 // constants
-const int lightnum = 10, time_res = 100;
+const int lightnum = 10, time_res = 200;
 
 // Struct for space
 struct dimensions{
@@ -72,7 +72,7 @@ double check_n(double x, double y){
 
     double index;
 
-    if (x < 5){
+    if (x < 5 || x > 7){
         index = 1.0;
     }
     else{
@@ -89,10 +89,10 @@ light_rays light_gen(dimensions dim, double max_vel, double angle){
 
     // create rays
     for (size_t i = 0; i < lightnum; i++){
-        //ray_diagram.ray[i].x = (double)i * dim.y / lightnum;
-        //ray_diagram.ray[i].y = 0;
-        ray_diagram.ray[i].x = cos(angle);
-        ray_diagram.ray[i].y = sin(angle);
+        ray_diagram.ray[i].x = (double)i * dim.y / lightnum;
+        ray_diagram.ray[i].y = 0;
+        //ray_diagram.ray[i].y = cos(angle);
+        //ray_diagram.ray[i].x = sin(angle);
         ray_diagram.ray_vel[i].x = max_vel * cos(angle);
         ray_diagram.ray_vel[i].y = max_vel * sin(angle);
         ray_diagram.index[i] = check_n(ray_diagram.ray[i].x, 
@@ -119,13 +119,13 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
                 index_p = check_n(ray_diagram.ray[j].x,
                                   ray_diagram.ray[j].y);
 
-/*
                 theta = atan2(ray_diagram.ray_vel[j].y, 
                               ray_diagram.ray_vel[j].x);
                 theta_p = asin((ray_diagram.index[j] / index_p) * sin(theta));
                 ray_diagram.ray_vel[j].y = max_vel * sin(theta_p);
                 ray_diagram.ray_vel[j].x = max_vel * cos(theta_p);
-*/
+
+/*
                 iratio = ray_diagram.index[j] / index_p;
 
                 // The index of refraction normal vector is [1,0].
@@ -138,6 +138,7 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
                                            (1 - dotprod * dotprod)));
 
                 ray_diagram.ray_vel[j].x = iratio * ray_diagram.ray_vel[j].x;
+*/
                 ray_diagram.index[j] = index_p;
                 
             }
