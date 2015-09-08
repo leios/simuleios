@@ -58,6 +58,7 @@ int main(){
 
     pvec = propagate(pvec, 0.1, max_vel, output);
 
+    output << "\n \n5	0	0	0 \n5	5	0	0 \n";
 
 }
 
@@ -115,34 +116,37 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
             ray_diagram.ray[j].y += ray_diagram.ray_vel[j].y * step_size;
             if (ray_diagram.index[j] != 
                 check_n(ray_diagram.ray[j].x, ray_diagram.ray[j].y)){
-/*
                 index_p = check_n(ray_diagram.ray[j].x,
                                   ray_diagram.ray[j].y);
 
+/*
                 theta = atan2(ray_diagram.ray_vel[j].y, 
                               ray_diagram.ray_vel[j].x);
                 theta_p = asin((ray_diagram.index[j] / index_p) * sin(theta));
-                ray_diagram.ray_vel[j].x = max_vel * sin(theta_p);
-                ray_diagram.ray_vel[j].y = max_vel * cos(theta_p);
+                ray_diagram.ray_vel[j].y = max_vel * sin(theta_p);
+                ray_diagram.ray_vel[j].x = max_vel * cos(theta_p);
 */
                 iratio = ray_diagram.index[j] / index_p;
 
                 // The index of refraction normal vector is [1,0].
                 // Note that this must be updated for future videos!
-                dotprod = -(ray_diagram.ray_vel[j].x);
+                dotprod = (ray_diagram.ray_vel[j].x);
 
-                ray_diagram.ray_vel[j].x = iratio * ray_diagram.ray_vel[j].x +
+                ray_diagram.ray_vel[j].y = iratio * ray_diagram.ray_vel[j].y +
                                           (iratio * dotprod -
                                            sqrt(1 - iratio * iratio * 
                                            (1 - dotprod * dotprod)));
-                ray_diagram.ray_vel[j].y = iratio * ray_diagram.ray_vel[j].y;
 
+                ray_diagram.ray_vel[j].x = iratio * ray_diagram.ray_vel[j].x;
                 ray_diagram.index[j] = index_p;
                 
             }
 
         }
-        output << ray_diagram.ray[0].x << '\t' << ray_diagram.ray[0].y << '\n';
+
+        output << ray_diagram.ray[0].x << '\t' << ray_diagram.ray[0].y << '\t'
+               << ray_diagram.ray_vel[0].x << '\t' << ray_diagram.ray_vel[0].y
+               << '\n';
     }
 
     return ray_diagram;
