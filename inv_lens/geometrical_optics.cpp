@@ -8,7 +8,7 @@
 *-----------------------------------------------------------------------------*/
 
 #include <iostream>
-#include <math.h>
+#include <cmath>
 #include <fstream>
 
 /*----------------------------------------------------------------------------//
@@ -76,6 +76,7 @@ double check_n(double x, double y){
         index = 1.0;
     }
     else{
+        //index = (x - 4);
         index = 1.4;
     }
 
@@ -119,28 +120,78 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
                 index_p = check_n(ray_diagram.ray[j].x,
                                   ray_diagram.ray[j].y);
 
+                std::cout << index_p << '\n';
+
                 theta = atan2(ray_diagram.ray_vel[j].y, 
                               ray_diagram.ray_vel[j].x);
                 theta_p = asin((ray_diagram.index[j] / index_p) * sin(theta));
                 ray_diagram.ray_vel[j].y = max_vel * sin(theta_p);
                 ray_diagram.ray_vel[j].x = max_vel * cos(theta_p);
-
 /*
-                iratio = ray_diagram.index[j] / index_p;
+                double eta, NdotI;
+
+                // Index of refraction
+                eta = ray_diagram.index[j] / index_p;
+				
+                // Ray direction vector, normalized
+                double mag = std::sqrt(ray_diagram.ray_vel[j].x * 
+                                       ray_diagram.ray_vel[j].x +
+                                       ray_diagram.ray_vel[j].y * 
+                                       ray_diagram.ray_vel[j].y);
+
+                double Ix = ray_diagram.ray_vel[j].x;
+                double Iy = ray_diagram.ray_vel[j].y;
 
                 // The index of refraction normal vector is [1,0].
-                // Note that this must be updated for future videos!
-                dotprod = (ray_diagram.ray_vel[j].x);
+                NdotI = -Ix;
 
-                ray_diagram.ray_vel[j].y = iratio * ray_diagram.ray_vel[j].y +
-                                          (iratio * dotprod -
-                                           sqrt(1 - iratio * iratio * 
-                                           (1 - dotprod * dotprod)));
+                // Choose reflection or refraction, in a physically correct 
+                //model there would be all sorts of
+                // probability calculations and possibility to both reflect 
+                // and refract at once.
+                float k = 1.0 - eta * eta * (1.0 - NdotI * NdotI);
+                    if (k < 0.0)
+                    {
+                    // total internal reflection, reflect here
+                    }
+                    else
+                    {
+                        // refraction
+                        // Normal = -1 in x dir
+                        ray_diagram.ray_vel[j].x = eta * Ix + 
+                                                  (eta * NdotI - std::sqrt(k)) 
+                                                   * -1.0; 
+                        // Normal = 0 in y dir
+                        ray_diagram.ray_vel[j].y = eta * Iy + 
+                                                  (eta * NdotI - std::sqrt(k)) 
+                                                   * 0.0;
+                    }
+*/
+/*
+                double r = ray_diagram.index[j] / index_p;
+                double mag = std::sqrt(ray_diagram.ray_vel[j].x * 
+                                       ray_diagram.ray_vel[j].x +
+                                       ray_diagram.ray_vel[j].y * 
+                                       ray_diagram.ray_vel[j].y); 
 
-                ray_diagram.ray_vel[j].x = iratio * ray_diagram.ray_vel[j].x;
+
+                double ix = ray_diagram.ray_vel[j].x / mag;
+                double iy = ray_diagram.ray_vel[j].y / mag;
+
+                // Normal: [-1, 0]
+                double c = -ix;
+
+                double k = 1.0 - r * r * (1.0 - c * c);
+
+                if (k < 0.0) {
+                    // Do whatever
+                } else {
+                    double k1 = std::sqrt(k);
+                    ray_diagram.ray_vel[j].x = r * ix - (r * c - k1);
+                    ray_diagram.ray_vel[j].y = r * iy;
+                }
 */
                 ray_diagram.index[j] = index_p;
-                
             }
 
         }
