@@ -77,8 +77,8 @@ double check_n(double x, double y){
         index = 1.0;
     }
     else{
-        index = (x - 3.0);
-        //index = 1.4;
+        //index = (x - 4.0);
+        index = 1.4;
     }
 
     return index;
@@ -122,54 +122,17 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
                                   ray_diagram.ray[j].y);
 
                 std::cout << index_p << '\t' << i << '\t' << j << '\n';
-                //assert(isnan(ray_diagram.index[j]));
 
+/*
+                // Non vector form
                 theta = atan2(ray_diagram.ray_vel[j].y, 
                               ray_diagram.ray_vel[j].x);
                 theta_p = asin((ray_diagram.index[j] / index_p) * sin(theta));
                 ray_diagram.ray_vel[j].y = max_vel * sin(theta_p);
                 ray_diagram.ray_vel[j].x = max_vel * cos(theta_p);
-/*
-                double eta, NdotI;
-
-                // Index of refraction
-                eta = ray_diagram.index[j] / index_p;
-				
-                // Ray direction vector, normalized
-                double mag = std::sqrt(ray_diagram.ray_vel[j].x * 
-                                       ray_diagram.ray_vel[j].x +
-                                       ray_diagram.ray_vel[j].y * 
-                                       ray_diagram.ray_vel[j].y);
-
-                double Ix = ray_diagram.ray_vel[j].x;
-                double Iy = ray_diagram.ray_vel[j].y;
-
-                // The index of refraction normal vector is [1,0].
-                NdotI = -Ix;
-
-                // Choose reflection or refraction, in a physically correct 
-                //model there would be all sorts of
-                // probability calculations and possibility to both reflect 
-                // and refract at once.
-                float k = 1.0 - eta * eta * (1.0 - NdotI * NdotI);
-                    if (k < 0.0)
-                    {
-                    // total internal reflection, reflect here
-                    }
-                    else
-                    {
-                        // refraction
-                        // Normal = -1 in x dir
-                        ray_diagram.ray_vel[j].x = eta * Ix + 
-                                                  (eta * NdotI - std::sqrt(k)) 
-                                                   * -1.0; 
-                        // Normal = 0 in y dir
-                        ray_diagram.ray_vel[j].y = eta * Iy + 
-                                                  (eta * NdotI - std::sqrt(k)) 
-                                                   * 0.0;
-                    }
 */
-/*
+
+                // Vector form -- So;ution by Gustorn!
                 double r = ray_diagram.index[j] / index_p;
                 double mag = std::sqrt(ray_diagram.ray_vel[j].x * 
                                        ray_diagram.ray_vel[j].x +
@@ -181,7 +144,7 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
                 double iy = ray_diagram.ray_vel[j].y / mag;
 
                 // Normal: [-1, 0]
-                double c = -ix;
+                double c = ix;
 
                 double k = 1.0 - r * r * (1.0 - c * c);
 
@@ -192,7 +155,6 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
                     ray_diagram.ray_vel[j].x = r * ix - (r * c - k1);
                     ray_diagram.ray_vel[j].y = r * iy;
                 }
-*/
                 ray_diagram.index[j] = index_p;
             }
 
