@@ -10,6 +10,7 @@
 #include <iostream>
 #include <cmath>
 #include <fstream>
+#include <cassert>
 
 /*----------------------------------------------------------------------------//
 * STRUCTS / FUNCTIONS
@@ -50,7 +51,7 @@ int main(){
     std::ofstream output("out.dat", std::ofstream::out);
 
     dimensions dim;
-    dim.x = 10;
+    dim.x = 4;
     dim.y = 10;
 
     double max_vel = 1;
@@ -76,8 +77,8 @@ double check_n(double x, double y){
         index = 1.0;
     }
     else{
-        //index = (x - 4);
-        index = 1.4;
+        index = (x - 3.0);
+        //index = 1.4;
     }
 
     return index;
@@ -90,7 +91,7 @@ light_rays light_gen(dimensions dim, double max_vel, double angle){
 
     // create rays
     for (size_t i = 0; i < lightnum; i++){
-        ray_diagram.ray[i].x = (double)i * dim.y / lightnum;
+        ray_diagram.ray[i].x = (double)i * dim.x / lightnum;
         ray_diagram.ray[i].y = 0;
         //ray_diagram.ray[i].y = cos(angle);
         //ray_diagram.ray[i].x = sin(angle);
@@ -120,7 +121,8 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
                 index_p = check_n(ray_diagram.ray[j].x,
                                   ray_diagram.ray[j].y);
 
-                std::cout << index_p << '\n';
+                std::cout << index_p << '\t' << i << '\t' << j << '\n';
+                //assert(isnan(ray_diagram.index[j]));
 
                 theta = atan2(ray_diagram.ray_vel[j].y, 
                               ray_diagram.ray_vel[j].x);
@@ -196,9 +198,13 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
 
         }
 
-        output << ray_diagram.ray[0].x << '\t' << ray_diagram.ray[0].y << '\t'
-               << ray_diagram.ray_vel[0].x << '\t' << ray_diagram.ray_vel[0].y
-               << '\n';
+        for (size_t q = 0; q < lightnum; q++){
+            output << ray_diagram.ray[q].x <<'\t'<< ray_diagram.ray[q].y << '\t'
+                   << ray_diagram.ray_vel[q].x <<'\t'<< ray_diagram.ray_vel[q].y
+                   << '\n';
+        }
+
+        output << '\n' << '\n';
     }
 
     return ray_diagram;
