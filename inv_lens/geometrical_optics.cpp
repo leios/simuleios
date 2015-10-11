@@ -5,6 +5,8 @@
 * Purpose: to simulate light going through a lens with a variable refractive 
 *          index. Not wave-like.
 *
+*   Notes: Compiles with g++ geometrical_optics.cpp -std=c++11
+*
 *-----------------------------------------------------------------------------*/
 
 #include <iostream>
@@ -32,14 +34,19 @@ struct light_rays{
 };
 
 // checks refractive index profile
-double check_n(double x, double y);
+double check_n(double x, double y, dimensions origin, double radius);
 
 // Generate light and refractive index profile
-light_rays light_gen(dimensions dim, double max_vel, double angle);
+light_rays light_gen(dimensions dim, double max_vel, double angle, 
+                     dimensions origin, double radius);
 
 // Propagate light through media
 light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
+                     dimensions origin, double radius,
                      std::ofstream &output);
+
+// Finds the c for later
+double find_c(double ix, double iy, dimensions origin, double radius);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -54,10 +61,17 @@ int main(){
     dim.x = 4;
     dim.y = 10;
 
-    double max_vel = 1;
-    light_rays pvec = light_gen(dim, max_vel, 0.523598776);
+    // origin of the sphere
+    dimensions origin;
+    origin.x = 5;
+    origin.y = 5;
 
-    pvec = propagate(pvec, 0.1, max_vel, output);
+    double radius = 5;
+
+    double max_vel = 1;
+    light_rays pvec = light_gen(dim, max_vel, 0.523598776, origin, radius);
+
+    pvec = propagate(pvec, 0.1, max_vel, origin, radius, output);
 
     output << "\n \n5	0	0	0 \n5	5	0	0 \n";
 
@@ -68,11 +82,22 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // checks refractive index profile
-double check_n(double x, double y){
+double check_n(double x, double y, dimensions origin, double radius){
     // check refractive index against a set profile
 
-    double index;
+    double index, diff;
 
+    diff = sqrt((x - origin.x) * (x - origin.x) 
+                + (y - origin.y) * (y - origin.y));
+
+    if (diff < radius){
+        index = 1.4;
+    }
+    else{
+        index = 1;
+    }
+
+/*
     if (x < 5 || x > 7){
         index = 1.0;
     }
@@ -80,12 +105,14 @@ double check_n(double x, double y){
         //index = (x - 4.0);
         index = 1.4;
     }
+*/
 
     return index;
 }
 
 // Generate light and refractive index profile
-light_rays light_gen(dimensions dim, double max_vel, double angle){
+light_rays light_gen(dimensions dim, double max_vel, double angle, 
+                     dimensions origin, double radius){
 
     light_rays ray_diagram;
 
@@ -98,7 +125,7 @@ light_rays light_gen(dimensions dim, double max_vel, double angle){
         ray_diagram.ray_vel[i].x = max_vel * cos(angle);
         ray_diagram.ray_vel[i].y = max_vel * sin(angle);
         ray_diagram.index[i] = check_n(ray_diagram.ray[i].x, 
-                                       ray_diagram.ray[i].y);
+                                       ray_diagram.ray[i].y, origin, radius);
     }
 
     return ray_diagram;
@@ -106,6 +133,7 @@ light_rays light_gen(dimensions dim, double max_vel, double angle){
 
 // Propagate light through media
 light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
+                     dimensions origin, double radius,
                      std::ofstream &output){
 
     double index_p, theta, theta_p;
@@ -117,9 +145,10 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
             ray_diagram.ray[j].x += ray_diagram.ray_vel[j].x * step_size; 
             ray_diagram.ray[j].y += ray_diagram.ray_vel[j].y * step_size;
             if (ray_diagram.index[j] != 
-                check_n(ray_diagram.ray[j].x, ray_diagram.ray[j].y)){
+                check_n(ray_diagram.ray[j].x, ray_diagram.ray[j].y, 
+                        origin, radius)){
                 index_p = check_n(ray_diagram.ray[j].x,
-                                  ray_diagram.ray[j].y);
+                                  ray_diagram.ray[j].y, origin, radius);
 
                 std::cout << index_p << '\t' << i << '\t' << j << '\n';
 
@@ -132,7 +161,7 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
                 ray_diagram.ray_vel[j].x = max_vel * cos(theta_p);
 */
 
-                // Vector form -- So;ution by Gustorn!
+                // Vector form -- Solution by Gustorn!
                 double r = ray_diagram.index[j] / index_p;
                 double mag = std::sqrt(ray_diagram.ray_vel[j].x * 
                                        ray_diagram.ray_vel[j].x +
@@ -143,8 +172,8 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
                 double ix = ray_diagram.ray_vel[j].x / mag;
                 double iy = ray_diagram.ray_vel[j].y / mag;
 
-                // Normal: [-1, 0]
-                double c = ix;
+                // c for later; Normal was: [-1, 0]
+                double c = find_c(ix, iy, origin, radius);
 
                 double k = 1.0 - r * r * (1.0 - c * c);
 
@@ -160,6 +189,12 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
 
         }
 
+/*
+        output << ray_diagram.ray[5].x <<'\t'<< ray_diagram.ray[5].y << '\t'
+               << ray_diagram.ray_vel[5].x <<'\t'<< ray_diagram.ray_vel[5].y
+               << '\n';
+*/
+
         for (size_t q = 0; q < lightnum; q++){
             output << ray_diagram.ray[q].x <<'\t'<< ray_diagram.ray[q].y << '\t'
                    << ray_diagram.ray_vel[q].x <<'\t'<< ray_diagram.ray_vel[q].y
@@ -170,5 +205,23 @@ light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
     }
 
     return ray_diagram;
+}
+
+// Finds the c for later
+double find_c(double ix, double iy, dimensions origin, double radius){
+
+    // Step 1: define normal vector
+    // In this case, the normal vector is just the direction from the radius
+    // of the sphere
+    double mag = sqrt((ix - origin.x) * (ix - origin.x)
+                      + (iy - origin.y) * (iy - origin.y));
+    double x, y;
+    x = (ix - origin.x) / mag;
+    y = (iy - origin.y) / mag;
+
+    // Step 2: simple dot product
+    double dot = -(ix * x + iy * y);
+
+    return dot;
 }
 
