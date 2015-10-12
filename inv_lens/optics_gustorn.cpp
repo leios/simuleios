@@ -148,8 +148,8 @@ void propagate(ray_array& rays, const T& lens,
                std::ofstream& output) {
 
     // move simulation every timestep
-    for (size_t i = 0; i < TIME_RES; i++){
-        for (auto& ray : rays) {
+    for (auto& ray : rays) {
+        for (size_t i = 0; i < TIME_RES; i++){
             ray.p += ray.v * step_size;
 
             double n1 = ray.previous_index;
@@ -168,13 +168,10 @@ void propagate(ray_array& rays, const T& lens,
             }
 
             ray.previous_index = n2;
-        }
 
-        for (const auto& ray : rays) {
             output << ray.p.x <<'\t'<< ray.p.y << '\t'
                    << ray.v.x <<'\t'<< ray.v.y << '\n';
         }
-
         output << '\n' << '\n';
     }
 }
