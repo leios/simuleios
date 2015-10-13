@@ -70,14 +70,24 @@ struct simple {
     simple(double l, double r) : left(l), right(r) {}
 };
 
+// A simple struct for circular / spherical lens
+struct sphere{
+    double radius;
+    vec origin;
+    sphere(double rad, double x, double y) : radius(rad), origin(x, y) {}
+};
+
 // Add overloads for 'normal_at' and 'refractive_index_at' for your own stuff,
 // example (you'll need a separate struct for the different lenses):
 //
 // vec normal_at(const circle& lens, vec p) { ... }
 // double refractive_index_at(const circle& lens, vec p) { ... }
 bool inside_of(const simple& lens, vec p);
+bool inside_of(const sphere& lens, vec p);
 vec normal_at(const simple& lens, vec p);
+vec normal_at(const sphere& lens, vec p);
 double refractive_index_at(const simple& lens, vec p);
+double refractive_index_at(const sphere& lens, vec p);
 
 // Templated so it can accept any lens type. Stuff will dispatch at compile
 // time, so the performance will be good
@@ -102,7 +112,7 @@ int main() {
     double max_vel = 1;
 
     // Implement other lenses and change this line to use them
-    simple lens = {5, 7};
+    sphere lens = {3, 5, 5};
     ray_array rays = light_gen(dim, lens, max_vel, 0.523598776);
     propagate(rays, lens, 0.1, max_vel, output);
 
@@ -118,6 +128,9 @@ int main() {
 // and the given index of refraction "ior", where ior = n1 / n2
 vec refract(vec l, vec n, double ior) {
     double c = dot(-n, l);
+
+    std::cout << c << '\t' << n.x << '\t' << n.y << '\t' 
+              << l.x << '\t' << l.y << '\n';
 
     // If the normal points towards the wrong side (with no light) then
     // negate it and start again
@@ -176,14 +189,38 @@ void propagate(ray_array& rays, const T& lens,
     }
 }
 
+// Inside_of functions
+// simple lens slab
 bool inside_of(const simple& lens, vec p) {
     return p.x > lens.left && p.x < lens.right;
 }
 
+// Circle / sphere
+bool inside_of(const sphere& lens, vec p) {
+    double diff = distance(lens.origin, p);
+    return diff < lens.radius;
+}
+
+// Find the normal
+// Lens slab
 vec normal_at(const simple&, vec) {
     return normalize(vec(-1.0, 0.0));
 }
 
+// Circle / sphere
+// ERROR: This is defined incorrectly!
+vec normal_at(const sphere& lens, vec p) {
+    //return normalize(vec(-1.0, 0.0));
+    return normalize(p - lens.origin);
+}
+
+// find refractive index
+// Lens slab
 double refractive_index_at(const simple& lens, vec p) {
+    return inside_of(lens, p) ? 1.4 : 1.0;
+}
+
+// Circle / sphere
+double refractive_index_at(const sphere& lens, vec p) {
     return inside_of(lens, p) ? 1.4 : 1.0;
 }
