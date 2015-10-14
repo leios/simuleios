@@ -48,7 +48,7 @@ static inline vec operator/(vec a, double b) {
     return a * inv;
 }
 
-static inline double dot(vec a, vec b) { return a.x * b.x + a.y + b.y; }
+static inline double dot(vec a, vec b) { return a.x * b.x + a.y * b.y; }
 static inline double length(vec a) { return sqrt(dot(a, a)); }
 static inline vec normalize(vec a) { return a / length(a); }
 static inline double distance(vec a, vec b) { return length(a - b); }
@@ -112,8 +112,8 @@ int main() {
     double max_vel = 1;
 
     // Implement other lenses and change this line to use them
-    sphere lens = {3, 5, 5};
-    ray_array rays = light_gen(dim, lens, max_vel, 0.523598776);
+    sphere lens = {4, 5, 5};
+    ray_array rays = light_gen(dim, lens, max_vel, 0/*0.523598776*/);
     propagate(rays, lens, 0.1, max_vel, output);
 
     output << "\n \n5	0	0	0 \n5	5	0	0 \n";
@@ -147,7 +147,7 @@ ray_array light_gen(vec dim, const T& lens, double max_vel, double angle) {
 
     // Create rays
     for (size_t i = 0; i < rays.size(); i++) {
-        rays[i].p = vec(i * dim.x / NUM_LIGHTS, 0.0);
+        rays[i].p = vec(0.0, 1+ i * dim.x / NUM_LIGHTS);
         rays[i].v = velocity;
         rays[i].previous_index = refractive_index_at(lens, rays[i].p);
     }
@@ -187,6 +187,7 @@ void propagate(ray_array& rays, const T& lens,
         }
         output << '\n' << '\n';
     }
+
 }
 
 // Inside_of functions
