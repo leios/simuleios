@@ -129,7 +129,7 @@ int main() {
 vec refract(vec l, vec n, double ior) {
     double c = dot(-n, l);
 
-    std::cout << c << '\t' << n.x << '\t' << n.y << '\t' 
+    std::cout << c << '\t' << n.x << '\t' << n.y << '\t'
               << l.x << '\t' << l.y << '\n';
 
     // If the normal points towards the wrong side (with no light) then
@@ -239,7 +239,7 @@ double refractive_index_at(const sphere& lens, vec p) {
     else{
         index = 1;
     }
-    
+
     return index;
 
 }
