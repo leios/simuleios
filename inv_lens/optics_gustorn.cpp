@@ -19,7 +19,7 @@
 
 // Constants
 const int NUM_LIGHTS = 10;
-const int TIME_RES = 250;
+const int TIME_RES = 5000;
 
 // A very simple vector type with operators that are used in this file
 struct vec {
@@ -114,7 +114,7 @@ int main() {
     // Implement other lenses and change this line to use them
     sphere lens = {4, 5, 5};
     ray_array rays = light_gen(dim, lens, max_vel, 0 /*0.523598776*/);
-    propagate(rays, lens, 0.1, max_vel, output);
+    propagate(rays, lens, 0.01, max_vel, output);
 
     output << "\n \n5	0	0	0 \n5	5	0	0 \n";
 
@@ -229,7 +229,12 @@ double refractive_index_at(const sphere& lens, vec p) {
 
     if (inside_of(lens, p)){
         diff = distance(lens.origin, p);
-        index = 1.0 / diff;
+        if (diff > 0.001){
+            index = 1.0 / diff;
+        }
+        else{
+            index = 1000;
+        }
     }
     else{
         index = 1;
