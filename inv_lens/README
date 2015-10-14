@@ -1,0 +1,6 @@
+Invisible lens:
+
+To plot use the following in gnuplot:
+p "out.dat" w l
+set size ratio -1
+rep "file.dat" u 1:2:3 with circles

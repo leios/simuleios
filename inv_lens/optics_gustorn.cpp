@@ -113,7 +113,7 @@ int main() {
 
     // Implement other lenses and change this line to use them
     sphere lens = {4, 5, 5};
-    ray_array rays = light_gen(dim, lens, max_vel, 0/*0.523598776*/);
+    ray_array rays = light_gen(dim, lens, max_vel, 0 /*0.523598776*/);
     propagate(rays, lens, 0.1, max_vel, output);
 
     output << "\n \n5	0	0	0 \n5	5	0	0 \n";
@@ -147,7 +147,7 @@ ray_array light_gen(vec dim, const T& lens, double max_vel, double angle) {
 
     // Create rays
     for (size_t i = 0; i < rays.size(); i++) {
-        rays[i].p = vec(0.0, 1+ i * dim.x / NUM_LIGHTS);
+        rays[i].p = vec(0.0, 3 + i * dim.x / NUM_LIGHTS);
         rays[i].v = velocity;
         rays[i].previous_index = refractive_index_at(lens, rays[i].p);
     }
@@ -162,7 +162,7 @@ void propagate(ray_array& rays, const T& lens,
 
     // move simulation every timestep
     for (auto& ray : rays) {
-        for (size_t i = 0; i < TIME_RES; i++){
+        for (size_t i = 0; i < TIME_RES; i+= 1){
             ray.p += ray.v * step_size;
 
             double n1 = ray.previous_index;
@@ -223,5 +223,18 @@ double refractive_index_at(const simple& lens, vec p) {
 
 // Circle / sphere
 double refractive_index_at(const sphere& lens, vec p) {
-    return inside_of(lens, p) ? 1.4 : 1.0;
+    //return inside_of(lens, p) ? 1.4 : 1.0;
+
+    double index, diff;
+
+    if (inside_of(lens, p)){
+        diff = distance(lens.origin, p);
+        index = 1.0 / diff;
+    }
+    else{
+        index = 1;
+    }
+    
+    return index;
+
 }
