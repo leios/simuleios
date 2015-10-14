@@ -115,9 +115,6 @@ int main() {
     sphere lens = {4, 5, 5};
     ray_array rays = light_gen(dim, lens, max_vel, 0 /*0.523598776*/);
     propagate(rays, lens, 0.01, max_vel, output);
-
-    output << "\n \n5	0	0	0 \n5	5	0	0 \n";
-
 }
 
 /*----------------------------------------------------------------------------//
