@@ -114,7 +114,7 @@ int main() {
     // Implement other lenses and change this line to use them
     sphere lens = {4, 5, 5};
     ray_array rays = light_gen(dim, lens, max_vel, 0 /*0.523598776*/);
-    propagate(rays, lens, 0.01, max_vel, output);
+    propagate(rays, lens, 0.0001, max_vel, output);
 }
 
 /*----------------------------------------------------------------------------//
@@ -222,19 +222,25 @@ double refractive_index_at(const simple& lens, vec p) {
 double refractive_index_at(const sphere& lens, vec p) {
     //return inside_of(lens, p) ? 1.4 : 1.0;
 
-    double index, diff;
+    double index, diff, Q, cutoff;
+    cutoff = 0.001;
 
     if (inside_of(lens, p)){
-        diff = distance(lens.origin, p);
-        if (diff > 0.001){
-            index = 1.0 / diff;
-        }
+        double r = distance(lens.origin, p);
+        if (r > cutoff){
+            double a = lens.radius;
+            double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
+            index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
+        } 
         else{
-            index = 1000;
+            r = cutoff;
+            double a = lens.radius;
+            double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
+            index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
         }
     }
     else{
-        index = 1;
+        index = 1.0;
     }
 
     return index;
