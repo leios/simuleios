@@ -19,7 +19,7 @@
 
 // Constants
 const int NUM_LIGHTS = 10;
-const int TIME_RES = 5000;
+const int TIME_RES = 500000;
 
 // A very simple vector type with operators that are used in this file
 struct vec {
@@ -160,6 +160,9 @@ void propagate(ray_array& rays, const T& lens,
     // move simulation every timestep
     for (auto& ray : rays) {
         for (size_t i = 0; i < TIME_RES; i+= 1){
+            if (ray.p.x > lens.origin.x + lens.radius + 1){ 
+                continue;
+            }
             ray.p += ray.v * step_size;
 
             double n1 = ray.previous_index;
@@ -179,8 +182,10 @@ void propagate(ray_array& rays, const T& lens,
 
             ray.previous_index = n2;
 
-            output << ray.p.x <<'\t'<< ray.p.y << '\t'
-                   << ray.v.x <<'\t'<< ray.v.y << '\n';
+            if (i % 1000 == 0){
+                output << ray.p.x <<'\t'<< ray.p.y << '\t'
+                       << ray.v.x <<'\t'<< ray.v.y << '\n';
+            }
         }
         output << '\n' << '\n';
     }
@@ -223,7 +228,7 @@ double refractive_index_at(const sphere& lens, vec p) {
     //return inside_of(lens, p) ? 1.4 : 1.0;
 
     double index, diff, Q, cutoff;
-    cutoff = 0.001;
+    cutoff = 0.0001;
 
     if (inside_of(lens, p)){
         double r = distance(lens.origin, p);
