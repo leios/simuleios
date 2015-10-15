@@ -115,9 +115,6 @@ int main() {
     sphere lens = {4, 5, 5};
     ray_array rays = light_gen(dim, lens, max_vel, 0 /*0.523598776*/);
     propagate(rays, lens, 0.01, max_vel, output);
-
-    output << "\n \n5	0	0	0 \n5	5	0	0 \n";
-
 }
 
 /*----------------------------------------------------------------------------//
@@ -129,7 +126,7 @@ int main() {
 vec refract(vec l, vec n, double ior) {
     double c = dot(-n, l);
 
-    std::cout << c << '\t' << n.x << '\t' << n.y << '\t' 
+    std::cout << c << '\t' << n.x << '\t' << n.y << '\t'
               << l.x << '\t' << l.y << '\n';
 
     // If the normal points towards the wrong side (with no light) then
@@ -239,7 +236,7 @@ double refractive_index_at(const sphere& lens, vec p) {
     else{
         index = 1;
     }
-    
+
     return index;
 
 }
