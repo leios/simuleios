@@ -52,6 +52,7 @@ static inline double dot(vec a, vec b) { return a.x * b.x + a.y * b.y; }
 static inline double length(vec a) { return sqrt(dot(a, a)); }
 static inline vec normalize(vec a) { return a / length(a); }
 static inline double distance(vec a, vec b) { return length(a - b); }
+static inline bool is_null(vec a) { return a.x == 0.0 && a.y == 0.0; }
 
 // This normally wouldn't store the previous index, but there's no
 // ray-shape intersection code yet.
@@ -125,16 +126,17 @@ int main() {
 // and the given index of refraction "ior", where ior = n1 / n2
 vec refract(vec l, vec n, double ior) {
     double c = dot(-n, l);
+    double d = 1.0 - ior * ior * (1.0 - c * c);
 
-    std::cout << c << '\t' << n.x << '\t' << n.y << '\t'
-              << l.x << '\t' << l.y << '\n';
+    if (d < 0.0) {
+        return vec(0.0, 0.0);
+    }
 
-    // If the normal points towards the wrong side (with no light) then
-    // negate it and start again
-    if (c < 0.0)
-        return refract(l, -n, ior);
+    return ior * l + (ior * c - sqrt(d)) * n;
+}
 
-    return ior * l + (ior * c - sqrt(1.0 - ior * ior * (1.0 - c * c))) * n;
+vec reflect(vec l, vec n) {
+    return l - (2.0 * dot(n, l)) * n;
 }
 
 template <typename T>
@@ -160,7 +162,7 @@ void propagate(ray_array& rays, const T& lens,
     // move simulation every timestep
     for (auto& ray : rays) {
         for (size_t i = 0; i < TIME_RES; i+= 1){
-            if (ray.p.x > lens.origin.x + lens.radius + 1){ 
+            if (ray.p.x > lens.origin.x + lens.radius + 1){
                 continue;
             }
             ray.p += ray.v * step_size;
@@ -174,10 +176,19 @@ void propagate(ray_array& rays, const T& lens,
                 vec l = normalize(ray.v);
                 double ior = n1 / n2;
 
-                vec refracted = refract(l, n, ior);
+                if (dot(-n, l) < 0.0) {
+                    n = -n;
+                }
+
+                vec speed = refract(l, n, ior);
+
+                if (is_null(speed)) {
+                    speed = reflect(l, n);
+                }
+
                 // Multiply with ior * length(ray.v) to get the proper velocity
                 // for the refracted vector
-                ray.v = normalize(refracted) * ior * length(ray.v);
+                ray.v = normalize(speed) * ior * length(ray.v);
             }
 
             ray.previous_index = n2;
@@ -236,7 +247,7 @@ double refractive_index_at(const sphere& lens, vec p) {
             double a = lens.radius;
             double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
             index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
-        } 
+        }
         else{
             r = cutoff;
             double a = lens.radius;
