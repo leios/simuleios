@@ -48,33 +48,59 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
           const int final_time, const double eps, const int space,
           std::ofstream& output){
 
+    // For magnetic field:
+    // double offset = 0.00005;
+
+    // for electric field:
     double offset = 0.05;
+
+    // Relative permittivity
+    std::vector<double> epsP(space, 0);
+    for (int dx= 0; dx < space; dx++){
+        if (dx < 100){
+            epsP[dx] = 1.0;
+        }
+        else{
+            epsP[dx] = 9.0;
+        }
+    }
 
     // Time looping
     for (int t = 0; t < final_time; t++){
 
         // Linking the final two elements for an ABC
-        //Hy[space - 1] = Hy[space - 2];
+        Hy[space - 1] = Hy[space - 2];
 
         // update magnetic field
         for (int dx = 0; dx < space - 1; dx++){
-            Hy[dx] += (Ez[dx + 1] - Ez[dx]) / eps;
-            //output << Hy[dx] << '\n';
+            Hy[dx] = Hy[dx] + (Ez[dx + 1] - Ez[dx]) / eps;
+            /*
+            if (t % 10 == 0){
+                output << Hy[dx] + (t * offset) << '\n';
+            }
+            */
+
         }
 
+        // Correction to the H field for the TFSF boundary
+        Hy[49] -= exp(-(t - 40.) * (t - 40.)/100.0) / eps;
+
         // Linking the first two elements in the electric field
-        //Ez[0] = Ez[1];
+        Ez[0] = Ez[1];
+        Ez[space - 1] = Ez[space - 2];
 
         // update electric field
         for (int dx = 1; dx < space; dx++){
-            Ez[dx] += (Hy[dx] - Hy[dx-1]) * eps;
-            if (t % 16 == 0){
-                output << Ez[dx] - (t * offset) << '\n';
+            Ez[dx] = Ez[dx] + (Hy[dx] - Hy[dx-1]) * eps / epsP[dx];
+            
+            if (t % 10 == 0){
+                output << Ez[dx] + (t * offset) << '\n';
             }
+            
         }
 
         // set src for next step
-        Ez[100] += exp(-((double)t - 30.0) * ((double)t - 30.0)/100.0);
+        Ez[50] += exp(-((t +1 - 40.) * (t + 1 - 40.))/100.0);
         
         //Ez[50] = sin(0.01 * t);
 /*
@@ -85,7 +111,9 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
             Ez[50] = 1;
         }
 */
-        output << '\n' << '\n';
+        if (t % 10 == 0){
+            output << '\n' << '\n';
+        }
 
     }
 }
