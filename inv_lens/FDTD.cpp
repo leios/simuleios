@@ -57,11 +57,11 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
     // Relative permittivity
     std::vector<double> epsP(space, 0);
     for (int dx= 0; dx < space; dx++){
-        if (dx < 100){
-            epsP[dx] = 1.0;
+        if (dx > 100 && dx < 150){
+            epsP[dx] = 9.0;
         }
         else{
-            epsP[dx] = 9.0;
+            epsP[dx] = 1.0;
         }
     }
 
@@ -69,7 +69,7 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
     for (int t = 0; t < final_time; t++){
 
         // Linking the final two elements for an ABC
-        Hy[space - 1] = Hy[space - 2];
+        // Hy[space - 1] = Hy[space - 2];
 
         // update magnetic field
         for (int dx = 0; dx < space - 1; dx++){
@@ -85,7 +85,7 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
         Ez[space - 1] = Ez[space - 2];
 
         // update electric field
-        for (int dx = 1; dx < space; dx++){
+        for (int dx = 1; dx < space - 1; dx++){
             Ez[dx] = Ez[dx] + (Hy[dx] - Hy[dx-1]) * eps / epsP[dx];
         }
 
