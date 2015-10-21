@@ -53,15 +53,23 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
 
     // for electric field:
     double offset = 0.05;
+    double loss = 0.01;
 
     // Relative permittivity
-    std::vector<double> epsP(space, 0);
+    std::vector<double> LossEzH(space, 0), LossEzE(space, 0);
+    std::vector<double> LossHyH(space, 0), LossHyE(space, 0);
     for (int dx= 0; dx < space; dx++){
         if (dx > 100 && dx < 150){
-            epsP[dx] = 9.0;
+            LossEzH[dx] = eps / 9.0 /(1.0 - loss);
+            LossEzE[dx] = (1.0 - loss) / (1.0 + loss);
+            LossHyH[dx] = (1.0 - loss) / (1.0 + loss);
+            LossHyE[dx] = (1.0 / eps) / (1.0 + loss);
         }
         else{
-            epsP[dx] = 1.0;
+            LossEzH[dx] = eps;
+            LossEzE[dx] = 1.0;
+            LossHyH[dx] = 1.0;
+            LossHyE[dx] = (1.0 / eps);
         }
     }
 
@@ -73,12 +81,14 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
 
         // update magnetic field
         for (int dx = 0; dx < space - 1; dx++){
-            Hy[dx] = Hy[dx] + (Ez[dx + 1] - Ez[dx]) / eps;
+            Hy[dx] = LossHyH[dx] * Hy[dx] + LossHyE[dx] * (Ez[dx + 1] - Ez[dx]);
 
         }
 
         // Correction to the H field for the TFSF boundary
         Hy[49] -= exp(-(t - 40.) * (t - 40.)/100.0) / eps;
+        // Hy[49] -= sin((t-10.0)*0.2)*0.0005;
+
 
         // Linking the first two elements in the electric field
         Ez[0] = Ez[1];
@@ -86,13 +96,14 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
 
         // update electric field
         for (int dx = 1; dx < space - 1; dx++){
-            Ez[dx] = Ez[dx] + (Hy[dx] - Hy[dx-1]) * eps / epsP[dx];
+            Ez[dx] = LossEzE[dx] * Ez[dx] + 
+                     LossEzH[dx] * (Hy[dx] - Hy[dx-1]);
         }
 
         // set src for next step
         Ez[50] += exp(-((t +1 - 40.) * (t + 1 - 40.))/100.0);
         
-        //Ez[50] = sin(0.01 * t);
+        // Ez[50] += sin((t-10.0)*0.2)*0.0005;
 /*
         if (t > 0){
             Ez[50] = sin(0.1 * t) / (0.1 * t);
