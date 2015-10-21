@@ -74,11 +74,6 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
         // update magnetic field
         for (int dx = 0; dx < space - 1; dx++){
             Hy[dx] = Hy[dx] + (Ez[dx + 1] - Ez[dx]) / eps;
-            /*
-            if (t % 10 == 0){
-                output << Hy[dx] + (t * offset) << '\n';
-            }
-            */
 
         }
 
