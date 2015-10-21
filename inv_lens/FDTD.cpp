@@ -92,11 +92,6 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
         // update electric field
         for (int dx = 1; dx < space; dx++){
             Ez[dx] = Ez[dx] + (Hy[dx] - Hy[dx-1]) * eps / epsP[dx];
-            
-            if (t % 10 == 0){
-                output << Ez[dx] + (t * offset) << '\n';
-            }
-            
         }
 
         // set src for next step
@@ -112,6 +107,11 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
         }
 */
         if (t % 10 == 0){
+            for (int dx = 0; dx < space; dx++){
+                output << Ez[dx] + (t * offset) << '\n';
+                //output << Hy[dx] + (t * offset) << '\n';
+            }
+
             output << '\n' << '\n';
         }
 
