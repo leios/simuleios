@@ -21,7 +21,7 @@ struct Mat : std::vector<double> {
     using std::vector<double>::vector;
 
     double operator()(size_t i, size_t j) const { return (*this)[i + j * SPACE]; }
-    double& operator()(size_t i, size_t j) { return (*this)[j + j * SPACE]; }
+    double& operator()(size_t i, size_t j) { return (*this)[i + j * SPACE]; }
 };
 
 struct Loss {
@@ -93,7 +93,7 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
                 lass.HxH(dx, dy) = (1.0 - loss) / (1.0 + loss);
             }
             else{
-                lass.EzH(dx, dy) =  eps;
+                lass.EzH(dx, dy) = eps;
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
                 lass.HyE(dx, dy) = (1.0 / eps);
