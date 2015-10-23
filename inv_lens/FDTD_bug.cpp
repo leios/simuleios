@@ -2,7 +2,7 @@
 *
 *              Finite Difference Time Domain
 *
-* Purpose: To replicate the results of our invisible lense raytracer with 
+* Purpose: To replicate the results of our invisible lense raytracer with
 *          FDTD. Woo!
 *
 *   Notes: Most of this is coming from the following link:
@@ -15,31 +15,32 @@
 #include <cmath>
 #include <fstream>
 
-#define space 200
+static const size_t SPACE = 200;
 
-struct Loss{
-    std::vector <double> EzH(space * space, 0), EzE(space * space, 0), 
-                         HyE(space * space, 0), HyH(space * space, 0)
-                         HxE(space * space, 0), HxH(space * space, 0);
+struct Mat : std::vector<double> {
+    using std::vector<double>::vector;
+
+    double operator()(size_t i, size_t j) const { return (*this)[i + j * SPACE]; }
+    double& operator()(size_t i, size_t j) { return (*this)[j + j * SPACE]; }
 };
 
-struct Field{
-    std::vector <double> Hx(space * space, 0), Hy(space * space, 0),
-                         Ez(space * space, 0);
+struct Loss {
+    Mat EzH = {SPACE * SPACE, 0};
+    Mat EzE = {SPACE * SPACE, 0};
+    Mat HyE = {SPACE * SPACE, 0};
+    Mat HyH = {SPACE * SPACE, 0};
+    Mat HxE = {SPACE * SPACE, 0};
+    Mat HxH = {SPACE * SPACE, 0};
 };
 
-#define EzH(i, j) EzH[(i) + (j) *  space]
-#define EzE(i, j) EzH[(i) + (j) *  space]
-#define HyH(i, j) EzH[(i) + (j) *  space]
-#define HyE(i, j) EzH[(i) + (j) *  space]
-#define HxH(i, j) EzH[(i) + (j) *  space]
-#define HxE(i, j) EzH[(i) + (j) *  space]
-#define Hx(i, j) EzH[(i) + (j) *  space] 
-#define Hy(i, j) EzH[(i) + (j) *  space] 
-#define Ez(i, j) EzH[(i) + (j) *  space] 
+struct Field {
+    Mat Hx = {SPACE * SPACE, 0};
+    Mat Hy = {SPACE * SPACE, 0};
+    Mat Ez = {SPACE * SPACE, 0};
+};
 
 void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
-          const int final_time, const double eps, const int space, Loss lass
+          const int final_time, const double eps, const int space, Loss lass,
           std::ofstream& output);
 
 /*----------------------------------------------------------------------------//
@@ -54,10 +55,10 @@ int main(){
     int space = 200, final_time = 500;
     double eps = 377.0;
 
-    Loss lassl;
+    Loss lass;
 
     // define initial E and H fields
-    std::vector<double> Ez(space, 0.0), Hy(space, 0.0);
+    std::vector<double> Ez(SPACE, 0.0), Hy(SPACE, 0.0);
 
     FDTD(Ez, Hy, final_time, eps, space, lass, output);
 
@@ -68,10 +69,11 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // This is the function we writs the bulk of the code in
-void FDTD(std::vector<double>& Ez, std::vector<double>& Hy, 
+void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
           const int final_time, const double eps, const int space, Loss lass,
           std::ofstream& output){
 
+    Field field;
     // For magnetic field:
     // double offset = 0.00005;
 
@@ -110,18 +112,18 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
         // update magnetic field, y direction
         for (int dx = 0; dx < space - 1; dx++){
             for (int dy = 0; dy < space; dy++){
-               Field.Hy(dx,dy) = lass.HyH(dx,dy) * Field.Hy(dx,dy) 
-                           + lass.HyE(dx,dy) * (Field.Ez(dx + 1,dy) 
-                                                - Field.Ez(dx,dy));
+                field.Hy(dx,dy) = lass.HyH(dx,dy) * field.Hy(dx,dy)
+                           + lass.HyE(dx,dy) * (field.Ez(dx + 1,dy)
+                                                - field.Ez(dx,dy));
             }
         }
 
         // update magnetic field, x direction
         for (int dx = 0; dx < space; dx++){
             for (int dy = 0; dy < space - 1; dy++){
-               Field.Hx(dx,dy) = lass.HxH(dx,dy) * Field.Hx(dx, dy) 
-                           + lass.HxE(dx,dy) * (Field.Ez(dx + 1,dy) 
-                                                - Field.Ez(dx,dy));
+                field.Hx(dx,dy) = lass.HxH(dx,dy) * field.Hx(dx, dy)
+                           + lass.HxE(dx,dy) * (field.Ez(dx + 1,dy)
+                                                - field.Ez(dx,dy));
             }
         }
 
@@ -132,23 +134,23 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
 
 
         // Linking the first two elements in the electric field
-        Field.Ez[0] = Field.Ez[1];
+        field.Ez[0] = field.Ez[1];
         // Ez[space - 1] = Ez[space - 2];
 
         // update electric field
         for (int dx = 0; dx < space - 1; dx++){
             for (int dy = 0; dy < space - 1; dy++){
-               Field.Ez(dx,dy) = lass.EzE(dx,dy) * Field.Ez(dx,dy)
-                           + lass.EzH[dx] * (Field.Hy(dx, dy)
-                                             - Field.Hy(dx-1, dy)
-                                             - Field.Hx(dx,dy)
-                                             - Field.Hx(dx, dy - 1));
+               field.Ez(dx,dy) = lass.EzE(dx,dy) * field.Ez(dx,dy)
+                           + lass.EzH[dx] * (field.Hy(dx, dy)
+                                             - field.Hy(dx-1, dy)
+                                             - field.Hx(dx,dy)
+                                             - field.Hx(dx, dy - 1));
             }
         }
 
         // set src for next step
         Ez[0] += exp(-((t + 1 - 40.) * (t + 1 - 40.))/100.0);
-        
+
         // Ez[50] += sin((t - 10.0 + 1)*0.2)*0.0005;
 /*
         if (t > 0){
@@ -161,7 +163,7 @@ void FDTD(std::vector<double>& Ez, std::vector<double>& Hy,
         if (t % 10 == 0){
             for (int dx = 0; dx < space; dx++){
                 for (int dy = 0; dy < space; dy++){
-                    output << t << Field.Ez(dx, dy) << '\n';
+                    output << t << field.Ez(dx, dy) << '\n';
                     //output << Ez(dx,dy) + (t * offset) << '\n';
                     //output << Hy[dx] + (t * offset) << '\n';
                 }
