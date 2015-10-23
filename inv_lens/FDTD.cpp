@@ -125,7 +125,7 @@ void FDTD(Field EM,
         for (int dx = 0; dx < space; dx++){
             for (int dy = 0; dy < space - 1; dy++){
                EM.Hx(dx,dy) = lass.HxH(dx,dy) * EM.Hx(dx, dy) 
-                           + lass.HxE(dx,dy) * (EM.Ez(dx + 1,dy) 
+                           + lass.HxE(dx,dy) * (EM.Ez(dx,dy + 1) 
                                                 - EM.Ez(dx,dy));
             }
         }
@@ -141,11 +141,11 @@ void FDTD(Field EM,
         // Ez[space - 1] = Ez[space - 2];
 
         // update electric field
-        for (int dx = 0; dx < space - 1; dx++){
-            for (int dy = 0; dy < space - 1; dy++){
+        for (int dx = 1; dx < space - 1; dx++){
+            for (int dy = 1; dy < space - 1; dy++){
                EM.Ez(dx,dy) = lass.EzE(dx,dy) * EM.Ez(dx,dy)
                            + lass.EzH[dx] * (EM.Hy(dx, dy)
-                                             - EM.Hy(dx-1, dy)
+                                             - EM.Hy(dx - 1, dy)
                                              - EM.Hx(dx,dy)
                                              - EM.Hx(dx, dy - 1));
             }
@@ -153,6 +153,7 @@ void FDTD(Field EM,
 
         // set src for next step
         EM.Ez[0] += exp(-((t + 1 - 40.) * (t + 1 - 40.))/100.0);
+        // EM.Ez[0] = 0;
         
         // Ez[50] += sin((t - 10.0 + 1)*0.2)*0.0005;
 /*
@@ -163,10 +164,11 @@ void FDTD(Field EM,
             Ez[50] = 1;
         }
 */
-        if (t % 10 == 0){
-            for (int dx = 0; dx < space; dx++){
-                for (int dy = 0; dy < space; dy++){
-                    output << t << EM.Ez(dx, dy) << '\n';
+        if (t % 50 == 0){
+            for (int dx = 0; dx < space; dx = dx + 5){
+                for (int dy = 0; dy < space; dy = dy + 5){
+                    output << t << '\t' << dx <<'\t' << dy 
+                           << EM.Ez(dx, dy) << '\n';
                     //output << Ez(dx,dy) + (t * offset) << '\n';
                     //output << Hy[dx] + (t * offset) << '\n';
                 }
