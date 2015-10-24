@@ -55,7 +55,7 @@ int main(){
     // defines output
     std::ofstream output("FDTD.dat", std::ofstream::out);
 
-    int space = 200, final_time = 100;
+    int final_time = 500;
     double eps = 377.0;
 
     Loss lass;
@@ -83,25 +83,43 @@ void FDTD(Field EM,
     // for electric field:
     double offset = 0.05;
     double loss = 0.0;
+    double Cour = 1.0 / sqrt(2.0);
 
     // Relative permittivity
     for (int dx = 0; dx < space; dx++){
         for (int dy = 0; dy < space; dy++){
             if (dx > 100 && dx < 150){
+                lass.EzH(dx, dy) =  Cour * eps;
+                lass.EzE(dx, dy) = 1.0;
+                lass.HyH(dx, dy) = 1.0;
+                lass.HyE(dx, dy) = Cour / eps;
+                lass.HxE(dx, dy) = Cour / eps;
+                lass.HxH(dx, dy) = 1.0;
+
+                /*
                 lass.EzH(dx, dy) =  eps / 9.0 /(1.0 - loss);
                 lass.EzE(dx, dy) = (1.0 - loss) / (1.0 + loss);
                 lass.HyH(dx, dy) = (1.0 - loss) / (1.0 + loss);
                 lass.HyE(dx, dy) = (1.0 / eps) / (1.0 + loss);
                 lass.HxE(dx, dy) = (1.0 / eps) / (1.0 + loss);
                 lass.HxH(dx, dy) = (1.0 - loss) / (1.0 + loss);
+                */
             }
             else{
+                lass.EzH(dx, dy) =  Cour * eps;
+                lass.EzE(dx, dy) = 1.0;
+                lass.HyH(dx, dy) = 1.0;
+                lass.HyE(dx, dy) = Cour / eps;
+                lass.HxE(dx, dy) = Cour / eps;
+                lass.HxH(dx, dy) = 1.0;
+                /*
                 lass.EzH(dx, dy) =  eps;
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
                 lass.HyE(dx, dy) = (1.0 / eps);
                 lass.HxE(dx, dy) = (1.0 / eps);
                 lass.HxH(dx, dy) = 1.0;
+                */
             }
         }
     }
@@ -110,7 +128,10 @@ void FDTD(Field EM,
     for (int t = 0; t < final_time; t++){
 
         // Linking the final two elements for an ABC
-        // Hy[space - 1] = Hy[space - 2];
+        for (int da = 0; da < space; da++){
+            EM.Hy(da,space - 1) = EM.Hy(da,space - 2);
+            EM.Hx(space - 1,da) = EM.Hx(space - 2,da);
+        }
 
         // update magnetic field, y direction
         for (int dx = 0; dx < space - 1; dx++){
@@ -137,8 +158,10 @@ void FDTD(Field EM,
 
 
         // Linking the first two elements in the electric field
-        EM.Ez[0] = EM.Ez[1];
-        // Ez[space - 1] = Ez[space - 2];
+        for (int dy = 0; dy < space; dy++){
+            EM.Ez(0,dy) = EM.Ez(1,dy);
+            EM.Ez(space - 1,dy) = EM.Ez(space - 2,dy);
+        }
 
         // update electric field
         for (int dx = 1; dx < space - 1; dx++){
@@ -152,7 +175,9 @@ void FDTD(Field EM,
         }
 
         // set src for next step
-        EM.Ez[50] += exp(-((t + 1 - 40.) * (t + 1 - 40.))/100.0);
+        for (int dy = 0; dy < space; dy++){
+            EM.Ez(50,dy) += exp(-((t + 1 - 40.) * (t + 1 - 40.))/100.0);
+        }
         // EM.Ez[0] = 0;
         
         // Ez[50] += sin((t - 10.0 + 1)*0.2)*0.0005;
@@ -165,10 +190,10 @@ void FDTD(Field EM,
         }
 */
         if (t % 50 == 0){
-            for (int dx = 0; dx < space; dx = dx + 5){
-                for (int dy = 0; dy < space; dy = dy + 5){
+            for (int dx = 0; dx < space; dx = dx + 50){
+                for (int dy = 0; dy < space; dy = dy + 50){
                     output << t << '\t' << dx <<'\t' << dy << '\t'
-                           << EM.Hx(dx, dy) << '\n';
+                           << EM.Ez(dx, dy) << '\n';
                     //output << Ez(dx,dy) + (t * offset) << '\n';
                     //output << Hy[dx] + (t * offset) << '\n';
                 }
