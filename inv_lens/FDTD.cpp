@@ -55,7 +55,7 @@ int main(){
     // defines output
     std::ofstream output("FDTD.dat", std::ofstream::out);
 
-    int space = 200, final_time = 500;
+    int space = 200, final_time = 100;
     double eps = 377.0;
 
     Loss lass;
@@ -152,7 +152,7 @@ void FDTD(Field EM,
         }
 
         // set src for next step
-        EM.Ez[0] += exp(-((t + 1 - 40.) * (t + 1 - 40.))/100.0);
+        EM.Ez[50] += exp(-((t + 1 - 40.) * (t + 1 - 40.))/100.0);
         // EM.Ez[0] = 0;
         
         // Ez[50] += sin((t - 10.0 + 1)*0.2)*0.0005;
@@ -167,8 +167,8 @@ void FDTD(Field EM,
         if (t % 50 == 0){
             for (int dx = 0; dx < space; dx = dx + 5){
                 for (int dy = 0; dy < space; dy = dy + 5){
-                    output << t << '\t' << dx <<'\t' << dy 
-                           << EM.Ez(dx, dy) << '\n';
+                    output << t << '\t' << dx <<'\t' << dy << '\t'
+                           << EM.Hx(dx, dy) << '\n';
                     //output << Ez(dx,dy) + (t * offset) << '\n';
                     //output << Hy[dx] + (t * offset) << '\n';
                 }
