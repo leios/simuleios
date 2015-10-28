@@ -25,8 +25,9 @@ def parse_data(num_part):
     print("importing data from file")
     input = "/home/james/projects/simuleios/MD/demon/out.dat"
     with open(input, 'r') as data:
-        #if i % 300 = 0 and  != 1:
-        #    place_spheres(array)
+        if i % 300 == 0 and i != 0:
+            place_spheres(array, num_part)
+            sce.update()
         for line in data:
             if line != '\n':
                 temp = [float(s) for s in line.split()]
@@ -36,7 +37,7 @@ def parse_data(num_part):
     #return array
 
 # Creates sphere material
-def createNewMaterial (passedName,passedcolor):
+def create_new_material (passedName,passedcolor):
     tempMat = bpy.data.materials.new(passedName)
     if tempMat != None:
         tempMat.diffuse_color = passedcolor
@@ -52,13 +53,14 @@ def createNewMaterial (passedName,passedcolor):
     return tempMat
 
 # places new sphere at given location
-def new_sphere(diam, x, y, z, r, g, b):
+def new_sphere(diam, x, y, z, r, g, b, id):
     temp_sphere = bpy.ops.mesh.primitive_uv_sphere_add(segments = 64, 
                                                        ring_count = 32,
                                                        size = diam,
                                                        location = (x, y, z),
                                                        rotation = (0, 0, 0))
     ob = bpy.context.active_object
+    ob.name = str(id)
     me = ob.data
     color = (r, g, b)
     mat = create_new_material("myNewMaterial",color)
@@ -66,7 +68,7 @@ def new_sphere(diam, x, y, z, r, g, b):
     return temp_sphere
 
 # places sphere duplicates around for fun!
-def place_duplicates(x, y, z, ob = None):
+def place_duplicates(x, y, z, id, ob = None):
     if not ob:
         ob = bpy.context.active_object
     obs = []
@@ -75,22 +77,35 @@ def place_duplicates(x, y, z, ob = None):
     copy = ob.copy()
     copy.location = x,y,z
     copy.data = copy.data.copy()
+    copy.name = str(id)
     obs.append(copy)
     
     for ob in obs:
         sce.objects.link(ob)
     
-    sce.update()
+    #sce.update()
 
 # function to place spheres in blender
 def place_spheres(array, num_part):
     diam = 0.1
 
-    for i in range(num_part):
+    for i in range(0, num_part):
         if i == 0:
-            new_sphere(diam, array[i][0], array[i][1], array[i][2], 0, 0, 1)
+            new_sphere(diam, array[i][0], array[i][1], array[i][2], 0, 0, 1,
+                       array[i][7])
         else:
-            place_duplicates(array[i][0], array[i][1], array[i][2])
+            place_duplicates(array[i][0], array[i][1], array[i][2], array[i][7])
 
+# Function to moves spheres that are already there.
+def move_spheres(array, num_part, frame):
+    for i in range(num_part):
+        bpy.context.scene.frame_set(frame)  
+        bpy.context.scene.objects[str(array[i][7])].location = (array[i][0], 
+                                                                 array[i][1], 
+                                                                 array[i][2])
+        bpy.ops.anim.keyframe_insert(type='Location', confirm_success=True)  
+
+scene = bpy.context.scene
 parse_data(300)
+sce.update()
 #print (array)
