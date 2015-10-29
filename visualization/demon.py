@@ -9,30 +9,33 @@
 import bpy
 import numpy as np
 
-#------------------------------------------------------------------------------#
-# MAIN
-#------------------------------------------------------------------------------#
-
-#------------------------------------------------------------------------------#
-# SUBROUTINES
-#------------------------------------------------------------------------------#
-
 # goes through all the data! Woo!
+# Written by Kramsfasel
 def parse_data(num_part):
-    array = [[]*8]*(num_part)
-    i = 0
-    offset = 0
-    print("importing data from file")
-    input = "file.dat"
-    with open(input, 'r') as data:
-        for line in data:
-            if line != '\n':
-                temp = [float(s) for s in line.split()]
-                array[(i) % num_part] = temp
-                i += 1
-            if i % num_part == 0 and i != 0:
-                place_spheres(array, num_part, i)
-                #scene.update()
+        array = []
+        i = 0
+        offset = 0
+        linesInDataSet = 0
+        print("importing data from file")
+        input = "file.dat"
+        with open(input, 'r') as data:
+                for line in data:
+                        if line != '\n':
+                                linesInDataSet +=1
+                                s = line.split()
+                                temp = [float(s) for s in line.split()]
+                                temp[7]=int (s[7])
+                                temp[6]=int (s[6])
+                                array.append(temp)
+                                i += 1
+
+        place_spheres(array, num_part, i)
+        numberOfFrames = int (linesInDataSet / num_part) 
+
+        for i in range(2, numberOfFrames+1):
+                if (i%100==0):print ("at frame " + str(i)+ " of " + str(numberOfFrames))
+                move_spheres(array, num_part, i)
+        return array
 
 # Creates sphere material
 def create_new_material (passedName,passedcolor):
@@ -89,26 +92,23 @@ def place_spheres(array, num_part, i):
 
     #print(array)
 
-    if i == num_part:
-        for i in range(0, num_part):
-            if i == 0:
-                new_sphere(diam, array[i][0], array[i][1], array[i][2], 0, 0, 1,
-                           array[i][7])
-            else:
-                place_duplicates(array[i][0], array[i][1], array[i][2], 
-                                 array[i][7])
-    else:
-        move_spheres(array, num_part, (i / num_part) * 1)
+    for i in range(0, num_part):
+        if i == 0:
+            new_sphere(diam, array[i][0], array[i][1], array[i][2], 0, 0, 1,
+                       array[i][7])
+        else:
+            place_duplicates(array[i][0], array[i][1], array[i][2], 
+                             array[i][7])
 
 # Function to moves spheres that are already there.
 # Not currently working!
 def move_spheres(array, num_part, frame):
-    for i in range(num_part):
-        bpy.context.scene.frame_set(frame)  
-        #print(str(array[i][7]))
-        ob = bpy.context.scene.objects[str(array[i][7])]
-        ob.location = (array[i][0], array[i][1], array[i][2])
-        ob.keyframe_insert(data_path="location", index=-1)
+        bpy.context.scene.frame_set(frame)
+        offset = int(frame * num_part - num_part)
+        current_frame = bpy.context.scene.frame_current
+        for i in range(offset,num_part+offset):
+                bpy.context.scene.objects[str(array[i][7])].location = (array[i][0],array[i][1],array[i][2])
+                bpy.context.scene.objects[str(array[i][7])].keyframe_insert(data_path='location', frame=(current_frame))
 
 # Creates the cage material
 def create_cage (passedName):
@@ -133,8 +133,7 @@ def create_cage (passedName):
 
 # Creates cage at location
 def cage_set(Box_length, sign):
-    ccube = bpy.ops.mesh.primitive_cube_add(location=(sign * Box_length / 2,Box_length 
-/ 2, Box_length / 2), radius = Box_length / 2)
+    ccube = bpy.ops.mesh.primitive_cube_add(location=(sign * Box_length / 2,Box_length / 2, Box_length / 2), radius = Box_length / 2)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.object.mode_set(mode='OBJECT')
     ob = bpy.context.object
