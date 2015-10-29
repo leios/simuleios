@@ -23,18 +23,19 @@ def parse_data(num_part):
     i = 0
     offset = 0
     print("importing data from file")
-    input = "/home/james/projects/simuleios/MD/demon/out.dat"
+    input = "file.dat"
     with open(input, 'r') as data:
-        if i % 300 == 0 and i != 0:
-            place_spheres(array, num_part)
-            sce.update()
         for line in data:
             if line != '\n':
                 temp = [float(s) for s in line.split()]
                 array[(i) % num_part] = temp
                 i += 1
+            if i % num_part == 0 and i != 0:
+                place_spheres(array, num_part, i)
+                #scene.update()
+
             
-    #return array
+    return array
 
 # Creates sphere material
 def create_new_material (passedName,passedcolor):
@@ -86,26 +87,33 @@ def place_duplicates(x, y, z, id, ob = None):
     #sce.update()
 
 # function to place spheres in blender
-def place_spheres(array, num_part):
+def place_spheres(array, num_part, i):
     diam = 0.1
 
-    for i in range(0, num_part):
-        if i == 0:
-            new_sphere(diam, array[i][0], array[i][1], array[i][2], 0, 0, 1,
-                       array[i][7])
-        else:
-            place_duplicates(array[i][0], array[i][1], array[i][2], array[i][7])
+    #print(array)
+
+    if i == num_part:
+        for i in range(0, num_part):
+            if i == 0:
+                new_sphere(diam, array[i][0], array[i][1], array[i][2], 0, 0, 1,
+                           array[i][7])
+            else:
+                place_duplicates(array[i][0], array[i][1], array[i][2], 
+                                 array[i][7])
+    else:
+        move_spheres(array, num_part, (i / num_part) * 1)
 
 # Function to moves spheres that are already there.
+# Not currently working!
 def move_spheres(array, num_part, frame):
     for i in range(num_part):
         bpy.context.scene.frame_set(frame)  
-        bpy.context.scene.objects[str(array[i][7])].location = (array[i][0], 
-                                                                 array[i][1], 
-                                                                 array[i][2])
-        bpy.ops.anim.keyframe_insert(type='Location', confirm_success=True)  
+        print(str(array[i][7]))
+        ob = bpy.context.scene.objects[str(array[i][7])]
+        ob.location = (array[i][0], array[i][1], array[i][2])
+        ob.keyframe_insert(data_path="location", index=-1)
 
 scene = bpy.context.scene
-parse_data(300)
-sce.update()
+parse_data(5)
+scene.update()
 #print (array)
