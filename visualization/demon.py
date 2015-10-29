@@ -34,9 +34,6 @@ def parse_data(num_part):
                 place_spheres(array, num_part, i)
                 #scene.update()
 
-            
-    return array
-
 # Creates sphere material
 def create_new_material (passedName,passedcolor):
     tempMat = bpy.data.materials.new(passedName)
@@ -108,12 +105,118 @@ def place_spheres(array, num_part, i):
 def move_spheres(array, num_part, frame):
     for i in range(num_part):
         bpy.context.scene.frame_set(frame)  
-        print(str(array[i][7]))
+        #print(str(array[i][7]))
         ob = bpy.context.scene.objects[str(array[i][7])]
         ob.location = (array[i][0], array[i][1], array[i][2])
         ob.keyframe_insert(data_path="location", index=-1)
 
+# Creates the cage material
+def create_cage (passedName):
+    cageMat = bpy.data.materials.new(passedName)
+    cageMat.type = 'WIRE'
+    cageMat.diffuse_color = (1,1,1)
+    cageMat.diffuse_shader = 'FRESNEL'
+    cageMat.diffuse_intensity = 1
+    cageMat.specular_color = (1,1,1)
+    cageMat.use_diffuse_ramp = True
+    ramp = cageMat.diffuse_ramp
+    #(pt_location_on_ramp, (r,g,b,dens_at_pt))
+    values = [(0.0, (1,1,1,1)), (1.0, (1,1,1,1))]
+    for n,value in enumerate(values):
+        ramp.elements.new((n+1)*0.2)
+        elt = ramp.elements[n]
+        (pos, color) = value
+        elt.position = pos
+        elt.color = color
+    cageMat.diffuse_ramp_input = 'RESULT'
+    return cageMat
+
+# Creates cage at location
+def cage_set(Box_length, sign):
+    ccube = bpy.ops.mesh.primitive_cube_add(location=(sign * Box_length / 2,Box_length 
+/ 2, Box_length / 2), radius = Box_length / 2)
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.object.mode_set(mode='OBJECT')
+    ob = bpy.context.object
+    me = ob.data
+    mat = create_cage('MaterialCage')
+    me.materials.append(mat)
+    return ccube
+
+# Removes objects in scene
+def remove_obj( scene ):
+    for ob in scene.objects: 
+        if ob.name !='Camera':
+            scene.objects.unlink( ob )
+
+#defining our scene
+def def_scene(box_length, bgcolor):
+
+    # Camera stuff
+    #x_cam = 2.2
+    #y_cam = 2.75
+    #z_cam = 1.43
+    #r_camx = 70
+    #r_camy = 0
+    #r_camz = 145
+
+    x_cam = 0
+    y_cam = 0.5
+    z_cam = 3
+    r_camx = 0
+    r_camy = 0
+    r_camz = 0
+
+    scene.camera.location.x = box_length * x_cam
+    scene.camera.location.y = box_length * y_cam
+    scene.camera.location.z = box_length * z_cam
+
+    scene.camera.rotation_mode = 'XYZ'
+    scene.camera.rotation_euler[0] = (np.pi/180.0) * r_camx
+    scene.camera.rotation_euler[1] = (np.pi/180.0) * r_camy
+    scene.camera.rotation_euler[2] = (np.pi/180.0) * r_camz
+
+    # Sets field of view
+    scene.camera.data.angle = 50*(np.pi/180.0)
+
+    # Scene resolution
+    scene.render.resolution_x = 1366*2
+    scene.render.resolution_y = 768*2
+
+    # Remove lighting (for now)
+    remove_obj( scene )
+
+    # sets background to be black
+    bpy.data.worlds['World'].horizon_color = (0,0,0)
+
+    return scene
+
+# Renders movie
+def render_movie(scene):
+    scene = bpy.context.scene
+    bpy.data.scenes[0].render.image_settings.file_format="PNG"
+    #bpy.data.scenes[0].render.filepath = "images/image%.5d" %iteration
+    bpy.ops.render.render( write_still=True )
+    print("rendering movie")
+    scene.sequence_editor_create()
+    bpy.data.scenes["Scene"].render.fps = 30
+    bpy.data.scenes["Scene"].render.image_settings.file_format = 'FFMPEG'
+    #bpy.data.scenes["Scene"].render.ffmpeg.video_bitrate = 24300
+    bpy.data.scenes["Scene"].render.ffmpeg.format = 'MPEG4'
+    bpy.data.scenes["Scene"].render.ffmpeg.audio_codec = 'NONE'
+    bpy.data.scenes["Scene"].render.ffmpeg.minrate = 0
+    bpy.data.scenes["Scene"].render.ffmpeg.maxrate = 30000
+    bpy.data.scenes["Scene"].render.ffmpeg.codec = 'MPEG4'
+    bpy.data.scenes["Scene"].render.filepath = 'out.mp4'
+    bpy.data.scenes["Scene"].render.use_file_extension = False
+    bpy.ops.render.render( animation=True ) 
+
 scene = bpy.context.scene
+scene = def_scene(10,scene)
+remove_obj(scene)
 parse_data(5)
+cage_set(10, 1)
+cage_set(10, -1)
 scene.update()
+render_movie(scene)
 #print (array)
