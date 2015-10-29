@@ -660,7 +660,7 @@ void simulate(std::vector<Interaction> &interactions,
             }
             count++;
             timestep += timeres;
-            output << '\n' << '\n';
+            //output << '\n' << '\n';
         }
 
         // Radioactive
