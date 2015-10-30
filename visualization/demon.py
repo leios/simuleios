@@ -17,8 +17,8 @@ def parse_data(num_part):
         offset = 0
         linesInDataSet = 0
         print("importing data from file")
-        #input = "../MD/demon/out.dat"
-        input = "file.dat"
+        input = "../MD/demon/out.dat"
+        #input = "file.dat"
         with open(input, 'r') as data:
                 for line in data:
                         if line != '\n':
@@ -30,13 +30,12 @@ def parse_data(num_part):
                                 array.append(temp)
                                 i += 1
 
-        max_vel = place_spheres(array, num_part, i)
-        print(max_vel)
+        (max_vel, min_vel) = place_spheres(array, num_part, i)
         numberOfFrames = int (linesInDataSet / num_part) 
 
         for i in range(2, numberOfFrames+1):
                 if (i%100==0):print ("at frame " + str(i)+ " of " + str(numberOfFrames))
-                move_spheres(array, num_part, i, max_vel)
+                move_spheres(array, num_part, i, max_vel, min_vel)
         return numberOfFrames
 
 # Creates sphere material
@@ -53,7 +52,7 @@ def create_new_material (passedName,passedcolor):
         tempMat.alpha = 0.5
         tempMat.ambient = 0.3
         tempMat.emit = 0.2
-        tempMat.keyframe_insert(data_path="diffuse_color", frame=1.0, index=-1)
+        tempMat.keyframe_insert(data_path="diffuse_color", frame=1, index=-1)
     return tempMat
 
 # places new sphere at given location
@@ -97,22 +96,29 @@ def place_spheres(array, num_part, i):
  
     # determine the final velocities
     vel_max = 0
+    vel_min = 1000
     for i in range (num_part):
         vel = np.sqrt((array[i][3] * array[i][3]) + (array[i][4] * array[i][4])
                       + (array[i][5] * array[i][5]))
         if vel > vel_max:
             vel_max = vel
+        if vel < vel_min:
+            vel_min = vel
+
+    vel_diff = vel_max - vel_min
 
     for i in range(0, num_part):
         vel = np.sqrt((array[i][3] * array[i][3]) + (array[i][4] * array[i][4])
                       + (array[i][5] * array[i][5]))
 
-        new_sphere(diam, array[i][0], array[i][1], array[i][2], vel / vel_max,
-                   0, 1-vel/vel_max, array[i][7])
-    return vel_max
+        ratio = (vel - vel_min) / vel_diff
+
+        new_sphere(diam, array[i][0], array[i][1], array[i][2], 
+                   ratio, 0, 1 - ratio, array[i][7])
+    return (vel_max, vel_min)
 
 # Function to moves spheres that are already there.
-def move_spheres(array, num_part, frame, max_vel):
+def move_spheres(array, num_part, frame, max_vel, min_vel):
         bpy.context.scene.frame_set(frame)
         offset = int(frame * num_part - num_part)
         current_frame = bpy.context.scene.frame_current
@@ -120,8 +126,10 @@ def move_spheres(array, num_part, frame, max_vel):
                 vel = np.sqrt((array[i][3] * array[i][3]) 
                       + (array[i][4] * array[i][4])
                       + (array[i][5] * array[i][5]))
+                diff_vel = max_vel - min_vel
+                ratio = (vel - min_vel) / diff_vel
                 mat = bpy.data.materials[str(array[i][7])]
-                mat.diffuse_color = ( vel / max_vel,0,1-vel/max_vel)
+                mat.diffuse_color = ( ratio,0,1-ratio)
                 mat.keyframe_insert(data_path="diffuse_color", frame=frame, 
                                     index=-1)
                 bpy.context.scene.objects[str(array[i][7])].location = (array[i][0],array[i][1],array[i][2])
@@ -234,7 +242,7 @@ def render_movie(scene):
 scene = bpy.context.scene
 scene = def_scene(10,scene)
 remove_obj(scene)
-num = parse_data(5)
+num = parse_data(300)
 bpy.data.scenes["Scene"].frame_end = num
 cage_set(10, 1)
 cage_set(10, -1)
