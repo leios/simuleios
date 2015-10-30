@@ -17,7 +17,8 @@ def parse_data(num_part):
         offset = 0
         linesInDataSet = 0
         print("importing data from file")
-        input = "file.dat"
+        input = "../MD/demon/out.dat"
+        #input = "file.dat"
         with open(input, 'r') as data:
                 for line in data:
                         if line != '\n':
@@ -35,7 +36,7 @@ def parse_data(num_part):
         for i in range(2, numberOfFrames+1):
                 if (i%100==0):print ("at frame " + str(i)+ " of " + str(numberOfFrames))
                 move_spheres(array, num_part, i)
-        return array
+        return numberOfFrames
 
 # Creates sphere material
 def create_new_material (passedName,passedcolor):
@@ -101,7 +102,6 @@ def place_spheres(array, num_part, i):
                              array[i][7])
 
 # Function to moves spheres that are already there.
-# Not currently working!
 def move_spheres(array, num_part, frame):
         bpy.context.scene.frame_set(frame)
         offset = int(frame * num_part - num_part)
@@ -198,7 +198,7 @@ def render_movie(scene):
     bpy.ops.render.render( write_still=True )
     print("rendering movie")
     scene.sequence_editor_create()
-    bpy.data.scenes["Scene"].render.fps = 30
+    bpy.data.scenes["Scene"].render.fps = 120
     bpy.data.scenes["Scene"].render.image_settings.file_format = 'FFMPEG'
     #bpy.data.scenes["Scene"].render.ffmpeg.video_bitrate = 24300
     bpy.data.scenes["Scene"].render.ffmpeg.format = 'MPEG4'
@@ -213,7 +213,8 @@ def render_movie(scene):
 scene = bpy.context.scene
 scene = def_scene(10,scene)
 remove_obj(scene)
-parse_data(5)
+num = parse_data(300)
+bpy.data.scenes["Scene"].frame_end = num
 cage_set(10, 1)
 cage_set(10, -1)
 scene.update()
