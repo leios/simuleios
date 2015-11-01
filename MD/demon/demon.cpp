@@ -76,10 +76,10 @@ int main(void) {
 
     int pnum = 300; // must be divisible by 1/ratio
     int type = 0;
-    double box_length = 10, max_vel = 0.01, max_vel2 = .1, rad_1 = 0.1;
-    double velavg =
-        (sqrt(3 * max_vel * max_vel) + sqrt(3 * max_vel2 * max_vel2)) * 0.5;
-    double rad_2 = 0.01, timeres = 1, mass = 0.1, mass_2 = 0.01, ratio = 0.25;
+    double box_length = 10, max_vel = 0.1, max_vel2 = .1, rad_1 = 0.1;
+    double velavg = 
+        (sqrt(3 * max_vel * max_vel) + sqrt(3 * max_vel2 * max_vel2)) * 0.25;
+    double rad_2 = 0.1, timeres = 1, mass = 0.1, mass_2 = 0.1, ratio = 0.5;
     std::vector<int> parts(pnum);
 
     std::vector<Particle> curr_data = populate(
@@ -534,7 +534,7 @@ void simulate(std::vector<Interaction> &interactions,
 
     // Note that these are all defined in the material linked in README
     // Step 1
-    double half_time = 10 * interactions[80].rtime, final_time = 4 * half_time;
+    double half_time = 10 * interactions[80].rtime, final_time = 12 * half_time;
     // double half_time = 10000, final_time = 20000;
 
     while (simtime < final_time) {
