@@ -11,14 +11,15 @@ import numpy as np
 
 # goes through all the data! Woo!
 # Written by Kramsfasel
-def parse_data(num_part):
+def parse_data(num_part=0):
         array = []
-        i = 0
         offset = 0
         linesInDataSet = 0
         print("importing data from file")
-        input = "../MD/demon/out.dat"
+        #input = "../MD/demon/out.dat"
+        input = "/tmp/file.dat"
         #input = "file.dat"
+        num_part_temp = 0
         with open(input, 'r') as data:
                 for line in data:
                         if line != '\n':
@@ -28,14 +29,19 @@ def parse_data(num_part):
                                 temp[7]=int (s[7])
                                 temp[6]=int (s[6])
                                 array.append(temp)
-                                i += 1
+                        else:
+                                if (num_part == 0):
+                                        num_part=linesInDataSet
 
-        (max_vel, min_vel) = place_spheres(array, num_part, i)
+        (max_vel, min_vel) = place_spheres(array, num_part, linesInDataSet)
+        
         numberOfFrames = int (linesInDataSet / num_part) 
 
-        for i in range(2, numberOfFrames+1):
-                if (i%100==0):print ("at frame " + str(i)+ " of " + str(numberOfFrames))
-                move_spheres(array, num_part, i, max_vel, min_vel)
+        print ("found " + str(numberOfFrames) + " and " + str(num_part) + " particles in first frame")   
+
+        for linesInDataSet in range(2, numberOfFrames+1):
+                if (linesInDataSet%100==0):print ("at frame " + str(linesInDataSet)+ " of " + str(numberOfFrames))
+                move_spheres(array, num_part, linesInDataSet, max_vel, min_vel)
         return numberOfFrames
 
 # Creates sphere material
@@ -57,8 +63,8 @@ def create_new_material (passedName,passedcolor):
 
 # places new sphere at given location
 def new_sphere(diam, x, y, z, r, g, b, id):
-    temp_sphere = bpy.ops.mesh.primitive_uv_sphere_add(segments = 64, 
-                                                       ring_count = 32,
+    temp_sphere = bpy.ops.mesh.primitive_uv_sphere_add(segments = 32, 
+                                                       ring_count = 16,
                                                        size = diam,
                                                        location = (x, y, z),
                                                        rotation = (0, 0, 0))
@@ -242,7 +248,7 @@ def render_movie(scene):
 scene = bpy.context.scene
 scene = def_scene(10,scene)
 remove_obj(scene)
-num = parse_data(300)
+num = parse_data()
 bpy.data.scenes["Scene"].frame_end = num
 cage_set(10, 1)
 cage_set(10, -1)
