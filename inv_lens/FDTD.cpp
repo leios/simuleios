@@ -89,7 +89,7 @@ void FDTD(Field EM,
     for (int dx = 0; dx < space; dx++){
         for (int dy = 0; dy < space; dy++){
             //if (dx > 100 && dx < 150){
-                lass.EzH(dx, dy) =  Cour * eps;
+                lass.EzH(dx, dy) = Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
                 lass.HyE(dx, dy) = Cour / eps;
@@ -150,7 +150,7 @@ void FDTD(Field EM,
         for (int dx = 0; dx < space; dx++){
             for (int dy = 0; dy < space - 1; dy++){
                EM.Hx(dx,dy) = lass.HxH(dx,dy) * EM.Hx(dx, dy) 
-                           + lass.HxE(dx,dy) * (EM.Ez(dx,dy + 1) 
+                           - lass.HxE(dx,dy) * (EM.Ez(dx,dy + 1) 
                                                 - EM.Ez(dx,dy));
             }
         }
@@ -173,8 +173,8 @@ void FDTD(Field EM,
         for (int dx = 1; dx < space - 1; dx++){
             for (int dy = 1; dy < space - 1; dy++){
                EM.Ez(dx,dy) = lass.EzE(dx,dy) * EM.Ez(dx,dy)
-                           + lass.EzH[dx] * (EM.Hy(dx, dy)
-                                             - EM.Hy(dx - 1, dy)
+                           + lass.EzH[dx] * ((EM.Hy(dx, dy)
+                                             - EM.Hy(dx - 1, dy))
                                              - EM.Hx(dx,dy)
                                              - EM.Hx(dx, dy - 1));
             }
@@ -188,9 +188,9 @@ void FDTD(Field EM,
         */
 
         // set up the Ricker Solution in text
-        double temp_const = 3.14 * (((Cour * 50.0) - 50.0) / 100.0 - 1.0);
+        double temp_const = 3.14159 * ((Cour * 30.0 - 0.0) / 100.0 - 1.0);
         temp_const = temp_const * temp_const;
-        EM.Ez(0,0) = (1.0 - 2.0 * temp_const) * exp(-temp_const);
+        EM.Ez(50,50) = (1.0 - 2.0 * temp_const) * exp(-temp_const);
 
         // EM.Ez[0] = 0;
         
@@ -203,11 +203,13 @@ void FDTD(Field EM,
             Ez[50] = 1;
         }
 */
-        if (t % 10 == 0){
-            for (int dx = 0; dx < space; dx = dx + 10){
-                for (int dy = 0; dy < space; dy = dy + 10){
+        int check = 5;
+        if (t % check == 0){
+            for (int dx = 0; dx < space; dx = dx + check){
+                for (int dy = 0; dy < space; dy = dy + check){
                     output << t << '\t' << dx <<'\t' << dy << '\t'
-                           << EM.Ez(dx, dy) << '\n';
+                           << EM.Ez(dx, dy) << '\t' << EM.Hy(dx, dy) 
+                           << '\t' << EM.Hx(dx, dy) << '\t' << '\n';
                     //output << Ez(dx,dy) + (t * offset) << '\n';
                     //output << Hy[dx] + (t * offset) << '\n';
                 }
