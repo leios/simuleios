@@ -50,6 +50,9 @@ void FDTD(Field EM,
           const int final_time, const double eps, const int space, Loss lass,
           std::ofstream& output);
 
+// Adding ricker solutuion
+double ricker(int time, int loc, double Cour);
+
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
@@ -153,13 +156,45 @@ void FDTD(Field EM,
         }
 
         // TFSF boundary
-        /*
         Bound first, last;
-        first.x = 100; last.x = 199;
-        first.y = 100; last.y = 199;
+        first.x = 100; last.x = 150;
+        first.y = 100; last.y = 150;
 
-        dx = first.x - 1;
-        */
+        // Updating along left edge
+        int dx = first.x - 1;
+        for (int dy = first.y; dy <= last.y; dy++){
+            EM.Hy(dx,dy) -= lass.HyE(dx, dy) * ricker(t,dx + 1, Cour);
+        }
+
+        // Update along right edge!
+        dx = last.x;
+        for (int dy = first.y; dy <= last.y; dy++){
+            EM.Hy(dx,dy) -= lass.HyE(dx, dy) * ricker(t, dx, Cour);
+        }
+
+        // Update along bot
+        int dy = first.y - 1;
+        for (int dx = first.x; dx <= last.x; dx++){
+            EM.Hx(dx,dy) += lass.HxE(dx, dy) * ricker(t, dx, Cour);
+        }
+
+        // Updating along top
+        dy = last.y;
+        for (int dx = first.x; dx <= last.x; dx++){
+            EM.Hx(dx,dy) += lass.HxE(dx, dy) * ricker(t, dx, Cour);
+        }
+
+        // Updating Ez along left
+        dx = first.x;
+        for (int dy = first.y; dy <= last.y; dy++){
+            EM.Ez(dx, dy) -= lass.EzH(dx, dy) * ricker(t, 0, Cour);
+        }
+
+        // Update along right
+        dx = last.x;
+        for (int dy = first.y; dy <= last.y; dy++){
+            EM.Ez(dx, dy) -= lass.EzH(dx, dy) * ricker(t, 0, Cour);
+        }
 
         // update electric field
         for (int dx = 1; dx < space - 1; dx++){
@@ -173,9 +208,12 @@ void FDTD(Field EM,
         }
 
         // set up the Ricker Solution in text -- src for next step
+        /*
         double temp_const = 3.14159 * ((Cour * t - 0.0) / 20.0 - 1.0);
         temp_const = temp_const * temp_const;
-        EM.Ez(100,100) += (1.0 - 2.0 * temp_const) * exp(-temp_const);
+        EM.Ez(100,100) = (1.0 - 2.0 * temp_const) * exp(-temp_const);
+        */
+        EM.Ez(100,100) = ricker(t, 0, Cour);
 
         
         // Outputting to a file
@@ -195,4 +233,14 @@ void FDTD(Field EM,
         }
 
     }
+}
+
+// Adding the ricker solution
+double ricker(int time, int loc, double Cour){
+    double Ricky;
+    double temp_const = 3.14159*((Cour*(double)time - (double)loc)/20.0 - 1.0);
+    temp_const = temp_const * temp_const;
+    Ricky = (1.0 - 2.0 * temp_const) * exp(-temp_const);
+    return Ricky;
+
 }
