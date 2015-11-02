@@ -17,6 +17,10 @@
 
 static const size_t space = 200;
 
+struct Bound{
+    int x,y;
+};
+
 struct Loss{
     std::vector <double> EzH = std::vector<double>(space * space, 0), 
                          EzE = std::vector<double>(space * space, 0), 
@@ -129,14 +133,6 @@ void FDTD(Field EM,
     // Time looping
     for (int t = 0; t < final_time; t++){
 
-        // Linking the final two elements for an ABC
-        /*
-        for (int da = 0; da < space; da++){
-            EM.Hy(da,space - 1) = EM.Hy(da,space - 2);
-            EM.Hx(space - 1,da) = EM.Hx(space - 2,da);
-        }
-        */
-
         // update magnetic field, x direction
         for (int dx = 0; dx < space; dx++){
             for (int dy = 0; dy < space - 1; dy++){
@@ -156,17 +152,13 @@ void FDTD(Field EM,
             }
         }
 
-        // Correction to the H field for the TFSF boundary
-        // Hy[49] -= exp(-(t - 40.) * (t - 40.)/100.0) / eps;
-        // Hy[49] -= sin((t-10.0)*0.2)*0.0005;
-
-
-        // Linking the first two elements in the electric field
+        // TFSF boundary
         /*
-        for (int dy = 0; dy < space; dy++){
-            EM.Ez(0,dy) = EM.Ez(1,dy);
-            EM.Ez(space - 1,dy) = EM.Ez(space - 2,dy);
-        }
+        Bound first, last;
+        first.x = 100; last.x = 199;
+        first.y = 100; last.y = 199;
+
+        dx = first.x - 1;
         */
 
         // update electric field
@@ -180,29 +172,13 @@ void FDTD(Field EM,
             }
         }
 
-        // set src for next step
-        /*
-        for (int dy = 0; dy < space; dy++){
-            EM.Ez(50,dy) += exp(-((t + 1 - 40.) * (t + 1 - 40.))/100.0);
-        }
-        */
-
-        // set up the Ricker Solution in text
+        // set up the Ricker Solution in text -- src for next step
         double temp_const = 3.14159 * ((Cour * t - 0.0) / 20.0 - 1.0);
         temp_const = temp_const * temp_const;
-        EM.Ez(100,100) = (1.0 - 2.0 * temp_const) * exp(-temp_const);
+        EM.Ez(100,100) += (1.0 - 2.0 * temp_const) * exp(-temp_const);
 
-        // EM.Ez[0] = 0;
         
-        // Ez[50] += sin((t - 10.0 + 1)*0.2)*0.0005;
-/*
-        if (t > 0){
-            Ez[50] = sin(0.1 * t) / (0.1 * t);
-        }
-        else{
-            Ez[50] = 1;
-        }
-*/
+        // Outputting to a file
         int check = 5;
         if (t % check == 0){
             for (int dx = 0; dx < space; dx = dx + check){
