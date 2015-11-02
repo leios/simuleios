@@ -55,7 +55,7 @@ int main(){
     // defines output
     std::ofstream output("FDTD.dat", std::ofstream::out);
 
-    int final_time = 500;
+    int final_time = 1000;
     double eps = 377.0;
 
     Loss lass;
@@ -137,15 +137,6 @@ void FDTD(Field EM,
         }
         */
 
-        // update magnetic field, y direction
-        for (int dx = 0; dx < space - 1; dx++){
-            for (int dy = 0; dy < space; dy++){
-               EM.Hy(dx,dy) = lass.HyH(dx,dy) * EM.Hy(dx,dy) 
-                           + lass.HyE(dx,dy) * (EM.Ez(dx + 1,dy) 
-                                                - EM.Ez(dx,dy));
-            }
-        }
-
         // update magnetic field, x direction
         for (int dx = 0; dx < space; dx++){
             for (int dy = 0; dy < space - 1; dy++){
@@ -155,6 +146,15 @@ void FDTD(Field EM,
             }
         }
 
+
+        // update magnetic field, y direction
+        for (int dx = 0; dx < space - 1; dx++){
+            for (int dy = 0; dy < space; dy++){
+               EM.Hy(dx,dy) = lass.HyH(dx,dy) * EM.Hy(dx,dy) 
+                           + lass.HyE(dx,dy) * (EM.Ez(dx + 1,dy) 
+                                                - EM.Ez(dx,dy));
+            }
+        }
 
         // Correction to the H field for the TFSF boundary
         // Hy[49] -= exp(-(t - 40.) * (t - 40.)/100.0) / eps;
@@ -173,10 +173,10 @@ void FDTD(Field EM,
         for (int dx = 1; dx < space - 1; dx++){
             for (int dy = 1; dy < space - 1; dy++){
                EM.Ez(dx,dy) = lass.EzE(dx,dy) * EM.Ez(dx,dy)
-                           + lass.EzH[dx] * ((EM.Hy(dx, dy)
+                           + lass.EzH(dx,dy) * ((EM.Hy(dx, dy)
                                              - EM.Hy(dx - 1, dy))
-                                             - EM.Hx(dx,dy)
-                                             - EM.Hx(dx, dy - 1));
+                                             - (EM.Hx(dx,dy)
+                                             - EM.Hx(dx, dy - 1)));
             }
         }
 
@@ -188,9 +188,9 @@ void FDTD(Field EM,
         */
 
         // set up the Ricker Solution in text
-        double temp_const = 3.14159 * ((Cour * 30.0 - 0.0) / 100.0 - 1.0);
+        double temp_const = 3.14159 * ((Cour * t - 0.0) / 20.0 - 1.0);
         temp_const = temp_const * temp_const;
-        EM.Ez(50,50) = (1.0 - 2.0 * temp_const) * exp(-temp_const);
+        EM.Ez(100,100) = (1.0 - 2.0 * temp_const) * exp(-temp_const);
 
         // EM.Ez[0] = 0;
         
