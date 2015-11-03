@@ -7,6 +7,7 @@
 *
 *   Notes: Most of this is coming from the following link:
 *             http://www.eecs.wsu.edu/~schneidj/ufdtd/chap3.pdf
+*             http://www.eecs.wsu.edu/~schneidj/ufdtd/chap8.pdf
 *
 *-----------------------------------------------------------------------------*/
 
@@ -88,7 +89,7 @@ void FDTD(Field EM,
     // double offset = 0.00005;
 
     // for electric field:
-    double offset = 0.05;
+    //double offset = 0.05;
     double loss = 0.0;
     double Cour = 1.0 / sqrt(2.0);
 
@@ -96,21 +97,21 @@ void FDTD(Field EM,
     for (int dx = 0; dx < space; dx++){
         for (int dy = 0; dy < space; dy++){
             //if (dx > 100 && dx < 150){
+/*
                 lass.EzH(dx, dy) = Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
                 lass.HyE(dx, dy) = Cour / eps;
                 lass.HxE(dx, dy) = Cour / eps;
                 lass.HxH(dx, dy) = 1.0;
+*/
 
-                /*
                 lass.EzH(dx, dy) =  eps / 9.0 /(1.0 - loss);
                 lass.EzE(dx, dy) = (1.0 - loss) / (1.0 + loss);
                 lass.HyH(dx, dy) = (1.0 - loss) / (1.0 + loss);
                 lass.HyE(dx, dy) = (1.0 / eps) / (1.0 + loss);
                 lass.HxE(dx, dy) = (1.0 / eps) / (1.0 + loss);
                 lass.HxH(dx, dy) = (1.0 - loss) / (1.0 + loss);
-                */
             //}
             /*
             else{
@@ -157,8 +158,8 @@ void FDTD(Field EM,
 
         // TFSF boundary
         Bound first, last;
-        first.x = 100; last.x = 150;
-        first.y = 100; last.y = 150;
+        first.x = 75; last.x = 125;
+        first.y = 75; last.y = 125;
 
         // Updating along left edge
         int dx = first.x - 1;
@@ -169,7 +170,7 @@ void FDTD(Field EM,
         // Update along right edge!
         dx = last.x;
         for (int dy = first.y; dy <= last.y; dy++){
-            EM.Hy(dx,dy) -= lass.HyE(dx, dy) * ricker(t, dx, Cour);
+            EM.Hy(dx,dy) += lass.HyE(dx, dy) * ricker(t, dx, Cour);
         }
 
         // Update along bot
@@ -184,18 +185,6 @@ void FDTD(Field EM,
             EM.Hx(dx,dy) += lass.HxE(dx, dy) * ricker(t, dx, Cour);
         }
 
-        // Updating Ez along left
-        dx = first.x;
-        for (int dy = first.y; dy <= last.y; dy++){
-            EM.Ez(dx, dy) -= lass.EzH(dx, dy) * ricker(t, 0, Cour);
-        }
-
-        // Update along right
-        dx = last.x;
-        for (int dy = first.y; dy <= last.y; dy++){
-            EM.Ez(dx, dy) -= lass.EzH(dx, dy) * ricker(t, 0, Cour);
-        }
-
         // update electric field
         for (int dx = 1; dx < space - 1; dx++){
             for (int dy = 1; dy < space - 1; dy++){
@@ -206,6 +195,20 @@ void FDTD(Field EM,
                                              - EM.Hx(dx, dy - 1)));
             }
         }
+
+        // Check mag instead of ricker.
+        // Updating Ez along left
+        dx = first.x;
+        for (int dy = first.y; dy <= last.y; dy++){
+            EM.Ez(dx, dy) -= lass.EzH(dx, dy) * ricker(t, dx, Cour);
+        }
+
+        // Update along right
+        dx = last.x;
+        for (int dy = first.y; dy <= last.y; dy++){
+            EM.Ez(dx, dy) += lass.EzH(dx, dy) * ricker(t, dx - 1, Cour);
+        }
+
 
         // set up the Ricker Solution in text -- src for next step
         /*
