@@ -50,6 +50,7 @@ struct Field1d{
     std::vector <double> Hx = std::vector<double>(space, 0), 
                          Hy = std::vector<double>(space, 0),
                          Ez = std::vector<double>(space, 0);
+    int t;
 };
 
 #define EzH(i, j) EzH[(i) + (j) *  space]
@@ -62,8 +63,8 @@ struct Field1d{
 #define Hy(i, j) Hy[(i) + (j) *  space] 
 #define Ez(i, j) Ez[(i) + (j) *  space] 
 
-void FDTD(Field EM,
-          const int final_time, const double eps, const int space, Loss lass,
+void FDTD(Field EM, Field1d EM1d,
+          const int final_time, const double eps, const int space,
           std::ofstream& output);
 
 // Adding ricker solutuion
@@ -81,6 +82,9 @@ Field1d Eupdate1d(Field1d EM1d, Loss lass, int t);
 Loss createloss2d(Loss lass, double eps, double Cour, double loss);
 Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss);
 
+// TFSF boundaries
+Field TFSF(Field EM, Loss lass, Field1d EM1d, Loss1d lass1d, double Cour);
+
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
@@ -93,13 +97,13 @@ int main(){
     int final_time = 1000;
     double eps = 377.0;
 
-    Loss lass;
-
     // define initial E and H fields
     // std::vector<double> Ez(space, 0.0), Hy(space, 0.0);
     Field EM;
+    Field1d EM1d;
+    EM1d.t = 0;
 
-    FDTD(EM, final_time, eps, space, lass, output);
+    FDTD(EM, EM1d, final_time, eps, space, output);
 
 }
 
@@ -108,8 +112,8 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // This is the function we writs the bulk of the code in
-void FDTD(Field EM,
-          const int final_time, const double eps, const int space, Loss lass,
+void FDTD(Field EM, Field1d EM1d,
+          const int final_time, const double eps, const int space,
           std::ofstream& output){
 
     // For magnetic field:
@@ -120,65 +124,17 @@ void FDTD(Field EM,
     double loss = 0.0;
     double Cour = 1.0 / sqrt(2.0);
 
-    lass = createloss2d(lass, eps, Cour, loss);
+    Loss lass;
+    lass  = createloss2d(lass, eps, Cour, loss);
+    Loss1d lass1d;
+    lass1d = createloss1d(lass1d, eps, Cour, loss);
 
     // Time looping
     for (int t = 0; t < final_time; t++){
 
         EM = Hupdate2d(EM, lass, t);
-        /*
-
-        // TFSF boundary
-        Bound first, last;
-        first.x = 50; last.x = 150;
-        first.y = 50; last.y = 150;
-
-        // Updating along left edge
-        int dx = first.x - 1;
-        for (int dy = first.y; dy <= last.y; dy++){
-            EM.Hy(dx,dy) -= lass.HyE(dx, dy) * EM.Ez(dx+1, dy);
-        }
-
-        // Update along right edge!
-        dx = last.x;
-        for (int dy = first.y; dy <= last.y; dy++){
-            EM.Hy(dx,dy) += lass.HyE(dx, dy) * EM.Ez(dx, dy);
-        }
-
-        // Update along bot
-        int dy = first.y - 1;
-        for (int dx = first.x; dx <= last.x; dx++){
-            EM.Hx(dx,dy) += lass.HxE(dx, dy) * EM.Ez(dx, dy);
-        }
-
-        // Updating along top
-        dy = last.y;
-        for (int dx = first.x; dx <= last.x; dx++){
-            EM.Hx(dx,dy) -= lass.HxE(dx, dy) * EM.Ez(dx, dy);
-        }
-
-        // Check mag instead of ricker.
-        // Updating Ez along left
-        dx = first.x;
-        for (int dy = first.y; dy <= last.y; dy++){
-            EM.Ez(dx, dy) -= lass.EzH(dx, dy) * EM.Hy(dx - 1, dy);
-        }
-
-        // Update along right
-        dx = last.x;
-        for (int dy = first.y; dy <= last.y; dy++){
-            EM.Ez(dx, dy) += lass.EzH(dx, dy) * EM.Hy(dx, dy);
-        }
-
-*/
-
+        //EM = TFSF(EM, lass, EM1d, lass1d, Cour);
         EM = Eupdate2d(EM,lass,t);
-        // set up the Ricker Solution in text -- src for next step
-        /*
-        double temp_const = 3.14159 * ((Cour * t - 0.0) / 20.0 - 1.0);
-        temp_const = temp_const * temp_const;
-        EM.Ez(100,100) = (1.0 - 2.0 * temp_const) * exp(-temp_const);
-        */
         EM.Ez(0,100) = ricker(t, 0, Cour);
         
         // Outputting to a file
@@ -353,3 +309,56 @@ Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss){
 
 }
 
+// TFSF boundaries
+Field TFSF(Field EM, Loss lass, Field1d EM1d, Loss1d lass1d, double Cour){
+    // TFSF boundary
+    Bound first, last;
+    first.x = 50; last.x = 150;
+    first.y = 50; last.y = 150;
+
+    // Updating along left edge
+    int dx = first.x - 1;
+    for (int dy = first.y; dy <= last.y; dy++){
+        EM.Hy(dx,dy) -= lass.HyE(dx, dy) * EM1d.Ez(dx+1, dy);
+    }
+
+    // Update along right edge!
+    dx = last.x;
+    for (int dy = first.y; dy <= last.y; dy++){
+        EM.Hy(dx,dy) += lass.HyE(dx, dy) * EM1d.Ez(dx, dy);
+    }
+
+    // Update along bot
+    int dy = first.y - 1;
+    for (int dx = first.x; dx <= last.x; dx++){
+        EM.Hx(dx,dy) += lass.HxE(dx, dy) * EM1d.Ez(dx, dy);
+    }
+
+    // Updating along top
+    dy = last.y;
+    for (int dx = first.x; dx <= last.x; dx++){
+        EM.Hx(dx,dy) -= lass.HxE(dx, dy) * EM1d.Ez(dx, dy);
+    }
+
+    // Insert 1d grid stuff here. Update magnetic and electric field
+    Hupdate1d(EM1d, lass1d, EM1d.t);
+    Eupdate1d(EM1d, lass1d, EM1d.t);
+    EM1d.Ez[0] = ricker(EM1d.t,0, Cour);
+    EM1d.t++;
+
+    // Check mag instead of ricker.
+    // Updating Ez along left
+    dx = first.x;
+    for (int dy = first.y; dy <= last.y; dy++){
+        EM.Ez(dx, dy) -= lass.EzH(dx, dy) * EM1d.Hy(dx - 1, dy);
+    }
+
+    // Update along right
+    dx = last.x;
+    for (int dy = first.y; dy <= last.y; dy++){
+        EM.Ez(dx, dy) += lass.EzH(dx, dy) * EM1d.Hy(dx, dy);
+    }
+
+    return EM;
+
+}
