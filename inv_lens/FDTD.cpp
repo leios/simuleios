@@ -48,6 +48,13 @@ struct Field{
     std::vector <double> Hy1d = std::vector<double>(space, 0), 
                          Ez1d = std::vector<double>(space, 0);
 
+    // 6 elements, 3 spacial elements away from border and 2 time elements of
+    // those spatial elements
+    std::vector <double> Etop = std::vector<double>(3 * 2 * space, 0), 
+                         Ebot = std::vector<double>(3 * 2 * space, 0),
+                         Eleft = std::vector<double>(3 * 2 * space, 0),
+                         Eright = std::vector<double>(3 * 2 * space, 0);
+
     int t;
 };
 
@@ -60,6 +67,11 @@ struct Field{
 #define Hx(i, j) Hx[(i) + (j) *  space] 
 #define Hy(i, j) Hy[(i) + (j) *  space] 
 #define Ez(i, j) Ez[(i) + (j) *  space] 
+#define Etop(i, j, k) Etop[(k) * 6 + (j) * 3 + (i)]
+#define Ebot(i, j, k) Ebot[(k) * 6 + (j) * 3 + (i)]
+#define Eleft(i, j, k) Eleft[(k) * 6 + (j) * 3 + (i)]
+#define Eright(i, j, k) Eright[(k) * 6 + (j) * 3 + (i)]
+
 
 void FDTD(Field EM,
           const int final_time, const double eps, const int space,
@@ -80,8 +92,11 @@ Field Eupdate1d(Field EM, Loss lass, int t);
 Loss createloss2d(Loss lass, double eps, double Cour, double loss);
 Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss);
 
-// TFSF boundaries
+// Total Field Scattered Field (TFSF) boundaries
 Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour);
+
+// Checking Absorbing Boundary Conditions (ABS)
+Field ABCcheck(Field EM, Loss lass);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -361,3 +376,25 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     return EM;
 
 }
+
+// Checking Absorbing Boundary Conditions (ABC)
+Field ABCcheck(Field EM, Loss lass){
+
+    // defining constant for  ABC
+    double c1, c2, c3, temp1, temp2;
+    temp1 = sqrt(lass.EzH(0,0) * lass.HyE(0,0));
+    temp2 = 1.0 / temp1 + 2.0 + temp1;
+    c1 = -(1.0 / temp1 - 2.0 + temp1) / temp2;
+    c2 = -2.0 * (temp1 - 1.0 / temp1) / temp2;
+    c3 = 4.0 * (temp1 + 1.0 / temp1) / temp2;
+
+/*
+    for (dy = 0; dy < space; dy++){
+        EM.Ez(0,dy) = c1 * (EM.Ez(2,dy) + EM.Eleft(0, 1, dy)
+
+    }
+*/
+
+    return EM;
+}
+
