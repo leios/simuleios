@@ -44,13 +44,11 @@ struct Field{
     std::vector <double> Hx = std::vector<double>(space * space, 0), 
                          Hy = std::vector<double>(space * space, 0),
                          Ez = std::vector<double>(space * space, 0);
-    int t;
-};
 
-struct Field1d{
-    std::vector <double> Hx = std::vector<double>(space, 0), 
-                         Hy = std::vector<double>(space, 0),
-                         Ez = std::vector<double>(space, 0);
+    std::vector <double> Hy1d = std::vector<double>(space, 0), 
+                         Ez1d = std::vector<double>(space, 0);
+
+    int t;
 };
 
 #define EzH(i, j) EzH[(i) + (j) *  space]
@@ -63,7 +61,7 @@ struct Field1d{
 #define Hy(i, j) Hy[(i) + (j) *  space] 
 #define Ez(i, j) Ez[(i) + (j) *  space] 
 
-void FDTD(Field EM, Field1d EM1d,
+void FDTD(Field EM,
           const int final_time, const double eps, const int space,
           std::ofstream& output);
 
@@ -75,15 +73,15 @@ Field Hupdate2d(Field EM, Loss lass, int t);
 Field Eupdate2d(Field EM, Loss lass, int t);
 
 // 1 dimensional update functions for E / H
-Field1d Hupdate1d(Field1d EM1d, Loss lass, int t);
-Field1d Eupdate1d(Field1d EM1d, Loss lass, int t);
+Field Hupdate1d(Field EM, Loss lass, int t);
+Field Eupdate1d(Field EM, Loss lass, int t);
 
 // Creating loss
 Loss createloss2d(Loss lass, double eps, double Cour, double loss);
 Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss);
 
 // TFSF boundaries
-Field TFSF(Field EM, Loss lass, Field1d EM1d, Loss1d lass1d, double Cour);
+Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -100,10 +98,9 @@ int main(){
     // define initial E and H fields
     // std::vector<double> Ez(space, 0.0), Hy(space, 0.0);
     Field EM;
-    Field1d EM1d;
     EM.t = 0;
 
-    FDTD(EM, EM1d, final_time, eps, space, output);
+    FDTD(EM, final_time, eps, space, output);
 
 }
 
@@ -112,7 +109,7 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // This is the function we writs the bulk of the code in
-void FDTD(Field EM, Field1d EM1d,
+void FDTD(Field EM,
           const int final_time, const double eps, const int space,
           std::ofstream& output){
 
@@ -133,7 +130,7 @@ void FDTD(Field EM, Field1d EM1d,
     for (int t = 0; t < final_time; t++){
 
         EM = Hupdate2d(EM, lass, t);
-        EM = TFSF(EM, lass, EM1d, lass1d, Cour);
+        EM = TFSF(EM, lass, lass1d, Cour);
         EM = Eupdate2d(EM,lass,t);
         //EM.Ez(0,100) = ricker(t, 0, Cour);
         
@@ -207,24 +204,24 @@ Field Eupdate2d(Field EM, Loss lass, int t){
 }
 
 // 1 dimensional update functions for E / H
-Field1d Hupdate1d(Field1d EM1d, Loss1d lass1d, int t){
+Field Hupdate1d(Field EM, Loss1d lass1d, int t){
     // update magnetic field, y direction
     for (size_t dx = 0; dx < space - 1; dx++){
-        EM1d.Hy[dx] = lass1d.HyH[dx] * EM1d.Hy[dx] 
-                  + lass1d.HyE[dx] * (EM1d.Ez[dx + 1] - EM1d.Ez[dx]);
+        EM.Hy1d[dx] = lass1d.HyH[dx] * EM.Hy1d[dx] 
+                  + lass1d.HyE[dx] * (EM.Ez1d[dx + 1] - EM.Ez1d[dx]);
     }
 
-    return EM1d;
+    return EM;
 }
 
-Field1d Eupdate1d(Field1d EM1d, Loss1d lass1d, int t){
+Field Eupdate1d(Field EM, Loss1d lass1d, int t){
     // update electric field, y direction
     for (size_t dx = 1; dx < space - 1; dx++){
-        EM1d.Ez[dx] = lass1d.EzE[dx] * EM1d.Ez[dx] 
-                  + lass1d.EzH[dx] * (EM1d.Hy[dx] - EM1d.Hy[dx - 1]);
+        EM.Ez1d[dx] = lass1d.EzE[dx] * EM.Ez1d[dx] 
+                  + lass1d.EzH[dx] * (EM.Hy1d[dx] - EM.Hy1d[dx - 1]);
     }
 
-    return EM1d;
+    return EM;
 
 }
 
@@ -311,7 +308,7 @@ Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss){
 }
 
 // TFSF boundaries
-Field TFSF(Field EM, Loss lass, Field1d EM1d, Loss1d lass1d, double Cour){
+Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     // TFSF boundary
     Bound first, last;
     first.x = 50; last.x = 150;
@@ -320,31 +317,31 @@ Field TFSF(Field EM, Loss lass, Field1d EM1d, Loss1d lass1d, double Cour){
     // Updating along left edge
     int dx = first.x - 1;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Hy(dx,dy) -= lass.HyE(dx, dy) * EM1d.Ez[dx+1];
+        EM.Hy(dx,dy) -= lass.HyE(dx, dy) * EM.Ez1d[dx+1];
     }
 
     // Update along right edge!
     dx = last.x;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Hy(dx,dy) += lass.HyE(dx, dy) * EM1d.Ez[dx];
+        EM.Hy(dx,dy) += lass.HyE(dx, dy) * EM.Ez1d[dx];
     }
 
     // Update along bot
     int dy = first.y - 1;
     for (int dx = first.x; dx <= last.x; dx++){
-        EM.Hx(dx,dy) += lass.HxE(dx, dy) * EM1d.Ez[dx];
+        EM.Hx(dx,dy) += lass.HxE(dx, dy) * EM.Ez1d[dx];
     }
 
     // Updating along top
     dy = last.y;
     for (int dx = first.x; dx <= last.x; dx++){
-        EM.Hx(dx,dy) -= lass.HxE(dx, dy) * EM1d.Ez[dx];
+        EM.Hx(dx,dy) -= lass.HxE(dx, dy) * EM.Ez1d[dx];
     }
 
     // Insert 1d grid stuff here. Update magnetic and electric field
-    Hupdate1d(EM1d, lass1d, EM.t);
-    Eupdate1d(EM1d, lass1d, EM.t);
-    EM1d.Ez[100] = ricker(EM.t,0, Cour);
+    Hupdate1d(EM, lass1d, EM.t);
+    Eupdate1d(EM, lass1d, EM.t);
+    EM.Ez1d[50] = ricker(EM.t,0, Cour);
     EM.t++;
     std::cout << EM.t << '\n';
 
@@ -352,13 +349,13 @@ Field TFSF(Field EM, Loss lass, Field1d EM1d, Loss1d lass1d, double Cour){
     // Updating Ez along left
     dx = first.x;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Ez(dx, dy) -= lass.EzH(dx, dy) * EM1d.Hy[dx - 1];
+        EM.Ez(dx, dy) -= lass.EzH(dx, dy) * EM.Hy1d[dx - 1];
     }
 
     // Update along right
     dx = last.x;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Ez(dx, dy) += lass.EzH(dx, dy) * EM1d.Hy[dx];
+        EM.Ez(dx, dy) += lass.EzH(dx, dy) * EM.Hy1d[dx];
     }
 
     return EM;
