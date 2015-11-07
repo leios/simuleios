@@ -1,0 +1,21 @@
+BIN = lens
+CXX = g++
+CXXFLAGS = -std=c++11 -g -Wall -O2
+
+plot: clean_dat $(BIN)
+	./$(BIN) > /dev/null
+	gnuplot plot.gp -
+
+build: $(BIN)
+
+run: clean_dat $(BIN)
+	./$(BIN) 
+
+$(BIN): geometrical_optics.cpp
+	$(CXX) $(CXXFLAGS) geometrical_optics.cpp -o $(BIN) 
+
+clean_dat:
+	rm -Rf out.dat
+
+clean: clean_dat
+	rm -Rf $(BIN)
