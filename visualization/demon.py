@@ -4,6 +4,9 @@
 # 
 # Purpose: Visualize the maxwell's demon code from earlier on stream!
 #
+#   Notes: This code can be run by using the following command:
+#              blender -b -P demon.py
+#
 #------------------------------------------------------------------------------#
 
 import bpy
