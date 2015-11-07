@@ -2,226 +2,265 @@
 *
 *              geometrical optics
 *
-* Purpose: to simulate light going through a lens with a variable refractive 
+* Purpose: to simulate light going through a lens with a variable refractive
 *          index. Not wave-like.
 *
-*   Notes: Compiles with g++ geometrical_optics.cpp -std=c++11
+*   Notes: This file was mostly written by Gustorn. Thanks!
 *
 *-----------------------------------------------------------------------------*/
 
-#include <iostream>
+#include <array>
+#include <cassert>
 #include <cmath>
 #include <fstream>
-#include <cassert>
+#include <iostream>
 
 /*----------------------------------------------------------------------------//
 * STRUCTS / FUNCTIONS
 *-----------------------------------------------------------------------------*/
 
-// constants
-const int lightnum = 10, time_res = 200;
+// Constants
+const int NUM_LIGHTS = 10;
+const int TIME_RES = 500000;
 
-// Struct for space
-struct dimensions{
+// A very simple vector type with operators that are used in this file
+struct vec {
     double x, y;
+
+    vec() : x(0.0), y(0.0) {}
+    vec(double x0, double y0) : x(x0), y(y0) {}
 };
 
-// Struct for light rays
-struct light_rays{
-   dimensions ray[lightnum];
-   dimensions ray_vel[lightnum];
-   double index[lightnum];
+// The static inlines are our best bet to force the inlining of the functions
+// without using platform-specific extensions
+static inline vec& operator+=(vec& a, vec b) {
+    a.x += b.x;
+    a.y += b.y;
+    return a;
+}
+
+static inline vec operator-(vec a) { return vec(-a.x, -a.y); }
+static inline vec operator+(vec a, vec b) { return vec(a.x + b.x, a.y + b.y); }
+static inline vec operator-(vec a, vec b) { return vec(a.x - b.x, a.y - b.y); }
+static inline vec operator*(vec a, double b) { return vec(a.x * b, a.y * b); }
+static inline vec operator*(double a, vec b) { return b * a; }
+
+static inline vec operator/(vec a, double b) {
+    double inv = 1.0 / b;
+    return a * inv;
+}
+
+static inline double dot(vec a, vec b) { return a.x * b.x + a.y * b.y; }
+static inline double length(vec a) { return sqrt(dot(a, a)); }
+static inline vec normalize(vec a) { return a / length(a); }
+static inline double distance(vec a, vec b) { return length(a - b); }
+static inline bool is_null(vec a) { return a.x == 0.0 && a.y == 0.0; }
+
+// This normally wouldn't store the previous index, but there's no
+// ray-shape intersection code yet.
+struct ray {
+    vec p, v;
+    double previous_index;
 };
 
-// checks refractive index profile
-double check_n(double x, double y, dimensions origin, double radius);
+// A convenience shorthand so we don't have to write the full type everywhere
+using ray_array = std::array<ray, NUM_LIGHTS>;
 
-// Generate light and refractive index profile
-light_rays light_gen(dimensions dim, double max_vel, double angle, 
-                     dimensions origin, double radius);
+// A struct describing a simple lens. Add additional lenses by adding
+// a new struct and overloading the corresponding functions (see below)
+struct simple {
+    double left, right;
+    simple(double l, double r) : left(l), right(r) {}
+};
 
-// Propagate light through media
-light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
-                     dimensions origin, double radius,
-                     std::ofstream &output);
+// A simple struct for circular / spherical lens
+struct sphere{
+    double radius;
+    vec origin;
+    sphere(double rad, double x, double y) : radius(rad), origin(x, y) {}
+};
 
-// Finds the c for later
-double find_c(double ix, double iy, dimensions origin, double radius);
+// Add overloads for 'normal_at' and 'refractive_index_at' for your own stuff,
+// example (you'll need a separate struct for the different lenses):
+//
+// vec normal_at(const circle& lens, vec p) { ... }
+// double refractive_index_at(const circle& lens, vec p) { ... }
+bool inside_of(const simple& lens, vec p);
+bool inside_of(const sphere& lens, vec p);
+vec normal_at(const simple& lens, vec p);
+vec normal_at(const sphere& lens, vec p);
+double refractive_index_at(const simple& lens, vec p);
+double refractive_index_at(const sphere& lens, vec p);
+
+// Templated so it can accept any lens type. Stuff will dispatch at compile
+// time, so the performance will be good
+template <typename T>
+ray_array light_gen(vec dim, const T& lens, double max_vel, double angle);
+
+// Same as above
+template <typename T>
+void propagate(ray_array& rays, const T& lens,
+               double step_size, double max_vel,
+               std::ofstream &output);
 
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
 
-int main(){
-
+int main() {
     // defines output
     std::ofstream output("out.dat", std::ofstream::out);
 
-    dimensions dim;
-    dim.x = 4;
-    dim.y = 10;
-
-    // origin of the sphere
-    dimensions origin;
-    origin.x = 5;
-    origin.y = 5;
-
-    double radius = 5;
-
+    vec dim = {4, 10};
     double max_vel = 1;
-    light_rays pvec = light_gen(dim, max_vel, 0.523598776, origin, radius);
 
-    pvec = propagate(pvec, 0.1, max_vel, origin, radius, output);
-
-    output << "\n \n5	0	0	0 \n5	5	0	0 \n";
-
+    // Implement other lenses and change this line to use them
+    sphere lens = {4, 5, 5};
+    ray_array rays = light_gen(dim, lens, max_vel, 0 /*0.523598776*/);
+    propagate(rays, lens, 0.0001, max_vel, output);
 }
 
 /*----------------------------------------------------------------------------//
 * SUBROUTINE
 *-----------------------------------------------------------------------------*/
 
-// checks refractive index profile
-double check_n(double x, double y, dimensions origin, double radius){
-    // check refractive index against a set profile
+// Refracts the given normalized vector "l", based on the normalized normal "n"
+// and the given index of refraction "ior", where ior = n1 / n2
+vec refract(vec l, vec n, double ior) {
+    double c = dot(-n, l);
+    double d = 1.0 - ior * ior * (1.0 - c * c);
 
-    double index, diff;
-
-    diff = sqrt((x - origin.x) * (x - origin.x) 
-                + (y - origin.y) * (y - origin.y));
-
-    if (diff < radius){
-        index = 1.4;
-    }
-    else{
-        index = 1;
+    if (d < 0.0) {
+        return vec(0.0, 0.0);
     }
 
-/*
-    if (x < 5 || x > 7){
-        index = 1.0;
-    }
-    else{
-        //index = (x - 4.0);
-        index = 1.4;
-    }
-*/
-
-    return index;
+    return ior * l + (ior * c - sqrt(d)) * n;
 }
 
-// Generate light and refractive index profile
-light_rays light_gen(dimensions dim, double max_vel, double angle, 
-                     dimensions origin, double radius){
-
-    light_rays ray_diagram;
-
-    // create rays
-    for (size_t i = 0; i < lightnum; i++){
-        ray_diagram.ray[i].x = (double)i * dim.x / lightnum;
-        ray_diagram.ray[i].y = 0;
-        //ray_diagram.ray[i].y = cos(angle);
-        //ray_diagram.ray[i].x = sin(angle);
-        ray_diagram.ray_vel[i].x = max_vel * cos(angle);
-        ray_diagram.ray_vel[i].y = max_vel * sin(angle);
-        ray_diagram.index[i] = check_n(ray_diagram.ray[i].x, 
-                                       ray_diagram.ray[i].y, origin, radius);
-    }
-
-    return ray_diagram;
+vec reflect(vec l, vec n) {
+    return l - (2.0 * dot(n, l)) * n;
 }
 
-// Propagate light through media
-light_rays propagate(light_rays ray_diagram, double step_size, double max_vel,
-                     dimensions origin, double radius,
-                     std::ofstream &output){
+template <typename T>
+ray_array light_gen(vec dim, const T& lens, double max_vel, double angle) {
+    ray_array rays;
+    vec velocity = vec(cos(angle), sin(angle)) * max_vel;
 
-    double index_p, theta, theta_p;
-    double iratio, dotprod;
+    // Create rays
+    for (size_t i = 0; i < rays.size(); i++) {
+        rays[i].p = vec(0.0, 3 + i * dim.x / NUM_LIGHTS);
+        rays[i].v = velocity;
+        rays[i].previous_index = refractive_index_at(lens, rays[i].p);
+    }
+
+    return rays;
+}
+
+template <typename T>
+void propagate(ray_array& rays, const T& lens,
+               double step_size, double max_vel,
+               std::ofstream& output) {
 
     // move simulation every timestep
-    for (size_t i = 0; i < time_res; i++){
-        for (size_t j = 0; j < lightnum; j++){
-            ray_diagram.ray[j].x += ray_diagram.ray_vel[j].x * step_size; 
-            ray_diagram.ray[j].y += ray_diagram.ray_vel[j].y * step_size;
-            if (ray_diagram.index[j] != 
-                check_n(ray_diagram.ray[j].x, ray_diagram.ray[j].y, 
-                        origin, radius)){
-                index_p = check_n(ray_diagram.ray[j].x,
-                                  ray_diagram.ray[j].y, origin, radius);
+    for (auto& ray : rays) {
+        for (size_t i = 0; i < TIME_RES; i+= 1){
+            if (ray.p.x > lens.origin.x + lens.radius + 1){
+                continue;
+            }
+            ray.p += ray.v * step_size;
 
-                std::cout << index_p << '\t' << i << '\t' << j << '\n';
+            double n1 = ray.previous_index;
+            double n2 = refractive_index_at(lens, ray.p);
 
-/*
-                // Non vector form
-                theta = atan2(ray_diagram.ray_vel[j].y, 
-                              ray_diagram.ray_vel[j].x);
-                theta_p = asin((ray_diagram.index[j] / index_p) * sin(theta));
-                ray_diagram.ray_vel[j].y = max_vel * sin(theta_p);
-                ray_diagram.ray_vel[j].x = max_vel * cos(theta_p);
-*/
+            // If the ray passed through a refraction index change
+            if (n1 != n2) {
+                vec n = normal_at(lens, ray.p);
+                vec l = normalize(ray.v);
+                double ior = n1 / n2;
 
-                // Vector form -- Solution by Gustorn!
-                double r = ray_diagram.index[j] / index_p;
-                double mag = std::sqrt(ray_diagram.ray_vel[j].x * 
-                                       ray_diagram.ray_vel[j].x +
-                                       ray_diagram.ray_vel[j].y * 
-                                       ray_diagram.ray_vel[j].y); 
-
-
-                double ix = ray_diagram.ray_vel[j].x / mag;
-                double iy = ray_diagram.ray_vel[j].y / mag;
-
-                // c for later; Normal was: [-1, 0]
-                double c = find_c(ix, iy, origin, radius);
-
-                double k = 1.0 - r * r * (1.0 - c * c);
-
-                if (k < 0.0) {
-                    // Do whatever
-                } else {
-                    double k1 = std::sqrt(k);
-                    ray_diagram.ray_vel[j].x = r * ix - (r * c - k1);
-                    ray_diagram.ray_vel[j].y = r * iy;
+                if (dot(-n, l) < 0.0) {
+                    n = -n;
                 }
-                ray_diagram.index[j] = index_p;
+
+                vec speed = refract(l, n, ior);
+
+                if (is_null(speed)) {
+                    speed = reflect(l, n);
+                }
+
+                // Multiply with ior * length(ray.v) to get the proper velocity
+                // for the refracted vector
+                ray.v = normalize(speed) * ior * length(ray.v);
             }
 
+            ray.previous_index = n2;
+
+            if (i % 1000 == 0){
+                output << ray.p.x <<'\t'<< ray.p.y << '\t'
+                       << ray.v.x <<'\t'<< ray.v.y << '\n';
+            }
         }
-
-/*
-        output << ray_diagram.ray[5].x <<'\t'<< ray_diagram.ray[5].y << '\t'
-               << ray_diagram.ray_vel[5].x <<'\t'<< ray_diagram.ray_vel[5].y
-               << '\n';
-*/
-
-        for (size_t q = 0; q < lightnum; q++){
-            output << ray_diagram.ray[q].x <<'\t'<< ray_diagram.ray[q].y << '\t'
-                   << ray_diagram.ray_vel[q].x <<'\t'<< ray_diagram.ray_vel[q].y
-                   << '\n';
-        }
-
         output << '\n' << '\n';
     }
 
-    return ray_diagram;
 }
 
-// Finds the c for later
-double find_c(double ix, double iy, dimensions origin, double radius){
-
-    // Step 1: define normal vector
-    // In this case, the normal vector is just the direction from the radius
-    // of the sphere
-    double mag = sqrt((ix - origin.x) * (ix - origin.x)
-                      + (iy - origin.y) * (iy - origin.y));
-    double x, y;
-    x = (ix - origin.x) / mag;
-    y = (iy - origin.y) / mag;
-
-    // Step 2: simple dot product
-    double dot = -(ix * x + iy * y);
-
-    return dot;
+// Inside_of functions
+// simple lens slab
+bool inside_of(const simple& lens, vec p) {
+    return p.x > lens.left && p.x < lens.right;
 }
 
+// Circle / sphere
+bool inside_of(const sphere& lens, vec p) {
+    double diff = distance(lens.origin, p);
+    return diff < lens.radius;
+}
+
+// Find the normal
+// Lens slab
+vec normal_at(const simple&, vec) {
+    return normalize(vec(-1.0, 0.0));
+}
+
+// Circle / sphere
+// ERROR: This is defined incorrectly!
+vec normal_at(const sphere& lens, vec p) {
+    //return normalize(vec(-1.0, 0.0));
+    return normalize(p - lens.origin);
+}
+
+// find refractive index
+// Lens slab
+double refractive_index_at(const simple& lens, vec p) {
+    return inside_of(lens, p) ? 1.4 : 1.0;
+}
+
+// Circle / sphere
+double refractive_index_at(const sphere& lens, vec p) {
+    //return inside_of(lens, p) ? 1.4 : 1.0;
+
+    double index, diff, Q, cutoff;
+    cutoff = 0.0001;
+
+    if (inside_of(lens, p)){
+        double r = distance(lens.origin, p);
+        if (fabs(r) > cutoff){
+            double a = lens.radius;
+            double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
+            index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
+        }
+        else{
+            r = cutoff;
+            double a = lens.radius;
+            double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
+            index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
+        }
+    }
+    else{
+        index = 1.0;
+    }
+
+    return index;
+
+}
