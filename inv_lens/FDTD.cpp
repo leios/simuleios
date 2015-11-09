@@ -147,7 +147,8 @@ void FDTD(Field EM,
         EM = Hupdate2d(EM, lass, t);
         EM = TFSF(EM, lass, lass1d, Cour);
         EM = Eupdate2d(EM,lass,t);
-        //EM.Ez(0,100) = ricker(t, 0, Cour);
+        EM = ABCcheck(EM, lass);
+        // EM.Ez(0,100) = ricker(t, 0, Cour);
         
         // Outputting to a file
         int check = 5;
@@ -387,13 +388,63 @@ Field ABCcheck(Field EM, Loss lass){
     c1 = -(1.0 / temp1 - 2.0 + temp1) / temp2;
     c2 = -2.0 * (temp1 - 1.0 / temp1) / temp2;
     c3 = 4.0 * (temp1 + 1.0 / temp1) / temp2;
+    int dx, dy;
 
-/*
+    // Setting ABC for left side of grid. Woo!
     for (dy = 0; dy < space; dy++){
-        EM.Ez(0,dy) = c1 * (EM.Ez(2,dy) + EM.Eleft(0, 1, dy)
+        EM.Ez(0,dy) = c1 * (EM.Ez(2,dy) + EM.Eleft(0, 1, dy))
+                      + c2 * (EM.Eleft(0, 0, dy) + EM.Eleft(2, 0 , dy)
+                              -EM.Ez(1,dy) -EM.Eleft(1, 1, dy))
+                      + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy); 
 
+        // memorizing fields...
+        for (dx = 0; dx < 3; dx++){
+            EM.Eleft(dx, 1, dy) = EM.Eleft(dx, 0, dy);
+            EM.Eleft(dx, 0, dy) = EM.Ez(dx, dy);
+        }
     }
-*/
+
+    // ABC on right
+    for (dy = 0; dy < space; dy++){
+        EM.Ez(space - 1,dy) = c1 * (EM.Ez(space - 3,dy) + EM.Eright(0, 1, dy))
+                      + c2 * (EM.Eright(0, 0, dy) + EM.Eright(2, 0 , dy)
+                              -EM.Ez(space - 2,dy) -EM.Eright(1, 1, dy))
+                      + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy); 
+
+        // memorizing fields...
+        for (dx = 0; dx < 3; dx++){
+            EM.Eright(dx, 1, dy) = EM.Eright(dx, 0, dy);
+            EM.Eright(dx, 0, dy) = EM.Ez(dx, dy);
+        }
+    }
+
+    // Setting ABC for bottom
+    for (dx = 0; dx < space; dx++){
+        EM.Ez(dx,0) = c1 * (EM.Ez(dx, 2) + EM.Ebot(0, 1, dx))
+                      + c2 * (EM.Ebot(0, 0, dx) + EM.Ebot(2, 0 , dx)
+                              -EM.Ez(dx,1) -EM.Ebot(1, 1, dx))
+                      + c3 * EM.Ebot(1, 0, dx) - EM.Ebot(2, 1, dx); 
+
+        // memorizing fields...
+        for (dy = 0; dy < 3; dy++){
+            EM.Ebot(dy, 1, dx) = EM.Ebot(dy, 0, dx);
+            EM.Ebot(dy, 0, dx) = EM.Ez(dx, dy);
+        }
+    }
+
+    // Setting ABC for top
+    for (dx = 0; dx < space; dx++){
+        EM.Ez(dx, space - 1) = c1 * (EM.Ez(dx, space - 3) + EM.Etop(0, 1, dx))
+                      + c2 * (EM.Etop(0, 0, dx) + EM.Etop(2, 0 , dx)
+                              -EM.Ez(dx,space - 2) -EM.Etop(1, 1, dx))
+                      + c3 * EM.Etop(1, 0, dx) - EM.Etop(2, 1, dx); 
+
+       // memorizing fields...
+        for (dy = 0; dy < 3; dy++){
+            EM.Etop(dy, 1, dx) = EM.Etop(dy, 0, dx);
+            EM.Etop(dy, 0, dx) = EM.Ez(dx, dy);
+        }
+    }
 
     return EM;
 }
