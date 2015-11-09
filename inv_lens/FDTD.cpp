@@ -414,7 +414,7 @@ Field ABCcheck(Field EM, Loss lass){
         // memorizing fields...
         for (dx = 0; dx < 3; dx++){
             EM.Eright(dx, 1, dy) = EM.Eright(dx, 0, dy);
-            EM.Eright(dx, 0, dy) = EM.Ez(dx, dy);
+            EM.Eright(dx, 0, dy) = EM.Ez(space - 1 - dx, dy);
         }
     }
 
@@ -442,7 +442,7 @@ Field ABCcheck(Field EM, Loss lass){
        // memorizing fields...
         for (dy = 0; dy < 3; dy++){
             EM.Etop(dy, 1, dx) = EM.Etop(dy, 0, dx);
-            EM.Etop(dy, 0, dx) = EM.Ez(dx, dy);
+            EM.Etop(dy, 0, dx) = EM.Ez(dx, space - 1 - dy);
         }
     }
 
