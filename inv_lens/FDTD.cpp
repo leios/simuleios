@@ -245,7 +245,7 @@ Field Eupdate1d(Field EM, Loss1d lass1d, int t){
 Loss createloss2d(Loss lass, double eps, double Cour, double loss){
     for (size_t dx = 0; dx < space; dx++){
         for (size_t dy = 0; dy < space; dy++){
-            //if (dx > 100 && dx < 150){
+            if (dx > 100 && dx < 150){
 /*
                 lass.EzH(dx, dy) = Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
@@ -254,32 +254,31 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                 lass.HxE(dx, dy) = Cour / eps;
                 lass.HxH(dx, dy) = 1.0;
 */
-
-                lass.EzH(dx, dy) =  eps / 9.0 /(1.0 - loss);
+                lass.EzH(dx, dy) =  Cour * eps / 9.0 /(1.0 - loss);
                 lass.EzE(dx, dy) = (1.0 - loss) / (1.0 + loss);
                 lass.HyH(dx, dy) = (1.0 - loss) / (1.0 + loss);
-                lass.HyE(dx, dy) = (1.0 / eps) / (1.0 + loss);
-                lass.HxE(dx, dy) = (1.0 / eps) / (1.0 + loss);
+                lass.HyE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss);
+                lass.HxE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss);
                 lass.HxH(dx, dy) = (1.0 - loss) / (1.0 + loss);
-            //}
-            /*
+            }
             else{
+/*
                 lass.EzH(dx, dy) =  Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
                 lass.HyE(dx, dy) = Cour / eps;
                 lass.HxE(dx, dy) = Cour / eps;
                 lass.HxH(dx, dy) = 1.0;
-                
-                lass.EzH(dx, dy) =  eps;
+*/                
+                lass.EzH(dx, dy) = Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
-                lass.HyE(dx, dy) = (1.0 / eps);
-                lass.HxE(dx, dy) = (1.0 / eps);
+                lass.HyE(dx, dy) = Cour * (1.0 / eps);
+                lass.HxE(dx, dy) = Cour * (1.0 / eps);
                 lass.HxH(dx, dy) = 1.0;
+
                 
             }
-            */
         }
     }
 
@@ -288,34 +287,35 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
 }
 Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss){
     for (size_t dx = 0; dx < space; dx++){
-            //if (dx > 100 && dx < 150){
+            if (dx > 100 && dx < 150){
 
+/*
             lass1d.EzH[dx ]= Cour * eps;
             lass1d.EzE[dx] = 1.0;
             lass1d.HyH[dx] = 1.0;
             lass1d.HyE[dx] = Cour / eps;
-/*
 
-            lass1d.EzH[dx] =  eps / 9.0 /(1.0 - loss);
+*/
+            lass1d.EzH[dx] = Cour * eps / 9.0 /(1.0 - loss);
             lass1d.EzE[dx] = (1.0 - loss) / (1.0 + loss);
             lass1d.HyH[dx] = (1.0 - loss) / (1.0 + loss);
-*/
-            lass1d.HyE[dx] = (1.0 / eps) / (1.0 + loss);
-        //}
-        /*
+            lass1d.HyE[dx] = Cour * (1.0 / eps) / (1.0 + loss);
+
+        }
         else{
+/*
             lass1d.EzH[dx] =  Cour * eps;
             lass1d.EzE[dx] = 1.0;
             lass1d.HyH[dx] = 1.0;
             lass1d.HyE[dx] = Cour / eps;
-                
-            lass1d.EzH[dx] =  eps;
+*/                
+            lass1d.EzH[dx] = Cour * eps;
             lass1d.EzE[dx] = 1.0;
             lass1d.HyH[dx] = 1.0;
-            lass1d.HyE[dx] = (1.0 / eps);
+            lass1d.HyE[dx] = Cour * (1.0 / eps);
+
                 
         }
-        */
     }
 
 
