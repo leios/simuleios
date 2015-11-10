@@ -80,6 +80,9 @@ void FDTD(Field EM,
 // Adding ricker solutuion
 double ricker(int time, int loc, double Cour);
 
+// Adding plane wave
+double planewave(int time, int loc, double Cour, int ppw, int steps);
+
 // 2 dimensional functions for E / H movement
 Field Hupdate2d(Field EM, Loss lass, int t);
 Field Eupdate2d(Field EM, Loss lass, int t);
@@ -243,9 +246,21 @@ Field Eupdate1d(Field EM, Loss1d lass1d, int t){
 
 // Creating loss
 Loss createloss2d(Loss lass, double eps, double Cour, double loss){
+
+    int radius = 50;
+    int sourcex = 100;
+    int sourcey = 100;
+    double dist, var;
     for (size_t dx = 0; dx < space; dx++){
         for (size_t dy = 0; dy < space; dy++){
-            if (dx > 100 && dx < 150){
+            dist = sqrt((dx - sourcex)*(dx - sourcex) 
+                        + (dy - sourcey)*(dy - sourcey)); 
+            // if (dx > 100 && dx < 150 && dy > 75 && dy < 125){
+            if (dist < radius){
+                var = radius / dist;
+                if (var > 1000){
+                    var = 1000;
+                }
 /*
                 lass.EzH(dx, dy) = Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
@@ -254,7 +269,7 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                 lass.HxE(dx, dy) = Cour / eps;
                 lass.HxH(dx, dy) = 1.0;
 */
-                lass.EzH(dx, dy) =  Cour * eps / 9.0 /(1.0 - loss);
+                lass.EzH(dx, dy) =  Cour * eps / var /(1.0 - loss);
                 lass.EzE(dx, dy) = (1.0 - loss) / (1.0 + loss);
                 lass.HyH(dx, dy) = (1.0 - loss) / (1.0 + loss);
                 lass.HyE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss);
@@ -327,8 +342,8 @@ Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss){
 Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     // TFSF boundary
     Bound first, last;
-    first.x = 50; last.x = 150;
-    first.y = 50; last.y = 150;
+    first.x = 10; last.x = 190;
+    first.y = 10; last.y = 190;
 
     // Updating along left edge
     int dx = first.x - 1;
@@ -357,7 +372,8 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     // Insert 1d grid stuff here. Update magnetic and electric field
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
-    EM.Ez1d[50] = ricker(EM.t,0, Cour);
+    EM.Ez1d[10] = ricker(EM.t,0, Cour);
+    // EM.Ez1d[51] = planewave(EM.t, 0, Cour, 20, 20);
     EM.t++;
     std::cout << EM.t << '\n';
 
@@ -388,7 +404,7 @@ Field ABCcheck(Field EM, Loss lass){
     c1 = -(1.0 / temp1 - 2.0 + temp1) / temp2;
     c2 = -2.0 * (temp1 - 1.0 / temp1) / temp2;
     c3 = 4.0 * (temp1 + 1.0 / temp1) / temp2;
-    int dx, dy;
+    size_t dx, dy;
 
     // Setting ABC for left side of grid. Woo!
     for (dy = 0; dy < space; dy++){
@@ -447,5 +463,17 @@ Field ABCcheck(Field EM, Loss lass){
     }
 
     return EM;
+}
+
+
+// Adding plane wave
+double planewave(int time, int loc, double Cour, int ppw,
+                 int steps){
+    double plane;
+
+    plane = cos((2 * 3.14159 / (double)ppw) * ( (double)steps * 
+                 (double)time - Cour * (double)loc));
+
+    return plane;
 }
 
