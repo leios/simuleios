@@ -372,8 +372,8 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     // Insert 1d grid stuff here. Update magnetic and electric field
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
-    EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    // EM.Ez1d[51] = planewave(EM.t, 0, Cour, 20, 20);
+    // EM.Ez1d[10] = ricker(EM.t,0, Cour);
+    EM.Ez1d[10] = planewave(EM.t, 0, Cour, 20, 20);
     EM.t++;
     std::cout << EM.t << '\n';
 
@@ -471,8 +471,8 @@ double planewave(int time, int loc, double Cour, int ppw,
                  int steps){
     double plane;
 
-    plane = cos((2 * 3.14159 / (double)ppw) * ( (double)steps * 
-                 (double)time - Cour * (double)loc));
+    plane = sin((2 * 3.14159 / (double)ppw) * ( Cour * (double)time -
+                 (double)loc));
 
     return plane;
 }
