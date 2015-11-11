@@ -1,8 +1,6 @@
 Invisible lens:
 
-To plot use the following in gnuplot:
-p "out.dat" w l
-set size ratio -1
-rep "file.dat" u 1:2:3 with circles
-
-or just use the makefile (created by gustorn)
+The invisible lens is a lens that is invisible. We check it out with both 
+time-dependent ray-tracing and FDTD. To run the code (and plot), simply run:
+	make -f Make_FDTD
+	make -f Make_Geometrical
