@@ -16,7 +16,7 @@
 #include <cmath>
 #include <fstream>
 
-static const size_t space = 200;
+static const size_t space = 300;
 
 struct Bound{
     int x,y;
@@ -81,7 +81,7 @@ void FDTD(Field EM,
 double ricker(int time, int loc, double Cour);
 
 // Adding plane wave
-double planewave(int time, int loc, double Cour, int ppw, int steps);
+double planewave(int time, int loc, double Cour, int ppw, double radius);
 
 // 2 dimensional functions for E / H movement
 Field Hupdate2d(Field EM, Loss lass, int t);
@@ -110,7 +110,7 @@ int main(){
     // defines output
     std::ofstream output("FDTD.dat", std::ofstream::out);
 
-    int final_time = 1000;
+    int final_time = 3000;
     double eps = 377.0;
 
     // define initial E and H fields
@@ -131,13 +131,8 @@ void FDTD(Field EM,
           const int final_time, const double eps, const int space,
           std::ofstream& output){
 
-    // For magnetic field:
-    // double offset = 0.00005;
-
-    // for electric field:
-    //double offset = 0.05;
-    double loss = 0.0;
-    double Cour = 1.0 / sqrt(2.0);
+    double loss = 0.00;
+    double Cour = 1 / sqrt(2);
 
     Loss lass;
     lass  = createloss2d(lass, eps, Cour, loss);
@@ -161,8 +156,6 @@ void FDTD(Field EM,
                     output << t << '\t' << dx <<'\t' << dy << '\t'
                            << EM.Ez(dx, dy) << '\t' << EM.Hy(dx, dy) 
                            << '\t' << EM.Hx(dx, dy) << '\t' << '\n';
-                    //output << Ez(dx,dy) + (t * offset) << '\n';
-                    //output << Hy[dx] + (t * offset) << '\n';
                 }
             }
 
@@ -247,20 +240,30 @@ Field Eupdate1d(Field EM, Loss1d lass1d, int t){
 // Creating loss
 Loss createloss2d(Loss lass, double eps, double Cour, double loss){
 
-    int radius = 50;
-    int sourcex = 100;
-    int sourcey = 100;
-    double dist, var;
+    double radius = 40;
+    int sourcex = 50;
+    int sourcey = 150;
+    double dist, var, Q, epsp, mup;
     for (size_t dx = 0; dx < space; dx++){
         for (size_t dy = 0; dy < space; dy++){
-            dist = sqrt((dx - sourcex)*(dx - sourcex) 
-                        + (dy - sourcey)*(dy - sourcey)); 
+             dist = sqrt((dx - sourcex)*(dx - sourcex) 
+                       + (dy - sourcey)*(dy - sourcey)); 
             // if (dx > 100 && dx < 150 && dy > 75 && dy < 125){
             if (dist < radius){
-                var = radius / dist;
-                if (var > 1000){
+                // Q = cbrt(-(radius / dist) + sqrt((radius/dist) 
+                //                                * (radius/dist) + (1.0/27.0)));
+                // var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0/ (3.0 * Q)));
+                var = 2.0;
+                if (abs(var) > 1000){
                     var = 1000;
                 }
+
+                if (isnan(var)){
+                    var = 1000;
+                }
+                
+                epsp = eps / (var * var);
+                mup = 1 / (var * var);
 /*
                 lass.EzH(dx, dy) = Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
@@ -269,11 +272,11 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                 lass.HxE(dx, dy) = Cour / eps;
                 lass.HxH(dx, dy) = 1.0;
 */
-                lass.EzH(dx, dy) =  Cour * eps / var /(1.0 - loss);
+                lass.EzH(dx, dy) =  Cour * epsp /(1.0 - loss);
                 lass.EzE(dx, dy) = (1.0 - loss) / (1.0 + loss);
                 lass.HyH(dx, dy) = (1.0 - loss) / (1.0 + loss);
-                lass.HyE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss);
-                lass.HxE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss);
+                lass.HyE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss) * mup;
+                lass.HxE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss) * mup;
                 lass.HxH(dx, dy) = (1.0 - loss) / (1.0 + loss);
             }
             else{
@@ -284,14 +287,21 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                 lass.HyE(dx, dy) = Cour / eps;
                 lass.HxE(dx, dy) = Cour / eps;
                 lass.HxH(dx, dy) = 1.0;
-*/                
+                
+                lass.EzH(dx, dy) =  Cour * eps /(1.0 - loss);
+                lass.EzE(dx, dy) = (1.0 - loss) / (1.0 + loss);
+                lass.HyH(dx, dy) = (1.0 - loss) / (1.0 + loss);
+                lass.HyE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss);
+                lass.HxE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss);
+                lass.HxH(dx, dy) = (1.0 - loss) / (1.0 + loss);
+
+*/
                 lass.EzH(dx, dy) = Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
                 lass.HyE(dx, dy) = Cour * (1.0 / eps);
                 lass.HxE(dx, dy) = Cour * (1.0 / eps);
                 lass.HxH(dx, dy) = 1.0;
-
                 
             }
         }
@@ -342,8 +352,8 @@ Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss){
 Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     // TFSF boundary
     Bound first, last;
-    first.x = 10; last.x = 190;
-    first.y = 10; last.y = 190;
+    first.x = 10; last.x = 290;
+    first.y = 10; last.y = 290;
 
     // Updating along left edge
     int dx = first.x - 1;
@@ -373,7 +383,7 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
     // EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    EM.Ez1d[10] = planewave(EM.t, 0, Cour, 20, 20);
+    EM.Ez1d[10] = planewave(EM.t, 15, Cour, 20, 40);
     EM.t++;
     std::cout << EM.t << '\n';
 
@@ -467,12 +477,12 @@ Field ABCcheck(Field EM, Loss lass){
 
 
 // Adding plane wave
-double planewave(int time, int loc, double Cour, int ppw,
-                 int steps){
+double planewave(int time, int loc, double Cour, int ppw, double radius){
     double plane;
 
-    plane = sin((2 * 3.14159 / (double)ppw) * ( Cour * (double)time -
+    plane = sin((2 * M_PI / (double)ppw) * (Cour * (double)time -
                  (double)loc));
+    //plane = sin((double)(time-loc) * 3.5 / radius);
 
     return plane;
 }
