@@ -16,8 +16,8 @@
 #include <cmath>
 #include <fstream>
 
-static const size_t spacey = 200;
-static const size_t spacex = 300;
+static const size_t spacey = 400;
+static const size_t spacex = 600;
 static const size_t losslayer = 20;
 
 struct Bound{
@@ -186,7 +186,6 @@ Field Hupdate2d(Field EM, Loss lass, int t){
         }
     }
 
-
     // update magnetic field, y direction
     for (size_t dx = 0; dx < spacex - 1; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
@@ -228,7 +227,7 @@ Field Hupdate1d(Field EM, Loss1d lass1d, int t){
 
 Field Eupdate1d(Field EM, Loss1d lass1d, int t){
     // update electric field, y direction
-    for (size_t dx = 0; dx < spacex - 1; dx++){
+    for (size_t dx = 1; dx < spacex - 1; dx++){
         EM.Ez1d[dx] = lass1d.EzE[dx] * EM.Ez1d[dx] 
                   + lass1d.EzH[dx] * (EM.Hy1d[dx] - EM.Hy1d[dx - 1]);
     }
@@ -240,20 +239,23 @@ Field Eupdate1d(Field EM, Loss1d lass1d, int t){
 // Creating loss
 Loss createloss2d(Loss lass, double eps, double Cour, double loss){
 
-    double radius = 40;
-    int sourcex = 150;
-    int sourcey = 100;
-    double dist, var, Q, epsp, mup;
+    double radius = 80;
+    int sourcex = 100, sourcex2 = 100;
+    int sourcey = 200, sourcey2 = 200;
+    double dist, var, Q, epsp, mup, dist2;
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
              dist = sqrt((dx - sourcex)*(dx - sourcex) 
                        + (dy - sourcey)*(dy - sourcey)); 
+             dist2 = sqrt((dx - sourcex2)*(dx - sourcex2) 
+                        + (dy - sourcey2)*(dy - sourcey2)); 
+
             // if (dx > 100 && dx < 150 && dy > 75 && dy < 125){
             if (dist < radius){
-                // Q = cbrt(-(radius / dist) + sqrt((radius/dist) 
-                //                                * (radius/dist) + (1.0/27.0)));
-                // var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0/ (3.0 * Q)));
-                var = 2;
+                Q = cbrt(-(radius / dist) + sqrt((radius/dist) 
+                                               * (radius/dist) + (1.0/27.0)));
+                var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0/ (3.0 * Q)));
+                // var = 1.1;
                 if (abs(var) > 1000){
                     var = 1000;
                 }
@@ -271,6 +273,7 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                 lass.HyE(dx, dy) = Cour / eps;
                 lass.HxE(dx, dy) = Cour / eps;
                 lass.HxH(dx, dy) = 1.0;
+*/
 
                 lass.EzH(dx, dy) =  Cour * epsp /(1.0 - loss);
                 lass.EzE(dx, dy) = (1.0 - loss) / (1.0 + loss);
@@ -278,13 +281,16 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                 lass.HyE(dx, dy) = Cour * (mup / eps) / (1.0 + loss);
                 lass.HxE(dx, dy) = Cour * (mup / eps) / (1.0 + loss);
                 lass.HxH(dx, dy) = (1.0 - loss) / (1.0 + loss);
-*/
+
+/*
+                // PEC stuff
                 lass.EzH(dx, dy) = 0;
                 lass.EzE(dx, dy) = 0;
                 lass.HyH(dx, dy) = 0;
                 lass.HyE(dx, dy) = 0;
                 lass.HxE(dx, dy) = 0;
                 lass.HxH(dx, dy) = 0;
+*/
 
             }
             else{
@@ -353,8 +359,8 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
 
     // TFSF boundary
     Bound first, last;
-    first.x = 10; last.x = 290;
-    first.y = 10; last.y = 190;
+    first.x = 10; last.x = 590;
+    first.y = 10; last.y = 390;
 
     // Update along right edge!
     dx = last.x;
@@ -383,8 +389,8 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     // Insert 1d grid stuff here. Update magnetic and electric field
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
-    EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    // EM.Ez1d[10] = planewave(EM.t, 15, Cour, 30, 40);
+    // EM.Ez1d[10] = ricker(EM.t,0, Cour);
+    EM.Ez1d[10] = planewave(EM.t, 15, Cour, 30, 40);
     EM.t++;
     std::cout << EM.t << '\n';
 
