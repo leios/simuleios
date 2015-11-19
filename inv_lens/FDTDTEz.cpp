@@ -141,10 +141,10 @@ void FDTD(Field EM,
     for (int t = 0; t < final_time; t++){
 
         EM = Hupdate2d(EM, lass, t);
-        // EM = TFSF(EM, lass, lass1d, Cour);
+        EM = TFSF(EM, lass, lass1d, Cour);
         EM = Eupdate2d(EM,lass,t);
-        // EM = ABCcheck(EM, lass);
-        EM.Ey(200,100) = ricker(t, 0, Cour);
+        EM = ABCcheck(EM, lass);
+        // EM.Ey(200,100) = ricker(t, 0, Cour);
         
         // Outputting to a file
         int check = 5;
