@@ -141,10 +141,10 @@ void FDTD(Field EM,
     for (int t = 0; t < final_time; t++){
 
         EM = Hupdate2d(EM, lass, t);
-        EM = TFSF(EM, lass, lass1d, Cour);
+        // EM = TFSF(EM, lass, lass1d, Cour);
         EM = Eupdate2d(EM,lass,t);
-        EM = ABCcheck(EM, lass);
-        // EM.Ez(0,100) = ricker(t, 0, Cour);
+        // EM = ABCcheck(EM, lass);
+        EM.Ey(200,100) = ricker(t, 0, Cour);
         
         // Outputting to a file
         int check = 5;
@@ -152,8 +152,8 @@ void FDTD(Field EM,
             for (int dx = 0; dx < spacex; dx = dx + check){
                 for (int dy = 0; dy < spacey; dy = dy + check){
                     output << t << '\t' << dx <<'\t' << dy << '\t'
-                           << EM.Ex(dx, dy) << '\t' << EM.Ey(dx, dy) 
-                           << '\t' << EM.Hz(dx, dy) << '\t' << '\n';
+                           << EM.Hz(dx, dy) << '\t' << EM.Ey(dx, dy) 
+                           << '\t' << EM.Ex(dx, dy) << '\t' << '\n';
                 }
             }
 
@@ -166,7 +166,7 @@ void FDTD(Field EM,
 // Adding the ricker solution
 double ricker(int time, int loc, double Cour){
     double Ricky;
-    double temp_const = 3.14159*((Cour*(double)time - (double)loc)/20.0 - 1.0);
+    double temp_const = 3.14159*(Cour*((double)time - (double)loc)/20.0 - 1.0);
     temp_const = temp_const * temp_const;
     Ricky = (1.0 - 2.0 * temp_const) * exp(-temp_const);
     return Ricky;
@@ -179,10 +179,10 @@ Field Hupdate2d(Field EM, Loss lass, int t){
     for (size_t dx = 0; dx < spacex - 1; dx++){
         for (size_t dy = 0; dy < spacey - 1; dy++){
            EM.Hz(dx,dy) = lass.HzH(dx,dy) * EM.Hz(dx, dy) 
-                       - lass.HzE(dx,dy) * (EM.Ex(dx, dy + 1)
+                       + lass.HzE(dx,dy) * ((EM.Ex(dx, dy + 1)
                                          - EM.Ex(dx, dy))
                                          - (EM.Ey(dx + 1,dy)
-                                         - EM.Ey(dx, dy));
+                                         - EM.Ey(dx, dy)));
         }
     }
 
@@ -202,7 +202,7 @@ Field Eupdate2d(Field EM, Loss lass, int t){
     for (size_t dx = 1; dx < spacex - 1; dx++){
         for (size_t dy = 0; dy < spacey - 1; dy++){
            EM.Ey(dx,dy) = lass.EyE(dx,dy) * EM.Ey(dx,dy)
-                       + lass.EyH(dx,dy) * (EM.Hz(dx, dy) - EM.Hz(dx - 1, dy));
+                       - lass.EyH(dx,dy) * (EM.Hz(dx, dy) - EM.Hz(dx - 1, dy));
         }
     }
 
@@ -340,7 +340,7 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
         EM.Hz(dx, dy) -= lass.HzE(dx, dy) * EM.Ey1d[dx];
     }
 
-    // Updating Ez along left
+    // Updating Hz along left
     dx = first.x - 1;
     for (int dy = first.y; dy <= last.y; dy++){
         EM.Hz(dx, dy) += lass.HzE(dx, dy) * EM.Ey1d[dx + 1];

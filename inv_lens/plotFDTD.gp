@@ -13,12 +13,12 @@ set palette defined ( 0 "blue", 1 "white", 2 "red" )
 
 # PS: If you want to watch everything run with time, uncomment the following:
 # set cbrange [-0.05:0.05]
-set object circle at 150,100 size 40 fs empty border 1 front lw 5
+set object circle at 100,100 size 80 fs empty border 1 front lw 5
 set size ratio -1
 
-set cbrange [-0.2:0.2]
-# splot "FDTD.dat" i 100 u 2:3:4
-do for [ii=1:100:1] { plot "FDTD.dat" i ii u 2:3:4 w image; pause .1}
+set cbrange [-0.02:0.02]
+# splot "FDTD.dat" i 199 u 2:3:4
+do for [ii=1:140:1] { plot "FDTD.dat" i ii u 2:3:5 w image; pause .1}
 # do for [ii=1:151:1] { splot "FDTD.dat" i ii u 2:3:4}
 
 set object circle at 100,100 size 50 fs empty border 30 lw 30
