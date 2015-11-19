@@ -146,13 +146,13 @@ void FDTD(Field EM,
         EM = TFSF(EM, lass, lass1d, Cour);
         EM = Eupdate2d(EM,lass,t);
         EM = ABCcheck(EM, lass);
-        // EM.Ez(0,100) = ricker(t, 0, Cour);
+        //EM.Ez(200,100) = ricker(t, 0, Cour);
         
         // Outputting to a file
-        int check = 5;
+        int check = 50;
         if (t % check == 0){
-            for (int dx = 0; dx < spacex; dx = dx + check){
-                for (int dy = 0; dy < spacey; dy = dy + check){
+            for (int dx = 0; dx < spacex; dx++){
+                for (int dy = 0; dy < spacey; dy++){
                     output << t << '\t' << dx <<'\t' << dy << '\t'
                            << EM.Ez(dx, dy) << '\t' << EM.Hy(dx, dy) 
                            << '\t' << EM.Hx(dx, dy) << '\t' << '\n';
@@ -239,8 +239,8 @@ Field Eupdate1d(Field EM, Loss1d lass1d, int t){
 // Creating loss
 Loss createloss2d(Loss lass, double eps, double Cour, double loss){
 
-    double radius = 80;
-    int sourcex = 100, sourcex2 = 100;
+    double radius = 150;
+    int sourcex = 200, sourcex2 = 100;
     int sourcey = 200, sourcey2 = 200;
     double dist, var, Q, epsp, mup, dist2;
     for (size_t dx = 0; dx < spacex; dx++){
@@ -256,12 +256,12 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                                                * (radius/dist) + (1.0/27.0)));
                 var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0/ (3.0 * Q)));
                 // var = 1.1;
-                if (abs(var) > 1000){
-                    var = 1000;
+                if (abs(var) > 100000){
+                    var = 100000;
                 }
 
                 if (isnan(var)){
-                    var = 1000;
+                    var = 100000;
                 }
                 
                 epsp = eps / (var * var);
@@ -390,7 +390,7 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
     // EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    EM.Ez1d[10] = planewave(EM.t, 15, Cour, 30, 40);
+    EM.Ez1d[10] = planewave(EM.t, 15, Cour, 70, 40);
     EM.t++;
     std::cout << EM.t << '\n';
 

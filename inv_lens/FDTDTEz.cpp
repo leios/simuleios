@@ -110,7 +110,7 @@ int main(){
     // defines output
     std::ofstream output("FDTD.dat", std::ofstream::out);
 
-    int final_time = 1000;
+    int final_time = 2000;
     double eps = 377.0;
 
     Field EM;
@@ -149,8 +149,8 @@ void FDTD(Field EM,
         // Outputting to a file
         int check = 5;
         if (t % check == 0){
-            for (int dx = 0; dx < spacex; dx = dx + check){
-                for (int dy = 0; dy < spacey; dy = dy + check){
+            for (int dx = 0; dx < spacex; dx = dx++){
+                for (int dy = 0; dy < spacey; dy = dy++){
                     output << t << '\t' << dx <<'\t' << dy << '\t'
                            << EM.Hz(dx, dy) << '\t' << EM.Ey(dx, dy) 
                            << '\t' << EM.Ex(dx, dy) << '\t' << '\n';
@@ -234,9 +234,9 @@ Field Eupdate1d(Field EM, Loss1d lass1d, int t){
 // Creating loss
 Loss createloss2d(Loss lass, double eps, double Cour, double loss){
 
-    double radius = 80;
-    int sourcex = 100, sourcex2 = 100;
-    int sourcey = 100, sourcey2 = 200;
+    double radius = 40;
+    int sourcex = 200, sourcex2 = 100;
+    int sourcey = 100, sourcey2 = 100;
     double dist, var, Q, epsp, mup, dist2;
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
@@ -247,10 +247,10 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
 
             // if (dx > 100 && dx < 150 && dy > 75 && dy < 125){
             if (dist < radius){
-                // Q = cbrt(-(radius / dist) + sqrt((radius/dist) 
-                //                                * (radius/dist) + (1.0/27.0)));
-                // var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0/ (3.0 * Q)));
-                var = 1.1;
+                Q = cbrt(-(radius / dist) + sqrt((radius/dist) 
+                                               * (radius/dist) + (1.0/27.0)));
+                var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0/ (3.0 * Q)));
+                // var = 1.4;
                 if (abs(var) > 1000){
                     var = 1000;
                 }
@@ -271,12 +271,12 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
 
 /*
                 // PEC stuff -- not complete!
-                lass.EzH(dx, dy) = 0;
-                lass.EzE(dx, dy) = 0;
-                lass.HyH(dx, dy) = 0;
-                lass.HyE(dx, dy) = 0;
-                lass.HxE(dx, dy) = 0;
-                lass.HxH(dx, dy) = 0;
+                lass.ExH(dx, dy) = 0;
+                lass.ExE(dx, dy) = 0;
+                lass.HzH(dx, dy) = 0;
+                lass.HzE(dx, dy) = 0;
+                lass.ExE(dx, dy) = 0;
+                lass.ExH(dx, dy) = 0;
 */
 
             }
@@ -349,8 +349,8 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     // Insert 1d grid stuff here. Update magnetic and electric field
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
-    EM.Ey1d[10] = ricker(EM.t,0, Cour);
-    //EM.Ey1d[10] = planewave(EM.t, 15, Cour, 30, 40);
+    //EM.Ey1d[10] = ricker(EM.t,0, Cour);
+    EM.Ey1d[10] = planewave(EM.t, 15, Cour, 30, 40);
     EM.t++;
     std::cout << EM.t << '\n';
 
