@@ -16,8 +16,8 @@
 #include <cmath>
 #include <fstream>
 
-static const size_t spacey = 400;
-static const size_t spacex = 600;
+static const size_t spacey = 200;
+static const size_t spacex = 1000;
 static const size_t losslayer = 20;
 
 struct Bound{
@@ -110,7 +110,7 @@ int main(){
     // defines output
     std::ofstream output("FDTD.dat", std::ofstream::out);
 
-    int final_time = 1000;
+    int final_time = 3000;
     double eps = 377.0;
 
     // define initial E and H fields
@@ -240,8 +240,8 @@ Field Eupdate1d(Field EM, Loss1d lass1d, int t){
 Loss createloss2d(Loss lass, double eps, double Cour, double loss){
 
     double radius = 150;
-    int sourcex = 200, sourcex2 = 100;
-    int sourcey = 200, sourcey2 = 200;
+    int sourcex = 0, sourcex2 = 250;
+    int sourcey = 100, sourcey2 = 100;
     double dist, var, Q, epsp, mup, dist2;
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
@@ -251,17 +251,18 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                         + (dy - sourcey2)*(dy - sourcey2)); 
 
             // if (dx > 100 && dx < 150 && dy > 75 && dy < 125){
-            if (dist < radius){
-                Q = cbrt(-(radius / dist) + sqrt((radius/dist) 
-                                               * (radius/dist) + (1.0/27.0)));
-                var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0/ (3.0 * Q)));
-                // var = 1.1;
-                if (abs(var) > 100000){
-                    var = 100000;
+            if (dist < radius and dist2 < radius){
+            // if (dist > 100000000){
+                // Q = cbrt(-(radius / dist) + sqrt((radius/dist) 
+                //                                * (radius/dist) + (1.0/27.0)));
+                // var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0/ (3.0 * Q)));
+                var = 1.5;
+                if (abs(var) > 2){
+                    var = 2;
                 }
 
                 if (isnan(var)){
-                    var = 100000;
+                    var = 2;
                 }
                 
                 epsp = eps / (var * var);
@@ -359,8 +360,8 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
 
     // TFSF boundary
     Bound first, last;
-    first.x = 10; last.x = 590;
-    first.y = 10; last.y = 390;
+    first.x = 10; last.x = 990;
+    first.y = 75; last.y = 125;
 
     // Update along right edge!
     dx = last.x;
@@ -389,8 +390,8 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     // Insert 1d grid stuff here. Update magnetic and electric field
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
-    // EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    EM.Ez1d[10] = planewave(EM.t, 15, Cour, 70, 40);
+    EM.Ez1d[10] = ricker(EM.t,0, Cour);
+    //EM.Ez1d[10] = planewave(EM.t, 15, Cour, 70, 40);
     EM.t++;
     std::cout << EM.t << '\n';
 
