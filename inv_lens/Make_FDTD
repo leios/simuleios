@@ -6,10 +6,10 @@ plot: clean_dat $(BIN)
 	./$(BIN) > /dev/null
 	gnuplot plotFDTD.gp -
 
-build: perf record -g 'graph,0.5,caller' $(BIN)
+build: $(BIN)
 
 run: clean_dat $(BIN)
-	./$(BIN) 
+	perf record -g 'graph,0.5,caller' ./$(BIN) 
 
 $(BIN): FDTD.cpp
 	$(CXX) $(CXXFLAGS) FDTD.cpp -o $(BIN) 
