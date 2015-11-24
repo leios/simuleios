@@ -16,8 +16,8 @@
 #include <cmath>
 #include <fstream>
 
-static const size_t spacey = 200;
-static const size_t spacex = 500;
+static const size_t spacey = 1100;
+static const size_t spacex = 1500;
 static const size_t losslayer = 20;
 
 struct Bound{
@@ -108,9 +108,9 @@ Field ABCcheck(Field EM, Loss lass);
 int main(){
 
     // defines output
-    std::ofstream output("FDTD.dat", std::ofstream::out);
+    std::ofstream output("FDTD_para.dat", std::ofstream::out);
 
-    int final_time = 2000;
+    int final_time = 1000;
     double eps = 377.0;
 
     // define initial E and H fields
@@ -149,7 +149,7 @@ void FDTD(Field EM,
         //EM.Ez(200,100) = ricker(t, 0, Cour);
         
         // Outputting to a file
-        int check = 50;
+        int check = 100;
         if (t % check == 0){
             for (int dx = 0; dx < spacex; dx++){
                 for (int dy = 0; dy < spacey; dy++){
@@ -178,6 +178,7 @@ double ricker(int time, int loc, double Cour){
 // 2 dimensional functions for E / H movement
 Field Hupdate2d(Field EM, Loss lass, int t){
     // update magnetic field, x direction
+    #pragma omp parallel for
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey - 1; dy++){
            EM.Hx(dx,dy) = lass.HxH(dx,dy) * EM.Hx(dx, dy) 
@@ -187,6 +188,7 @@ Field Hupdate2d(Field EM, Loss lass, int t){
     }
 
     // update magnetic field, y direction
+    #pragma omp parallel for
     for (size_t dx = 0; dx < spacex - 1; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
            EM.Hy(dx,dy) = lass.HyH(dx,dy) * EM.Hy(dx,dy) 
@@ -202,6 +204,7 @@ Field Hupdate2d(Field EM, Loss lass, int t){
 
 Field Eupdate2d(Field EM, Loss lass, int t){
     // update electric field
+    #pragma omp parallel for
     for (size_t dx = 1; dx < spacex - 1; dx++){
         for (size_t dy = 1; dy < spacey - 1; dy++){
            EM.Ez(dx,dy) = lass.EzE(dx,dy) * EM.Ez(dx,dy)
@@ -217,6 +220,7 @@ Field Eupdate2d(Field EM, Loss lass, int t){
 // 1 dimensional update functions for E / H
 Field Hupdate1d(Field EM, Loss1d lass1d, int t){
     // update magnetic field, y direction
+    #pragma omp parallel for
     for (size_t dx = 0; dx < spacex - 1; dx++){
         EM.Hy1d[dx] = lass1d.HyH[dx] * EM.Hy1d[dx] 
                   + lass1d.HyE[dx] * (EM.Ez1d[dx + 1] - EM.Ez1d[dx]);
@@ -239,9 +243,9 @@ Field Eupdate1d(Field EM, Loss1d lass1d, int t){
 // Creating loss
 Loss createloss2d(Loss lass, double eps, double Cour, double loss){
 
-    double radius = 50;
-    int sourcex = 200, sourcex2 = 250;
-    int sourcey = 100, sourcey2 = 100;
+    double radius = 400;
+    int sourcex = 550, sourcex2 = 250;
+    int sourcey = 600, sourcey2 = 100;
     double dist, var, Q, epsp, mup, dist2;
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
@@ -258,15 +262,15 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                 var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0 / (3.0 * Q)));
                 // var = radius / dist;
                 // var = 1.1;
-                if (var > 3){
-                    var = 3;
+                if (var > 100){
+                    var = 100;
                 }
-                if (var < -3){
-                    var = -3;
+                if (var < -100){
+                    var = -100;
                 }
 
                 if (isnan(var)){
-                    var = 3;
+                    var = 100;
                 }
                 
                 epsp = eps / (var * var);
@@ -364,8 +368,8 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
 
     // TFSF boundary
     Bound first, last;
-    first.x = 10; last.x = 490;
-    first.y = 10; last.y = 190;
+    first.x = 10; last.x = 1490;
+    first.y = 10; last.y = 1090;
 
     // Update along right edge!
     dx = last.x;
@@ -395,7 +399,7 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
     //EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    EM.Ez1d[10] = planewave(EM.t, 15, Cour, 60);
+    EM.Ez1d[10] = planewave(EM.t, 15, Cour, 50);
     EM.t++;
     std::cout << EM.t << '\n';
 
@@ -493,7 +497,7 @@ Field ABCcheck(Field EM, Loss lass){
 double planewave(int time, int loc, double Cour, int ppw){
     double plane;
 
-    plane = sin((2 * M_PI / (double)ppw) * (Cour * (double)time -
+    plane = sin((1 / (double)ppw) * (Cour * (double)time -
                  (double)loc));
     //plane = sin((double)(time-loc) * 3.5 / radius);
 
