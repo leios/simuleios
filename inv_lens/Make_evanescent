@@ -1,0 +1,21 @@
+BIN = evanescent
+CXX = g++
+CXXFLAGS = -std=c++11 -g -Wall -march=native -fopenmp -fno-omit-frame-pointer
+
+plot: clean_dat $(BIN)
+	./$(BIN) > /dev/null
+	gnuplot plotevan.gp -
+
+build: $(BIN)
+
+run: clean_dat $(BIN)
+	perf record -g ./$(BIN) 
+
+$(BIN): evanescent.cpp
+	$(CXX) $(CXXFLAGS) evanescent.cpp -o $(BIN) 
+
+clean_dat:
+	rm -Rf evanescent.dat
+
+clean: clean_dat
+	rm -Rf $(BIN)
