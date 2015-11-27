@@ -1,13 +1,13 @@
 !!-------------helloworld.f95-------------------------------------------------!!
 !
-!              hello world.f59
+!              hello world.f95
 !
 ! Purpose: To check out some fortran!
 !
 !!----------------------------------------------------------------------------!!
 
 program helloworld
-      !! defninitons
+      !! definitons
       character :: tab = char(9)
       integer   :: i = 10
       real*8    :: variable
