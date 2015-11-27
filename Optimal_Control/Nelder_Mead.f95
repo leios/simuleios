@@ -5,9 +5,9 @@
 ! Purpose: To implement a simple optimization scheme in Fortran!
 !
 !   Notes: the value array has 3 accessory elements for different things:
-!              1. Reflection
-!              2. Contraction
-!              3. Expansion (I think. We'll get rid of it if we don't need it)
+!              1. Centroid position
+!              2. Contraction / Expansion
+!              3. Reflection
 !
 !!----------------------------------------------------------------------------!!
 
@@ -18,21 +18,52 @@ program nelder
 !!----------------------------------------------------------------------------!!
 
       integer, parameter :: dim = 6
-      integer :: min, max
+      integer :: min, max, i
       real*8, dimension(2, dim)  :: pos
       real*8, dimension(dim)     :: value
       real*8  :: x, y, alpha, beta, gamma
 
       interface
           subroutine findval(pos, value, dim)
-          real*8, intent(in), dimension(:,:) :: pos
-          real*8, intent(out), dimension(:)  :: value
-          integer, intent(in)                :: dim
+              real*8, dimension(:,:) :: pos
+              real*8, dimension(:)   :: value
+              integer                :: dim
           end subroutine findval
       end interface
 
+      interface
+          subroutine populate(pos, dim)
+              real*8, dimension(:,:) :: pos
+              integer                :: dim
+          end subroutine populate
+      end interface
+
+      interface
+          subroutine minmax(value, min, max)
+              real*8, intent(in)   :: value(:)
+              integer, intent(out) :: min, max
+          end subroutine minmax
+      end interface
+
+      interface
+          subroutine centroid(pos, min, max, dim)
+              real*8, intent(inout)  :: pos(:,:)
+              integer, intent(in)    :: min, max, dim
+          end subroutine centroid
+      end interface
+
+      call populate(pos, dim)
+
       call findval(pos, value, dim)
-      write(*,*) value
+
+      call minmax(value, min, max)
+      do i = 1,dim
+          write(*,*) value(i), pos(1, i), pos(2,i)
+      end do
+      write(*,*) max, min
+
+      call centroid(pos, min, max, dim)
+      write(*,*) pos(1, 4), pos(2, 4)
 
 end program
 
@@ -53,6 +84,7 @@ pure subroutine expand
 end subroutine
 
 !! Finds the minima and maxima
+!! We need a better way to search through the initial elements in our array!
 subroutine minmax(value, min, max)
       implicit none
       real*8, intent(in)   :: value(:)
@@ -70,7 +102,7 @@ end subroutine
 subroutine populate(pos, dim)
       implicit none
       integer                :: dim
-      real*8                 :: pos(:, :)
+      real*8, dimension(:,:) :: pos
       integer                :: seed, i, x
 
       !!call init_random_seed()
@@ -79,11 +111,10 @@ subroutine populate(pos, dim)
           call random_number(pos(1,i))
           call random_number(pos(2,i))
       end do
-
       
 end subroutine
 
-!! finds centroid position
+!! finds centroid position 
 pure subroutine centroid(pos, min, max, dim)
       implicit none
       real*8, intent(inout)  :: pos(:,:)
@@ -108,19 +139,19 @@ end subroutine
 !! minimum currently set to 0.5, should be found via Downhill Simplex!
 subroutine findval(pos, value, dim)
       implicit none
-      real*8, intent(in), dimension(:,:):: pos
-      real*8, intent(out), dimension(:) :: value
-      real*8              :: sourcex = 0.5, sourcey = 0.5
-      integer, intent(in) :: dim
-      integer             :: i
+      real*8,  dimension(:,:):: pos
+      real*8,  dimension(:)  :: value
+      real*8                 :: sourcex = 0.5, sourcey = 0.5
+      integer                :: dim
+      integer                :: i
 
-      do i = 1, dim - 2
-          value = sqrt((pos(1,i) - sourcex) * (pos(1,i) - sourcex) &
-                  + (pos(2,i) - sourcey) * (pos(2,i) - sourcey))
+      do i = 1, dim - 3
+          value(i) = sqrt((pos(1,i) - sourcex) * (pos(1,i) - sourcex) &
+                     + (pos(2,i) - sourcey) * (pos(2,i) - sourcey))
       end do
 
       do i = dim - 2, dim
-          value = 0
+          value(i) = 0
       end do
 
 end subroutine
