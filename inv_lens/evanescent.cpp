@@ -16,8 +16,8 @@
 #include <cmath>
 #include <fstream>
 
-static const size_t spacey = 500;
-static const size_t spacex = 500;
+static const size_t spacey = 300;
+static const size_t spacex = 300;
 static const size_t losslayer = 20;
 
 struct Bound{
@@ -46,7 +46,10 @@ struct Field{
                          Ez = std::vector<double>(spacex * spacey, 0);
 
     std::vector <double> Hy1d = std::vector<double>(spacex + losslayer, 0), 
-                         Ez1d = std::vector<double>(spacex + losslayer, 0);
+                         Ez1d = std::vector<double>(spacex + losslayer, 0),
+                         Hy1d2 = std::vector<double>(spacex + losslayer, 0),
+                         Ez1d2 = std::vector<double>(spacex + losslayer, 0);
+
 
     // 6 elements, 3 spacial elements away from border and 2 time elements of
     // those spatial elements
@@ -151,7 +154,7 @@ void FDTD(Field EM,
         //EM.Ez(200,100) = ricker(t, 0, Cour);
         
         // Outputting to a file
-        int check = 25;
+        int check = 10;
         if (t % check == 0){
             for (size_t dx = 0; dx < spacex; dx++){
                 for (size_t dy = 0; dy < spacey; dy++){
@@ -248,7 +251,8 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
     double var = 1.4;
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
-            if (dy > 300 && dy < 485){
+            if ((dy > 65 && dy < 115) || (dy > 125 && dy < 175) ||
+                (dy > 185 && dy < 235)){
                 lass.EzH(dx, dy) = Cour * eps / (var * var);
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
@@ -306,8 +310,8 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
 
     // TFSF boundary
     Bound first, last;
-    first.x = 10; last.x = 490;
-    first.y = 15; last.y = 200;
+    first.x = 10; last.x = 290;
+    first.y = 65; last.y = 115;
 
     // Update along right edge!
     dx = last.x;
@@ -337,8 +341,8 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
     //EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    EM.Ez1d[10] = planewave(EM.t, 15, Cour, 20);
-    //EM.Ez1d[490] = planewave(EM.t, 15, Cour, 20);
+    //EM.Ez1d[10] = planewave(EM.t, 15, Cour, 10);
+    //EM.Ez1d[290] = planewave(EM.t, 15, Cour, 10);
     EM.t++;
     std::cout << EM.t << '\n';
 
@@ -366,38 +370,39 @@ Field TFSF2(Field EM, Loss lass, Loss1d lass1d, double Cour){
 
     // TFSF boundary
     Bound first, last;
-    first.x = 50; last.x = 450;
-    first.y = 300; last.y = 485;
+    first.x = 10; last.x = 290;
+    first.y = 125; last.y = 175;
 
     // Update along right edge!
     dx = last.x;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Hy(dx,dy) += lass.HyE(dx, dy) * EM.Ez1d[dx];
+        EM.Hy(dx,dy) += lass.HyE(dx, dy) * EM.Ez1d2[dx];
     }
 
     // Updating along left edge
     dx = first.x - 1;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Hy(dx,dy) -= lass.HyE(dx, dy) * EM.Ez1d[dx+1];
+        EM.Hy(dx,dy) -= lass.HyE(dx, dy) * EM.Ez1d2[dx+1];
     }
 
     // Updating along top
     dy = last.y;
     for (int dx = first.x; dx <= last.x; dx++){
-        EM.Hx(dx,dy) -= lass.HxE(dx, dy) * EM.Ez1d[dx];
+        EM.Hx(dx,dy) -= lass.HxE(dx, dy) * EM.Ez1d2[dx];
     }
 
     // Update along bot
     dy = first.y - 1;
     for (int dx = first.x; dx <= last.x; dx++){
-        EM.Hx(dx,dy) += lass.HxE(dx, dy) * EM.Ez1d[dx];
+        EM.Hx(dx,dy) += lass.HxE(dx, dy) * EM.Ez1d2[dx];
     }
 
     // Insert 1d grid stuff here. Update magnetic and electric field
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
-    //EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    //EM.Ez1d[10] = planewave(EM.t, 15, Cour, 50);
+    //EM.Ez1d2[10] = ricker(EM.t,0, Cour);
+    EM.Ez1d2[10] = planewave(EM.t, 15, Cour, 10);
+    EM.Ez1d2[290] = planewave(EM.t, 15, Cour, 10);
     EM.t++;
     std::cout << EM.t << '\n';
 
@@ -405,13 +410,13 @@ Field TFSF2(Field EM, Loss lass, Loss1d lass1d, double Cour){
     // Update along right
     dx = last.x;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Ez(dx, dy) += lass.EzH(dx, dy) * EM.Hy1d[dx];
+        EM.Ez(dx, dy) += lass.EzH(dx, dy) * EM.Hy1d2[dx];
     }
 
     // Updating Ez along left
     dx = first.x;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Ez(dx, dy) -= lass.EzH(dx, dy) * EM.Hy1d[dx - 1];
+        EM.Ez(dx, dy) -= lass.EzH(dx, dy) * EM.Hy1d2[dx - 1];
     }
 
     return EM;
