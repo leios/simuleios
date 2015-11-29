@@ -8,11 +8,11 @@ BINS = fdtd fdtd_tez evanescent geometrical
 CXX = g++
 CXXFLAGS = -std=c++11 -g -Wall -march=native -fopenmp -fno-omit-frame-pointer -O2
 
-compile: $(sim)
-
 plot: $(sim)
 	./$(sim) > /dev/null
-	gnuplot plot_$(sim).gp -
+	gnuplot $(sim).gp -
+
+compile: $(sim)
 
 run: $(sim)
 	./$(sim)
