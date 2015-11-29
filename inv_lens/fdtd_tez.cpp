@@ -2,7 +2,7 @@
 *
 *              Finite Difference Time Domain -- with TEz polarization
 *
-* Purpose: To replicate the results of our invisible lense raytracer with 
+* Purpose: To replicate the results of our invisible lense raytracer with
 *          FDTD. Woo!
 *
 *   Notes: Most of this is coming from the following link:
@@ -25,32 +25,32 @@ struct Bound{
 };
 
 struct Loss{
-    std::vector <double> ExH = std::vector<double>(spacex * spacey, 0), 
-                         ExE = std::vector<double>(spacex * spacey, 0), 
-                         EyE = std::vector<double>(spacex * spacey, 0), 
+    std::vector <double> ExH = std::vector<double>(spacex * spacey, 0),
+                         ExE = std::vector<double>(spacex * spacey, 0),
+                         EyE = std::vector<double>(spacex * spacey, 0),
                          EyH = std::vector<double>(spacex * spacey, 0),
-                         HzE = std::vector<double>(spacex * spacey, 0), 
+                         HzE = std::vector<double>(spacex * spacey, 0),
                          HzH = std::vector<double>(spacex * spacey, 0);
 };
 
 struct Loss1d{
-    std::vector <double> EyH = std::vector<double>(spacex, 0), 
-                         EyE = std::vector<double>(spacex, 0), 
-                         HzE = std::vector<double>(spacex, 0), 
+    std::vector <double> EyH = std::vector<double>(spacex, 0),
+                         EyE = std::vector<double>(spacex, 0),
+                         HzE = std::vector<double>(spacex, 0),
                          HzH = std::vector<double>(spacex, 0);
 };
 
 struct Field{
-    std::vector <double> Hz = std::vector<double>(spacex * spacey, 0), 
+    std::vector <double> Hz = std::vector<double>(spacex * spacey, 0),
                          Ey = std::vector<double>(spacex * spacey, 0),
                          Ex = std::vector<double>(spacex * spacey, 0);
 
-    std::vector <double> Hz1d = std::vector<double>(spacex + losslayer, 0), 
+    std::vector <double> Hz1d = std::vector<double>(spacex + losslayer, 0),
                          Ey1d = std::vector<double>(spacex + losslayer, 0);
 
     // 6 elements, 3 spacial elements away from border and 2 time elements of
     // those spatial elements
-    std::vector <double> Etop = std::vector<double>(3 * 2 * spacex, 0), 
+    std::vector <double> Etop = std::vector<double>(3 * 2 * spacex, 0),
                          Ebot = std::vector<double>(3 * 2 * spacex, 0),
                          Eleft = std::vector<double>(3 * 2 * spacey, 0),
                          Eright = std::vector<double>(3 * 2 * spacey, 0);
@@ -64,9 +64,9 @@ struct Field{
 #define EyE(i, j) EyE[(i) + (j) *  spacex]
 #define HzH(i, j) HzH[(i) + (j) *  spacex]
 #define HzE(i, j) HzE[(i) + (j) *  spacex]
-#define Hz(i, j) Hz[(i) + (j) *  spacex] 
-#define Ey(i, j) Ey[(i) + (j) *  spacex] 
-#define Ex(i, j) Ex[(i) + (j) *  spacex] 
+#define Hz(i, j) Hz[(i) + (j) *  spacex]
+#define Ey(i, j) Ey[(i) + (j) *  spacex]
+#define Ex(i, j) Ex[(i) + (j) *  spacex]
 #define Etop(k, j, i) Etop[(i) * 6 + (j) * 3 + (k)]
 #define Ebot(k, j, i) Ebot[(i) * 6 + (j) * 3 + (k)]
 #define Eleft(i, j, k) Eleft[(k) * 6 + (j) * 3 + (i)]
@@ -108,7 +108,7 @@ Field ABCcheck(Field EM, Loss lass);
 int main(){
 
     // defines output
-    std::ofstream output("FDTD.dat", std::ofstream::out);
+    std::ofstream output("fdtd_tez.dat", std::ofstream::out);
 
     int final_time = 2000;
     double eps = 377.0;
@@ -145,14 +145,14 @@ void FDTD(Field EM,
         EM = Eupdate2d(EM,lass,t);
         EM = ABCcheck(EM, lass);
         // EM.Ey(200,100) = ricker(t, 0, Cour);
-        
+
         // Outputting to a file
         int check = 5;
         if (t % check == 0){
             for (int dx = 0; dx < spacex; dx = dx++){
                 for (int dy = 0; dy < spacey; dy = dy++){
                     output << t << '\t' << dx <<'\t' << dy << '\t'
-                           << EM.Hz(dx, dy) << '\t' << EM.Ey(dx, dy) 
+                           << EM.Hz(dx, dy) << '\t' << EM.Ey(dx, dy)
                            << '\t' << EM.Ex(dx, dy) << '\t' << '\n';
                 }
             }
@@ -178,7 +178,7 @@ Field Hupdate2d(Field EM, Loss lass, int t){
     // update magnetic field, x direction
     for (size_t dx = 0; dx < spacex - 1; dx++){
         for (size_t dy = 0; dy < spacey - 1; dy++){
-           EM.Hz(dx,dy) = lass.HzH(dx,dy) * EM.Hz(dx, dy) 
+           EM.Hz(dx,dy) = lass.HzH(dx,dy) * EM.Hz(dx, dy)
                        + lass.HzE(dx,dy) * ((EM.Ex(dx, dy + 1)
                                          - EM.Ex(dx, dy))
                                          - (EM.Ey(dx + 1,dy)
@@ -213,7 +213,7 @@ Field Eupdate2d(Field EM, Loss lass, int t){
 Field Hupdate1d(Field EM, Loss1d lass1d, int t){
     // update magnetic field, y direction
     for (size_t dx = 0; dx < spacex - 1; dx++){
-        EM.Hz1d[dx] = lass1d.HzH[dx] * EM.Hz1d[dx] 
+        EM.Hz1d[dx] = lass1d.HzH[dx] * EM.Hz1d[dx]
                   + lass1d.HzE[dx] * (EM.Hz1d[dx + 1] - EM.Hz1d[dx]);
     }
 
@@ -223,7 +223,7 @@ Field Hupdate1d(Field EM, Loss1d lass1d, int t){
 Field Eupdate1d(Field EM, Loss1d lass1d, int t){
     // update electric field, y direction
     for (size_t dx = 1; dx < spacex - 1; dx++){
-        EM.Ey1d[dx] = lass1d.EyE[dx] * EM.Ey1d[dx] 
+        EM.Ey1d[dx] = lass1d.EyE[dx] * EM.Ey1d[dx]
                   + lass1d.EyH[dx] * (EM.Hz1d[dx] - EM.Hz1d[dx - 1]);
     }
 
@@ -240,14 +240,14 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
     double dist, var, Q, epsp, mup, dist2;
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
-             dist = sqrt((dx - sourcex)*(dx - sourcex) 
-                       + (dy - sourcey)*(dy - sourcey)); 
-             dist2 = sqrt((dx - sourcex2)*(dx - sourcex2) 
-                        + (dy - sourcey2)*(dy - sourcey2)); 
+             dist = sqrt((dx - sourcex)*(dx - sourcex)
+                       + (dy - sourcey)*(dy - sourcey));
+             dist2 = sqrt((dx - sourcex2)*(dx - sourcex2)
+                        + (dy - sourcey2)*(dy - sourcey2));
 
             // if (dx > 100 && dx < 150 && dy > 75 && dy < 125){
             if (dist < radius){
-                Q = cbrt(-(radius / dist) + sqrt((radius/dist) 
+                Q = cbrt(-(radius / dist) + sqrt((radius/dist)
                                                * (radius/dist) + (1.0/27.0)));
                 var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0/ (3.0 * Q)));
                 // var = 1.4;
@@ -258,7 +258,7 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                 if (isnan(var)){
                     var = 1000;
                 }
-                
+
                 epsp = eps / (var * var);
                 mup = 1 / (var * var);
 
@@ -288,7 +288,7 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
                 lass.EyH(dx, dy) = Cour * eps;
                 lass.HzE(dx, dy) = Cour / eps;
                 lass.HzH(dx, dy) = 1.0;
-                
+
             }
         }
     }
@@ -400,7 +400,7 @@ Field ABCcheck(Field EM, Loss lass){
         EM.Ex(dx, spacey - 1) = c1 * (EM.Ex(dx, spacey - 3) + EM.Etop(0, 1, dx))
                       + c2 * (EM.Etop(0, 0, dx) + EM.Etop(2, 0 , dx)
                               -EM.Ex(dx,spacey - 2) -EM.Etop(1, 1, dx))
-                      + c3 * EM.Etop(1, 0, dx) - EM.Etop(2, 1, dx); 
+                      + c3 * EM.Etop(1, 0, dx) - EM.Etop(2, 1, dx);
 
        // memorizing fields...
         for (dy = 0; dy < 3; dy++){
@@ -414,7 +414,7 @@ Field ABCcheck(Field EM, Loss lass){
         EM.Ex(dx,0) = c1 * (EM.Ex(dx, 2) + EM.Ebot(0, 1, dx))
                       + c2 * (EM.Ebot(0, 0, dx) + EM.Ebot(2, 0 , dx)
                               -EM.Ex(dx,1) -EM.Ebot(1, 1, dx))
-                      + c3 * EM.Ebot(1, 0, dx) - EM.Ebot(2, 1, dx); 
+                      + c3 * EM.Ebot(1, 0, dx) - EM.Ebot(2, 1, dx);
 
         // memorizing fields...
         for (dy = 0; dy < 3; dy++){
@@ -428,7 +428,7 @@ Field ABCcheck(Field EM, Loss lass){
         EM.Ey(spacex - 1,dy) = c1 * (EM.Ey(spacex - 3,dy) + EM.Eright(0, 1, dy))
                       + c2 * (EM.Eright(0, 0, dy) + EM.Eright(2, 0 , dy)
                               -EM.Ey(spacex - 2,dy) -EM.Eright(1, 1, dy))
-                      + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy); 
+                      + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy);
 
         // memorizing fields...
         for (dx = 0; dx < 3; dx++){
@@ -443,7 +443,7 @@ Field ABCcheck(Field EM, Loss lass){
         EM.Ey(0,dy) = c1 * (EM.Ey(2,dy) + EM.Eleft(0, 1, dy))
                       + c2 * (EM.Eleft(0, 0, dy) + EM.Eleft(2, 0 , dy)
                               -EM.Ey(1,dy) -EM.Eleft(1, 1, dy))
-                      + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy); 
+                      + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy);
 
         // memorizing fields...
         for (dx = 0; dx < 3; dx++){

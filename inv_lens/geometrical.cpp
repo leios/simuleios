@@ -109,7 +109,7 @@ void propagate(ray_array& rays, const T& lens,
 
 int main() {
     // defines output
-    std::ofstream output("out.dat", std::ofstream::out);
+    std::ofstream output("geometrical.dat", std::ofstream::out);
 
     vec dim = {4, 10};
     double max_vel = 1;
