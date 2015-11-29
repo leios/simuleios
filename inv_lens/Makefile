@@ -1,7 +1,8 @@
-# Usage: make sim=<one of the values from BINS> to compile and plot
+# Usage: 'make sim=<one of the values from BINS>' to compile and plot
 # the relevant simulation
 #
-# Do make sim=<value> compile if you only want to compile
+# Do 'make sim=<value> compile' if you only want to compile
+# Or 'make sim=<value> run' if you only want to run and not plot
 
 BINS = fdtd fdtd_tez evanescent geometrical
 CXX = g++
@@ -12,6 +13,9 @@ compile: $(sim)
 plot: $(sim)
 	./$(sim) > /dev/null
 	gnuplot plot_$(sim).gp -
+
+run: $(sim)
+	./$(sim)
 
 %: %..cpp
 	$(CXX) $(CXXFLAGS) $*.cpp -o $*
