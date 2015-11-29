@@ -248,11 +248,14 @@ Field Eupdate1d(Field EM, Loss1d lass1d, int t){
 // Creating loss
 Loss createloss2d(Loss lass, double eps, double Cour, double loss){
 
-    double var = 1.4;
+    double var = 3;
+    int lens_offset = 300;
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
-            if ((dy > 65 && dy < 115) || (dy > 125 && dy < 175) ||
-                (dy > 185 && dy < 235)){
+            //if ((dy > 65 && dy < 115) || (dy > 125 && dy < 175) ||
+            //    (dy > 185 && dy < 235)){
+            if ( (dx + dy) < 300 && (dx+dy > 250)){
+            // if (dy > 125 && dy < 175){
                 lass.EzH(dx, dy) = Cour * eps / (var * var);
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
@@ -402,7 +405,7 @@ Field TFSF2(Field EM, Loss lass, Loss1d lass1d, double Cour){
     Eupdate1d(EM, lass1d, EM.t);
     //EM.Ez1d2[10] = ricker(EM.t,0, Cour);
     EM.Ez1d2[10] = planewave(EM.t, 15, Cour, 10);
-    EM.Ez1d2[290] = planewave(EM.t, 15, Cour, 10);
+    //EM.Ez1d2[290] = planewave(EM.t, 15, Cour, 10);
     EM.t++;
     std::cout << EM.t << '\n';
 
