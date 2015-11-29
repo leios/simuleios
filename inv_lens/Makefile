@@ -1,27 +1,21 @@
-BINS = fdtd geometrical_optics FDTDTEz evanescent
+# Usage: make sim=<one of the values from BINS> to compile and plot
+# the relevant simulation
+#
+# Do make sim=<value> compile if you only want to compile
+
+BINS = fdtd fdtd_tez evanescent geometrical
 CXX = g++
-CXXFLAGS = -std=c++11 -g -Wall -march=native -fopenmp -fno-omit-frame-pointer
+CXXFLAGS = -std=c++11 -g -Wall -march=native -fopenmp -fno-omit-frame-pointer -O2
 
-.SUFFIXES: .cpp .dat .gp .plot
+compile: $(sim)
 
-$(BINS): $@.cpp
-        $(CXX) $(CXXFLAGS) $? -o $@
+plot: $(sim)
+	./$(sim) > /dev/null
+	gnuplot plot_$(sim).gp -
 
-# When we do 'make foo.plot'
-# 1) build foo if it's out of date compared foo.cpp
-# 2) invoke foo
-# 3) call gnuplot with foo.gp as input
-# Will fail if invoked for foo.plot when there is no foo.gp
-.gp.plot: $*
-        ./$* > /dev/null
-        gnuplot $*.gp -
+%: %..cpp
+	$(CXX) $(CXXFLAGS) $*.cpp -o $*
 
-# This is a special case for FDTD_para which compiles FDTD.cpp with OpenMP
-# support, resulting in the binary FDTD_para
-FDTD_para:
-        $(CXX) $(CXXFLAGS) -fopenmp $@.cpp -o $@
-
-.PHONY: clean *.plot
 clean:
-        rm -rf $(BINS)
+	rm -Rf $(BINS)
 
