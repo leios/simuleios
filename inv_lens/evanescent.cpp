@@ -17,7 +17,7 @@
 #include <fstream>
 
 static const size_t spacey = 300;
-static const size_t spacex = 300;
+static const size_t spacex = 400;
 static const size_t losslayer = 20;
 
 struct Bound{
@@ -254,8 +254,9 @@ void createloss2d(Loss &lass, double eps, double Cour, double loss){
         for (size_t dy = 0; dy < spacey; dy++){
             //if ((dy > 65 && dy < 115) || (dy > 125 && dy < 175) ||
             //    (dy > 185 && dy < 235)){
-            if (((dx + dy) < 300 && (dx+dy > 250) && dy < 175) || 
-                (dy > 125 && dy < 175 && dx < 125)){
+            if (((dx + dy) < 300 && (dx+dy > 250) && dy < 275 && dy > 75) || 
+                (dy > 225 && dy < 275 && dx < 25) ||
+                (dy > 75 && dy < 125 && dx > 175 && dx < 300)){
             // if (dy > 125 && dy < 175){
                 lass.EzH(dx, dy) = Cour * eps / (var * var);
                 lass.EzE(dx, dy) = 1.0;
@@ -375,7 +376,7 @@ void TFSF2(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
     // TFSF boundary
     Bound first, last;
     first.x = 10; last.x = 290;
-    first.y = 125; last.y = 175;
+    first.y = 225; last.y = 275;
 
     // Update along right edge!
     dx = last.x;
