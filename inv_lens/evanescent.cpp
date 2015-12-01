@@ -87,23 +87,23 @@ double ricker(int time, int loc, double Cour);
 double planewave(int time, int loc, double Cour, int ppw);
 
 // 2 dimensional functions for E / H movement
-Field Hupdate2d(Field EM, Loss lass, int t);
-Field Eupdate2d(Field EM, Loss lass, int t);
+void Hupdate2d(Field &EM, Loss &lass, int t);
+void Eupdate2d(Field &EM, Loss &lass, int t);
 
 // 1 dimensional update functions for E / H
-Field Hupdate1d(Field EM, Loss1d lass1d, int t);
-Field Eupdate1d(Field EM, Loss1d lass1d, int t);
+void Hupdate1d(Field &EM, Loss1d &lass1d, int t);
+void Eupdate1d(Field &EM, Loss1d &lass1d, int t);
 
 // Creating loss
-Loss createloss2d(Loss lass, double eps, double Cour, double loss);
-Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss);
+void createloss2d(Loss &lass, double eps, double Cour, double loss);
+void createloss1d(Loss1d &lass1d, double eps, double Cour, double loss);
 
 // Total Field Scattered Field (TFSF) boundaries
-Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour);
-Field TFSF2(Field EM, Loss lass, Loss1d lass1d, double Cour);
+void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour);
+void TFSF2(Field &EM, Loss &lass, Loss1d &lass1d, double Cour);
 
 // Checking Absorbing Boundary Conditions (ABS)
-Field ABCcheck(Field EM, Loss lass);
+void ABCcheck(Field &EM, Loss &lass);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -114,7 +114,7 @@ int main(){
     // defines output
     std::ofstream output("evanescent.dat", std::ofstream::out);
 
-    int final_time = 1000;
+    int final_time = 4001;
     double eps = 377.0;
 
     // define initial E and H fields
@@ -139,22 +139,22 @@ void FDTD(Field EM,
     double Cour = 1 / sqrt(2);
 
     Loss lass;
-    lass  = createloss2d(lass, eps, Cour, loss);
+    createloss2d(lass, eps, Cour, loss);
     Loss1d lass1d;
-    lass1d = createloss1d(lass1d, eps, Cour, loss);
+    createloss1d(lass1d, eps, Cour, loss);
 
     // Time looping
     for (int t = 0; t < final_time; t++){
 
-        EM = Hupdate2d(EM, lass, t);
-        EM = TFSF(EM, lass, lass1d, Cour);
-        EM = TFSF2(EM, lass, lass1d, Cour);
-        EM = Eupdate2d(EM,lass,t);
-        EM = ABCcheck(EM, lass);
+        Hupdate2d(EM, lass, t);
+        TFSF(EM, lass, lass1d, Cour);
+        TFSF2(EM, lass, lass1d, Cour);
+        Eupdate2d(EM,lass,t);
+        ABCcheck(EM, lass);
         //EM.Ez(200,100) = ricker(t, 0, Cour);
 
         // Outputting to a file
-        int check = 10;
+        int check = 50;
         if (t % check == 0){
             for (size_t dx = 0; dx < spacex; dx++){
                 for (size_t dy = 0; dy < spacey; dy++){
@@ -181,7 +181,7 @@ double ricker(int time, int loc, double Cour){
 }
 
 // 2 dimensional functions for E / H movement
-Field Hupdate2d(Field EM, Loss lass, int t){
+void Hupdate2d(Field &EM, Loss &lass, int t){
     // update magnetic field, x direction
     #pragma omp parallel for
     for (size_t dx = 0; dx < spacex; dx++){
@@ -202,12 +202,12 @@ Field Hupdate2d(Field EM, Loss lass, int t){
         }
     }
 
-    return EM;
+    //return EM;
 
 }
 
 
-Field Eupdate2d(Field EM, Loss lass, int t){
+void Eupdate2d(Field &EM, Loss &lass, int t){
     // update electric field
     #pragma omp parallel for
     for (size_t dx = 1; dx < spacex - 1; dx++){
@@ -219,11 +219,11 @@ Field Eupdate2d(Field EM, Loss lass, int t){
                                          - EM.Hx(dx, dy - 1)));
         }
     }
-    return EM;
+    //return EM;
 }
 
 // 1 dimensional update functions for E / H
-Field Hupdate1d(Field EM, Loss1d lass1d, int t){
+void Hupdate1d(Field &EM, Loss1d &lass1d, int t){
     // update magnetic field, y direction
     #pragma omp parallel for
     for (size_t dx = 0; dx < spacex - 1; dx++){
@@ -231,22 +231,22 @@ Field Hupdate1d(Field EM, Loss1d lass1d, int t){
                   + lass1d.HyE[dx] * (EM.Ez1d[dx + 1] - EM.Ez1d[dx]);
     }
 
-    return EM;
+    //return EM;
 }
 
-Field Eupdate1d(Field EM, Loss1d lass1d, int t){
+void Eupdate1d(Field &EM, Loss1d &lass1d, int t){
     // update electric field, y direction
     for (size_t dx = 1; dx < spacex - 1; dx++){
         EM.Ez1d[dx] = lass1d.EzE[dx] * EM.Ez1d[dx]
                   + lass1d.EzH[dx] * (EM.Hy1d[dx] - EM.Hy1d[dx - 1]);
     }
 
-    return EM;
+    //return EM;
 
 }
 
 // Creating loss
-Loss createloss2d(Loss lass, double eps, double Cour, double loss){
+void createloss2d(Loss &lass, double eps, double Cour, double loss){
 
     double var = 3;
     int lens_offset = 300;
@@ -254,7 +254,8 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
         for (size_t dy = 0; dy < spacey; dy++){
             //if ((dy > 65 && dy < 115) || (dy > 125 && dy < 175) ||
             //    (dy > 185 && dy < 235)){
-            if ( (dx + dy) < 300 && (dx+dy > 250)){
+            if (((dx + dy) < 300 && (dx+dy > 250) && dy < 175) || 
+                (dy > 125 && dy < 175 && dx < 125)){
             // if (dy > 125 && dy < 175){
                 lass.EzH(dx, dy) = Cour * eps / (var * var);
                 lass.EzE(dx, dy) = 1.0;
@@ -276,9 +277,9 @@ Loss createloss2d(Loss lass, double eps, double Cour, double loss){
     }
 
 
-    return lass;
+    //return lass;
 }
-Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss){
+void createloss1d(Loss1d &lass1d, double eps, double Cour, double loss){
 
     double depth, lossfactor;
 
@@ -302,12 +303,12 @@ Loss1d createloss1d(Loss1d lass1d, double eps, double Cour, double loss){
     }
 
 
-    return lass1d;
+    //return lass1d;
 
 }
 
 // TFSF boundaries
-Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
+void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
 
     int dx, dy;
 
@@ -362,12 +363,12 @@ Field TFSF(Field EM, Loss lass, Loss1d lass1d, double Cour){
         EM.Ez(dx, dy) -= lass.EzH(dx, dy) * EM.Hy1d[dx - 1];
     }
 
-    return EM;
+    //return EM;
 
 }
 
 // second TFSF boundary
-Field TFSF2(Field EM, Loss lass, Loss1d lass1d, double Cour){
+void TFSF2(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
 
     int dx, dy;
 
@@ -422,13 +423,13 @@ Field TFSF2(Field EM, Loss lass, Loss1d lass1d, double Cour){
         EM.Ez(dx, dy) -= lass.EzH(dx, dy) * EM.Hy1d2[dx - 1];
     }
 
-    return EM;
+    //return EM;
 
 }
 
 
 // Checking Absorbing Boundary Conditions (ABC)
-Field ABCcheck(Field EM, Loss lass){
+void ABCcheck(Field &EM, Loss &lass){
 
     // defining constant for  ABC
     double c1, c2, c3, temp1, temp2;
@@ -496,7 +497,7 @@ Field ABCcheck(Field EM, Loss lass){
         }
     }
 
-    return EM;
+    //return EM;
 }
 
 
