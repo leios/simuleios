@@ -23,6 +23,25 @@ program nelder
       real*8, dimension(dim)     :: value
       real*8  :: x, y, alpha, beta, gamma
 
+      call downhill
+
+end program
+
+!!----------------------------------------------------------------------------!!
+! SUBROUTINES
+!!----------------------------------------------------------------------------!!
+
+!! The actual method
+!! The nelder mead method 
+subroutine downhill
+      implicit none
+      integer, parameter         :: dim = 6
+      integer :: min, max, i, minsave, maxsave
+      real*8, dimension(2, dim)  :: pos
+      real*8, dimension(dim)     :: value
+      real*8  :: x, y, alpha = 0.5, beta = 0.5, gamma = 0.5, dist, cutoff = 0.1
+      real*8  :: xsave, ysave
+
       interface
           subroutine findval(pos, value, dim)
               real*8, dimension(:,:) :: pos
@@ -52,35 +71,141 @@ program nelder
           end subroutine centroid
       end interface
 
+      interface
+          subroutine reflect(pos, min, dim, alpha)
+              real*8, intent(inout)  :: pos(:,:)
+              integer, intent(in)    :: min, dim
+              real*8, intent(in)     :: alpha
+          end subroutine reflect
+      end interface
+
+      interface
+          subroutine contract(pos, min, dim, beta)
+              real*8, intent(inout)  :: pos(:,:)
+              integer, intent(in)    :: min, dim
+              real*8, intent(in)     :: beta
+          end subroutine contract
+      end interface
+
+      interface
+          subroutine expand(pos, min, dim, gamma)
+              real*8, intent(inout)  :: pos(:,:)
+              integer, intent(in)    :: min, dim
+              real*8, intent(in)     :: gamma
+          end subroutine expand
+      end interface
+
+      interface
+          subroutine contractall(pos, min, dim)
+              real*8, intent(inout)  :: pos(:,:)
+              integer, intent(in)    :: min, dim
+          end subroutine contractall
+      end interface
+
+
+      !! initialize everything
       call populate(pos, dim)
-
       call findval(pos, value, dim)
-
       call minmax(value, min, max)
-      do i = 1,dim
-          write(*,*) value(i), pos(1, i), pos(2,i)
-      end do
-      write(*,*) max, min
-
       call centroid(pos, min, max, dim)
-      write(*,*) pos(1, 4), pos(2, 4)
 
-end program
+      dist = sqrt((pos(1, min) - pos(1, max)) * (pos(1, min) - pos(1, max)) &
+                  + (pos(2, min) - pos(2, max)) * (pos(2, min) - pos(2, max)))
+      i = 0
 
-!!----------------------------------------------------------------------------!!
-! SUBROUTINES
-!!----------------------------------------------------------------------------!!
+      do while (dist > cutoff)
+          write(*,*) i
+          minsave = min
+          xsave = pos(1, min)
+          ysave = pos(2, min)
+          call reflect(pos, min, dim, alpha)
+          call findval(pos, value, dim)
+          call minmax(value, min, max)
+
+          if (minsave.EQ.max) then
+              write(*,*) "expanding..."
+              maxsave = max
+              xsave = pos(1, max)
+              ysave = pos(2, max)
+              call expand(pos, max, dim, gamma)
+              call findval(pos, value, dim)
+              call minmax(value, min, max)
+
+              if (maxsave.NE.max) then
+                  pos(1, max) = xsave
+                  pos(2, max) = ysave
+              end if
+
+          else if (minsave.EQ.min) then
+              write(*,*) "contracting..."
+              xsave = pos(1, min)
+              ysave = pos(2, min)
+
+              pos(1, min) = xsave
+              pos(2, min) = ysave
+              call contract(pos, min, dim, beta)
+
+              if (minsave.EQ.min) then
+                  call contractall(pos, max, dim)
+              end if
+
+          end if
+          i = i + 1
+      end do
+
+end subroutine
+
+!! Total contraction
+pure subroutine contractall(pos, max, dim)
+      implicit none
+      real*8, dimension(:,:), intent(inout) :: pos
+      integer, intent(in)                   :: max, dim
+      integer                               :: i
+
+      do i = 1, dim - 3
+          if (i.NE.max) then
+              pos(1,i) = (pos(1, i) + pos(1, max)) * 0.5
+              pos(2,i) = (pos(2, i) + pos(2, max)) * 0.5
+          end if
+      end do
+
+end subroutine
 
 !! for Nelder Mead reflections
-pure subroutine reflect
+pure subroutine reflect(pos, min, dim, alpha)
+      implicit none
+      real*8, dimension(:,:), intent(inout) :: pos
+      integer, intent(in)                   :: min, dim
+      real*8, intent(in)                    :: alpha
+
+      pos(1,min) = (1 + alpha) * pos(1,dim - 2) - alpha * pos(1, min)
+      pos(2,min) = (1 + alpha) * pos(2,dim - 2) - alpha * pos(2, min)
+
 end subroutine
 
 !! for Nelder Mead contractions
-pure subroutine contract
+pure subroutine contract(pos, min, dim, beta)
+      implicit none
+      real*8, dimension(:,:), intent(inout) :: pos
+      integer, intent(in)                   :: min, dim
+      real*8, intent(in)                    :: beta
+
+      pos(1,min) = (1 - beta) * pos(1,dim - 2) + beta * pos(1, min)
+      pos(2,min) = (1 - beta) * pos(2,dim - 2) + beta * pos(2, min)
+
 end subroutine
 
 !! for Nelder Mead expansions
-pure subroutine expand
+pure subroutine expand(pos, min, dim, gamma)
+      implicit none
+      real*8, dimension(:,:), intent(inout) :: pos
+      integer, intent(in)                   :: min, dim
+      real*8, intent(in)                    :: gamma
+
+      pos(1,min) = (1 - gamma) * pos(1,dim - 2) + gamma * pos(1, min)
+      pos(2,min) = (1 - gamma) * pos(2,dim - 2) + gamma * pos(2, min)
+
+
 end subroutine
 
 !! Finds the minima and maxima
