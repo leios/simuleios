@@ -17,7 +17,7 @@
 #include <fstream>
 
 static const size_t spacey = 300;
-static const size_t spacex = 400;
+static const size_t spacex = 500;
 static const size_t losslayer = 20;
 
 struct Bound{
@@ -114,7 +114,7 @@ int main(){
     // defines output
     std::ofstream output("evanescent.dat", std::ofstream::out);
 
-    int final_time = 4001;
+    int final_time = 2001;
     double eps = 377.0;
 
     // define initial E and H fields
@@ -248,16 +248,54 @@ void Eupdate1d(Field &EM, Loss1d &lass1d, int t){
 // Creating loss
 void createloss2d(Loss &lass, double eps, double Cour, double loss){
 
-    double var = 3;
-    int lens_offset = 300;
+    //double var = 3.0;
+    double fiber_var = 3.0;
+    int buffer = 5;
+    //int lens_offset = 300;
+    // double radius = 50, dist, dist2;
+    //int sourcex = 0, sourcex2 = 60;
+    //int sourcey = 250, sourcey2 = 250;
+
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
+
+             /*
+             dist = sqrt((dx - sourcex)*(dx - sourcex) 
+                       + (dy - sourcey)*(dy - sourcey)); 
+             dist2 = sqrt((dx - sourcex2)*(dx - sourcex2) 
+                        + (dy - sourcey2)*(dy - sourcey2)); 
+             */
+
             //if ((dy > 65 && dy < 115) || (dy > 125 && dy < 175) ||
             //    (dy > 185 && dy < 235)){
-            if (((dx + dy) < 300 && (dx+dy > 250) && dy < 275 && dy > 75) || 
-                (dy > 225 && dy < 275 && dx < 25) ||
-                (dy > 75 && dy < 125 && dx > 175 && dx < 300)){
+            if (((dx + dy) < 400 && (dx+dy > 350) && dy < 275 && dy > 75) || 
+                (dy > 225 && dy < 275 && dx < 125 && dx > 10) ||
+                (dy > 75 && dy < 125 && dx > 275 && dx < 400)){
+                lass.EzH(dx, dy) = Cour * eps / (fiber_var * fiber_var);
+                lass.EzE(dx, dy) = 1.0;
+                lass.HyH(dx, dy) = 1.0;
+                lass.HyE(dx, dy) = Cour * (1.0 / eps);
+                lass.HxE(dx, dy) = Cour * (1.0 / eps);
+                lass.HxH(dx, dy) = 1.0;
+
+            }
+
+            else if (((dx + dy) < 450 + buffer && (dx+dy > 400 + buffer) && 
+                       dy < 225 && dy > 75)||
+                      (dy > 125 + buffer && dy < 175 + buffer && 
+                       dx > 275 && dx < 400)){
+                lass.EzH(dx, dy) = Cour * eps / (fiber_var * fiber_var);
+                lass.EzE(dx, dy) = 1.0;
+                lass.HyH(dx, dy) = 1.0;
+                lass.HyE(dx, dy) = Cour * (1.0 / eps);
+                lass.HxE(dx, dy) = Cour * (1.0 / eps);
+                lass.HxH(dx, dy) = 1.0;
+
+            }
+
+            /*
             // if (dy > 125 && dy < 175){
+            else if (dist < radius && dist2 < radius){            
                 lass.EzH(dx, dy) = Cour * eps / (var * var);
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
@@ -266,6 +304,7 @@ void createloss2d(Loss &lass, double eps, double Cour, double loss){
                 lass.HxH(dx, dy) = 1.0;
 
             }
+            */
             else{
                 lass.EzH(dx, dy) = Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
