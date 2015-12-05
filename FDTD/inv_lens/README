@@ -2,5 +2,10 @@ Invisible lens:
 
 The invisible lens is a lens that is invisible. We check it out with both 
 time-dependent ray-tracing and FDTD. To run the code (and plot), simply run:
-	make -f Make_FDTD
-	make -f Make_Geometrical
+	make sim=fdtd
+
+    or you can run:
+        make sim=evanescent
+        make sim=geometrical
+        make sim=fdtd_tez
+
