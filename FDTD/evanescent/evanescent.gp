@@ -27,6 +27,6 @@ set size ratio -1
 
 set cbrange [-0.2:0.2]
 
-do for [ii=1:40:1] { plot "evanescent.dat" i ii u 2:3:4 w image; pause .01}
+do for [ii=1:80:1] { plot "evanescent.dat" i ii u 2:3:4 w image; pause .01}
 #plot "evanescent.dat" i 80 u 2:3:4 w image; pause .01
 # plot "evanescent.dat" i 19 u 2:3:4 w image

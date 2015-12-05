@@ -1,8 +1,8 @@
-/*-------------evanescent.cpp-------------------------------------------------//
+/*-------------FDTD.cpp-------------------------------------------------------//
 *
-*              Finite Difference Time Domain -- evanescent field test
+*              Finite Difference Time Domain
 *
-* Purpose: To replicate the results of our invisible lense raytracer with
+* Purpose: To replicate the results of our invisible lense raytracer with 
 *          FDTD. Woo!
 *
 *   Notes: Most of this is coming from the following link:
@@ -16,8 +16,8 @@
 #include <cmath>
 #include <fstream>
 
-static const size_t spacey = 300;
-static const size_t spacex = 500;
+static const size_t spacey = 2000;
+static const size_t spacex = 3000;
 static const size_t losslayer = 20;
 
 struct Bound{
@@ -25,35 +25,32 @@ struct Bound{
 };
 
 struct Loss{
-    std::vector <double> EzH = std::vector<double>(spacex * spacey, 0),
-                         EzE = std::vector<double>(spacex * spacey, 0),
-                         HyE = std::vector<double>(spacex * spacey, 0),
+    std::vector <double> EzH = std::vector<double>(spacex * spacey, 0), 
+                         EzE = std::vector<double>(spacex * spacey, 0), 
+                         HyE = std::vector<double>(spacex * spacey, 0), 
                          HyH = std::vector<double>(spacex * spacey, 0),
-                         HxE = std::vector<double>(spacex * spacey, 0),
+                         HxE = std::vector<double>(spacex * spacey, 0), 
                          HxH = std::vector<double>(spacex * spacey, 0);
 };
 
 struct Loss1d{
-    std::vector <double> EzH = std::vector<double>(spacex, 0),
-                         EzE = std::vector<double>(spacex, 0),
-                         HyE = std::vector<double>(spacex, 0),
+    std::vector <double> EzH = std::vector<double>(spacex, 0), 
+                         EzE = std::vector<double>(spacex, 0), 
+                         HyE = std::vector<double>(spacex, 0), 
                          HyH = std::vector<double>(spacex, 0);
 };
 
 struct Field{
-    std::vector <double> Hx = std::vector<double>(spacex * spacey, 0),
+    std::vector <double> Hx = std::vector<double>(spacex * spacey, 0), 
                          Hy = std::vector<double>(spacex * spacey, 0),
                          Ez = std::vector<double>(spacex * spacey, 0);
 
-    std::vector <double> Hy1d = std::vector<double>(spacex + losslayer, 0),
-                         Ez1d = std::vector<double>(spacex + losslayer, 0),
-                         Hy1d2 = std::vector<double>(spacex + losslayer, 0),
-                         Ez1d2 = std::vector<double>(spacex + losslayer, 0);
-
+    std::vector <double> Hy1d = std::vector<double>(spacex + losslayer, 0), 
+                         Ez1d = std::vector<double>(spacex + losslayer, 0);
 
     // 6 elements, 3 spacial elements away from border and 2 time elements of
     // those spatial elements
-    std::vector <double> Etop = std::vector<double>(3 * 2 * spacex, 0),
+    std::vector <double> Etop = std::vector<double>(3 * 2 * spacex, 0), 
                          Ebot = std::vector<double>(3 * 2 * spacex, 0),
                          Eleft = std::vector<double>(3 * 2 * spacey, 0),
                          Eright = std::vector<double>(3 * 2 * spacey, 0);
@@ -67,17 +64,17 @@ struct Field{
 #define HyE(i, j) HyE[(i) + (j) *  spacex]
 #define HxH(i, j) HxH[(i) + (j) *  spacex]
 #define HxE(i, j) HxE[(i) + (j) *  spacex]
-#define Hx(i, j) Hx[(i) + (j) *  spacex]
-#define Hy(i, j) Hy[(i) + (j) *  spacex]
-#define Ez(i, j) Ez[(i) + (j) *  spacex]
+#define Hx(i, j) Hx[(i) + (j) *  spacex] 
+#define Hy(i, j) Hy[(i) + (j) *  spacex] 
+#define Ez(i, j) Ez[(i) + (j) *  spacex] 
 #define Etop(k, j, i) Etop[(i) * 6 + (j) * 3 + (k)]
 #define Ebot(k, j, i) Ebot[(i) * 6 + (j) * 3 + (k)]
 #define Eleft(i, j, k) Eleft[(k) * 6 + (j) * 3 + (i)]
 #define Eright(i, j, k) Eright[(k) * 6 + (j) * 3 + (i)]
 
 
-void FDTD(Field EM,
-          const int final_time, const double eps,
+void FDTD(Field &EM,
+          int final_time, double eps,
           std::ofstream& output);
 
 // Adding ricker solutuion
@@ -95,12 +92,13 @@ void Hupdate1d(Field &EM, Loss1d &lass1d, int t);
 void Eupdate1d(Field &EM, Loss1d &lass1d, int t);
 
 // Creating loss
-void createloss2d(Loss &lass, double eps, double Cour, double loss);
-void createloss1d(Loss1d &lass1d, double eps, double Cour, double loss);
+void createloss2d(Loss &lass, double eps, double Cour, 
+                  double loss);
+void createloss1d(Loss1d &lass1d, double eps, double Cour, 
+                  double loss);
 
 // Total Field Scattered Field (TFSF) boundaries
 void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour);
-void TFSF2(Field &EM, Loss &lass, Loss1d &lass1d, double Cour);
 
 // Checking Absorbing Boundary Conditions (ABS)
 void ABCcheck(Field &EM, Loss &lass);
@@ -112,9 +110,9 @@ void ABCcheck(Field &EM, Loss &lass);
 int main(){
 
     // defines output
-    std::ofstream output("evanescent.dat", std::ofstream::out);
+    std::ofstream output("FDTD.dat", std::ofstream::out);
 
-    int final_time = 2001;
+    int final_time = 30001;
     double eps = 377.0;
 
     // define initial E and H fields
@@ -131,8 +129,8 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // This is the function we writs the bulk of the code in
-void FDTD(Field EM,
-          const int final_time, const double eps,
+void FDTD(Field &EM,
+          int final_time, double eps,
           std::ofstream& output){
 
     double loss = 0.00;
@@ -148,18 +146,16 @@ void FDTD(Field EM,
 
         Hupdate2d(EM, lass, t);
         TFSF(EM, lass, lass1d, Cour);
-        TFSF2(EM, lass, lass1d, Cour);
         Eupdate2d(EM,lass,t);
         ABCcheck(EM, lass);
-        //EM.Ez(200,100) = ricker(t, 0, Cour);
-
+        
         // Outputting to a file
-        int check = 50;
+        int check = 30000;
         if (t % check == 0){
             for (size_t dx = 0; dx < spacex; dx++){
                 for (size_t dy = 0; dy < spacey; dy++){
                     output << t << '\t' << dx <<'\t' << dy << '\t'
-                           << EM.Ez(dx, dy) << '\t' << EM.Hy(dx, dy)
+                           << EM.Ez(dx, dy) << '\t' << EM.Hy(dx, dy) 
                            << '\t' << EM.Hx(dx, dy) << '\t' << '\n';
                 }
             }
@@ -186,8 +182,8 @@ void Hupdate2d(Field &EM, Loss &lass, int t){
     #pragma omp parallel for
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey - 1; dy++){
-           EM.Hx(dx,dy) = lass.HxH(dx,dy) * EM.Hx(dx, dy)
-                       - lass.HxE(dx,dy) * (EM.Ez(dx,dy + 1)
+           EM.Hx(dx,dy) = lass.HxH(dx,dy) * EM.Hx(dx, dy) 
+                       - lass.HxE(dx,dy) * (EM.Ez(dx,dy + 1) 
                                             - EM.Ez(dx,dy));
         }
     }
@@ -196,8 +192,8 @@ void Hupdate2d(Field &EM, Loss &lass, int t){
     #pragma omp parallel for
     for (size_t dx = 0; dx < spacex - 1; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
-           EM.Hy(dx,dy) = lass.HyH(dx,dy) * EM.Hy(dx,dy)
-                      + lass.HyE(dx,dy) * (EM.Ez(dx + 1,dy)
+           EM.Hy(dx,dy) = lass.HyH(dx,dy) * EM.Hy(dx,dy) 
+                      + lass.HyE(dx,dy) * (EM.Ez(dx + 1,dy) 
                                             - EM.Ez(dx,dy));
         }
     }
@@ -227,7 +223,7 @@ void Hupdate1d(Field &EM, Loss1d &lass1d, int t){
     // update magnetic field, y direction
     #pragma omp parallel for
     for (size_t dx = 0; dx < spacex - 1; dx++){
-        EM.Hy1d[dx] = lass1d.HyH[dx] * EM.Hy1d[dx]
+        EM.Hy1d[dx] = lass1d.HyH[dx] * EM.Hy1d[dx] 
                   + lass1d.HyE[dx] * (EM.Ez1d[dx + 1] - EM.Ez1d[dx]);
     }
 
@@ -237,7 +233,7 @@ void Hupdate1d(Field &EM, Loss1d &lass1d, int t){
 void Eupdate1d(Field &EM, Loss1d &lass1d, int t){
     // update electric field, y direction
     for (size_t dx = 1; dx < spacex - 1; dx++){
-        EM.Ez1d[dx] = lass1d.EzE[dx] * EM.Ez1d[dx]
+        EM.Ez1d[dx] = lass1d.EzE[dx] * EM.Ez1d[dx] 
                   + lass1d.EzH[dx] * (EM.Hy1d[dx] - EM.Hy1d[dx - 1]);
     }
 
@@ -246,80 +242,104 @@ void Eupdate1d(Field &EM, Loss1d &lass1d, int t){
 }
 
 // Creating loss
-void createloss2d(Loss &lass, double eps, double Cour, double loss){
+void createloss2d(Loss &lass, double eps, double Cour, 
+                  double loss){
 
-    //double var = 3.0;
-    double fiber_var = 3.0;
-    int buffer = 5;
-    //int lens_offset = 300;
-    // double radius = 50, dist, dist2;
-    //int sourcex = 0, sourcex2 = 60;
-    //int sourcey = 250, sourcey2 = 250;
-
+    double radius = 850;
+    int sourcex = 860, sourcex2 = 250;
+    int sourcey = 1000, sourcey2 = 100;
+    double dist, var, Q, epsp, mup, dist2, var_old;
+    double cutoff = 1.5;
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
-
-             /*
              dist = sqrt((dx - sourcex)*(dx - sourcex) 
                        + (dy - sourcey)*(dy - sourcey)); 
              dist2 = sqrt((dx - sourcex2)*(dx - sourcex2) 
                         + (dy - sourcey2)*(dy - sourcey2)); 
-             */
 
-            //if ((dy > 65 && dy < 115) || (dy > 125 && dy < 175) ||
-            //    (dy > 185 && dy < 235)){
-            if (((dx + dy) < 400 && (dx+dy > 350) && dy < 275 && dy > 75) || 
-                (dy > 225 && dy < 275 && dx < 125 && dx > 10) ||
-                (dy > 75 && dy < 125 && dx > 275 && dx < 400)){
-                lass.EzH(dx, dy) = Cour * eps / (fiber_var * fiber_var);
+            // if (dx > 100 && dx < 150 && dy > 75 && dy < 125){
+            if (dist < radius){
+            // if (dist > 100000000){
+                Q = cbrt(-(radius / dist) + sqrt((radius/dist) 
+                                             * (radius/dist) + (1.0/27.0)));
+                var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0 / (3.0 * Q)));
+                // var = radius / dist;
+                // var = 1.1;
+                if (var - var_old > cutoff){
+                    var = var_old;
+                }
+
+                if (var - var_old < -cutoff){
+                    var = var_old;
+                }
+
+                if (isnan(var)){
+                    var = var_old;
+                }
+
+                epsp = eps / (var * var);
+                mup = 1 / (var * var);
+/*
+                lass.EzH(dx, dy) = Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
-                lass.HyE(dx, dy) = Cour * (1.0 / eps);
-                lass.HxE(dx, dy) = Cour * (1.0 / eps);
+                lass.HyE(dx, dy) = Cour / eps;
+                lass.HxE(dx, dy) = Cour / eps;
                 lass.HxH(dx, dy) = 1.0;
+*/
+
+                lass.EzH(dx, dy) =  Cour * epsp /(1.0 - loss);
+                lass.EzE(dx, dy) = (1.0 - loss) / (1.0 + loss);
+                lass.HyH(dx, dy) = (1.0 - loss) / (1.0 + loss);
+                lass.HyE(dx, dy) = Cour * (mup / eps) / (1.0 + loss);
+                lass.HxE(dx, dy) = Cour * (mup / eps) / (1.0 + loss);
+                lass.HxH(dx, dy) = (1.0 - loss) / (1.0 + loss);
+
+/*
+                // PEC stuff
+                lass.EzH(dx, dy) = 0;
+                lass.EzE(dx, dy) = 0;
+                lass.HyH(dx, dy) = 0;
+                lass.HyE(dx, dy) = 0;
+                lass.HxE(dx, dy) = 0;
+                lass.HxH(dx, dy) = 0;
+*/
+                var_old = var;
 
             }
-
-            else if (((dx + dy) < 450 + buffer && (dx+dy > 400 + buffer) && 
-                       dy < 225 && dy > 75)||
-                      (dy > 125 + buffer && dy < 175 + buffer && 
-                       dx > 275 && dx < 400)){
-                lass.EzH(dx, dy) = Cour * eps / (fiber_var * fiber_var);
-                lass.EzE(dx, dy) = 1.0;
-                lass.HyH(dx, dy) = 1.0;
-                lass.HyE(dx, dy) = Cour * (1.0 / eps);
-                lass.HxE(dx, dy) = Cour * (1.0 / eps);
-                lass.HxH(dx, dy) = 1.0;
-
-            }
-
-            /*
-            // if (dy > 125 && dy < 175){
-            else if (dist < radius && dist2 < radius){            
-                lass.EzH(dx, dy) = Cour * eps / (var * var);
-                lass.EzE(dx, dy) = 1.0;
-                lass.HyH(dx, dy) = 1.0;
-                lass.HyE(dx, dy) = Cour * (1.0 / eps);
-                lass.HxE(dx, dy) = Cour * (1.0 / eps);
-                lass.HxH(dx, dy) = 1.0;
-
-            }
-            */
             else{
+/*
+                lass.EzH(dx, dy) =  Cour * eps;
+                lass.EzE(dx, dy) = 1.0;
+                lass.HyH(dx, dy) = 1.0;
+                lass.HyE(dx, dy) = Cour / eps;
+                lass.HxE(dx, dy) = Cour / eps;
+                lass.HxH(dx, dy) = 1.0;
+                
+                lass.EzH(dx, dy) =  Cour * eps /(1.0 - loss);
+                lass.EzE(dx, dy) = (1.0 - loss) / (1.0 + loss);
+                lass.HyH(dx, dy) = (1.0 - loss) / (1.0 + loss);
+                lass.HyE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss);
+                lass.HxE(dx, dy) = Cour * (1.0 / eps) / (1.0 + loss);
+                lass.HxH(dx, dy) = (1.0 - loss) / (1.0 + loss);
+
+*/
                 lass.EzH(dx, dy) = Cour * eps;
                 lass.EzE(dx, dy) = 1.0;
                 lass.HyH(dx, dy) = 1.0;
                 lass.HyE(dx, dy) = Cour * (1.0 / eps);
                 lass.HxE(dx, dy) = Cour * (1.0 / eps);
                 lass.HxH(dx, dy) = 1.0;
-           }
+                
+            }
         }
     }
 
 
     //return lass;
 }
-void createloss1d(Loss1d &lass1d, double eps, double Cour, double loss){
+void createloss1d(Loss1d &lass1d, double eps, double Cour, 
+                  double loss){
 
     double depth, lossfactor;
 
@@ -350,12 +370,12 @@ void createloss1d(Loss1d &lass1d, double eps, double Cour, double loss){
 // TFSF boundaries
 void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
 
-    int dx, dy;
+    int dx, dy, ppw = 50, loc = 15;
 
     // TFSF boundary
     Bound first, last;
-    first.x = 10; last.x = 290;
-    first.y = 65; last.y = 115;
+    first.x = 10; last.x = 2990;
+    first.y = 10; last.y = 1990;
 
     // Update along right edge!
     dx = last.x;
@@ -385,8 +405,7 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
     //EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    //EM.Ez1d[10] = planewave(EM.t, 15, Cour, 10);
-    //EM.Ez1d[290] = planewave(EM.t, 15, Cour, 10);
+    EM.Ez1d[10] = planewave(EM.t, loc, Cour, ppw);
     EM.t++;
     std::cout << EM.t << '\n';
 
@@ -407,67 +426,6 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
 
 }
 
-// second TFSF boundary
-void TFSF2(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
-
-    int dx, dy;
-
-    // TFSF boundary
-    Bound first, last;
-    first.x = 10; last.x = 290;
-    first.y = 225; last.y = 275;
-
-    // Update along right edge!
-    dx = last.x;
-    for (int dy = first.y; dy <= last.y; dy++){
-        EM.Hy(dx,dy) += lass.HyE(dx, dy) * EM.Ez1d2[dx];
-    }
-
-    // Updating along left edge
-    dx = first.x - 1;
-    for (int dy = first.y; dy <= last.y; dy++){
-        EM.Hy(dx,dy) -= lass.HyE(dx, dy) * EM.Ez1d2[dx+1];
-    }
-
-    // Updating along top
-    dy = last.y;
-    for (int dx = first.x; dx <= last.x; dx++){
-        EM.Hx(dx,dy) -= lass.HxE(dx, dy) * EM.Ez1d2[dx];
-    }
-
-    // Update along bot
-    dy = first.y - 1;
-    for (int dx = first.x; dx <= last.x; dx++){
-        EM.Hx(dx,dy) += lass.HxE(dx, dy) * EM.Ez1d2[dx];
-    }
-
-    // Insert 1d grid stuff here. Update magnetic and electric field
-    Hupdate1d(EM, lass1d, EM.t);
-    Eupdate1d(EM, lass1d, EM.t);
-    //EM.Ez1d2[10] = ricker(EM.t,0, Cour);
-    EM.Ez1d2[10] = planewave(EM.t, 15, Cour, 10);
-    //EM.Ez1d2[290] = planewave(EM.t, 15, Cour, 10);
-    EM.t++;
-    std::cout << EM.t << '\n';
-
-    // Check mag instead of ricker.
-    // Update along right
-    dx = last.x;
-    for (int dy = first.y; dy <= last.y; dy++){
-        EM.Ez(dx, dy) += lass.EzH(dx, dy) * EM.Hy1d2[dx];
-    }
-
-    // Updating Ez along left
-    dx = first.x;
-    for (int dy = first.y; dy <= last.y; dy++){
-        EM.Ez(dx, dy) -= lass.EzH(dx, dy) * EM.Hy1d2[dx - 1];
-    }
-
-    //return EM;
-
-}
-
-
 // Checking Absorbing Boundary Conditions (ABC)
 void ABCcheck(Field &EM, Loss &lass){
 
@@ -485,7 +443,7 @@ void ABCcheck(Field &EM, Loss &lass){
         EM.Ez(dx, spacey - 1) = c1 * (EM.Ez(dx, spacey - 3) + EM.Etop(0, 1, dx))
                       + c2 * (EM.Etop(0, 0, dx) + EM.Etop(2, 0 , dx)
                               -EM.Ez(dx,spacey - 2) -EM.Etop(1, 1, dx))
-                      + c3 * EM.Etop(1, 0, dx) - EM.Etop(2, 1, dx);
+                      + c3 * EM.Etop(1, 0, dx) - EM.Etop(2, 1, dx); 
 
        // memorizing fields...
         for (dy = 0; dy < 3; dy++){
@@ -499,7 +457,7 @@ void ABCcheck(Field &EM, Loss &lass){
         EM.Ez(dx,0) = c1 * (EM.Ez(dx, 2) + EM.Ebot(0, 1, dx))
                       + c2 * (EM.Ebot(0, 0, dx) + EM.Ebot(2, 0 , dx)
                               -EM.Ez(dx,1) -EM.Ebot(1, 1, dx))
-                      + c3 * EM.Ebot(1, 0, dx) - EM.Ebot(2, 1, dx);
+                      + c3 * EM.Ebot(1, 0, dx) - EM.Ebot(2, 1, dx); 
 
         // memorizing fields...
         for (dy = 0; dy < 3; dy++){
@@ -513,7 +471,7 @@ void ABCcheck(Field &EM, Loss &lass){
         EM.Ez(spacex - 1,dy) = c1 * (EM.Ez(spacex - 3,dy) + EM.Eright(0, 1, dy))
                       + c2 * (EM.Eright(0, 0, dy) + EM.Eright(2, 0 , dy)
                               -EM.Ez(spacex - 2,dy) -EM.Eright(1, 1, dy))
-                      + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy);
+                      + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy); 
 
         // memorizing fields...
         for (dx = 0; dx < 3; dx++){
@@ -528,7 +486,7 @@ void ABCcheck(Field &EM, Loss &lass){
         EM.Ez(0,dy) = c1 * (EM.Ez(2,dy) + EM.Eleft(0, 1, dy))
                       + c2 * (EM.Eleft(0, 0, dy) + EM.Eleft(2, 0 , dy)
                               -EM.Ez(1,dy) -EM.Eleft(1, 1, dy))
-                      + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy);
+                      + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy); 
 
         // memorizing fields...
         for (dx = 0; dx < 3; dx++){
@@ -537,7 +495,7 @@ void ABCcheck(Field &EM, Loss &lass){
         }
     }
 
-    //return EM;
+    // return EM;
 }
 
 
@@ -545,7 +503,7 @@ void ABCcheck(Field &EM, Loss &lass){
 double planewave(int time, int loc, double Cour, int ppw){
     double plane;
 
-    plane = sin((1 / (double)ppw) * (Cour * (double)time -
+    plane = sin((1 / (double)ppw) * (Cour * 1 * (double)time -
                  (double)loc));
     //plane = sin((double)(time-loc) * 3.5 / radius);
 
