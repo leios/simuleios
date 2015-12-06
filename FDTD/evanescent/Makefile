@@ -4,7 +4,7 @@
 # Do 'make sim=<value> compile' if you only want to compile
 # Or 'make sim=<value> run' if you only want to run and not plot
 
-BINS = evanescent
+BINS = evanescent, 3Devanescent
 CXX = g++
 CXXFLAGS = -std=c++11 -g -Wall -march=native -fopenmp -fno-omit-frame-pointer -O2
 
