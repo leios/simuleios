@@ -256,8 +256,8 @@ void createloss2d(Loss &lass, double eps, double Cour, double loss){
     //int sourcex = 0, sourcex2 = 60;
     //int sourcey = 250, sourcey2 = 250;
 
-    for (size_t dx = 0; dx < spacex; dx++){
-        for (size_t dy = 0; dy < spacey; dy++){
+    for (int dx = 0; dx < spacex; dx++){
+        for (int dy = 0; dy < spacey; dy++){
 
              /*
              dist = sqrt((dx - sourcex)*(dx - sourcex) 
@@ -269,7 +269,7 @@ void createloss2d(Loss &lass, double eps, double Cour, double loss){
             //if ((dy > 65 && dy < 115) || (dy > 125 && dy < 175) ||
             //    (dy > 185 && dy < 235)){
             if (((dx + dy) < 400 && (dx+dy > 350) && dy < 275 && dy > 75) || 
-                (dy > 225 && dy < 275 && dx < 125 && dx > 10) ||
+                (dy > 225 && dy < 275 && dx < 125) ||
                 (dy > 75 && dy < 125 && dx > 275 && dx < 400)){
                 lass.EzH(dx, dy) = Cour * eps / (fiber_var * fiber_var);
                 lass.EzE(dx, dy) = 1.0;
