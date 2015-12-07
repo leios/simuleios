@@ -22,7 +22,7 @@ static const size_t spacez = 300;
 static const size_t losslayer = 20;
 
 struct Bound{
-    int x,y;
+    int x,y,z;
 };
 
 struct Loss{
@@ -176,7 +176,7 @@ void FDTD(Field EM,
     for (int t = 0; t < final_time; t++){
 
         Hupdate3d(EM, lass, t);
-        //TFSF(EM, lass, lass1d, Cour);
+        TFSF(EM, lass, lass1d, Cour);
         //TFSF2(EM, lass, lass1d, Cour);
         Eupdate3d(EM,lass,t);
         //ABCcheck(EM, lass);
@@ -376,50 +376,87 @@ void createloss1d(Loss1d &lass1d, double eps, double Cour, double loss){
         }
     }
 
-
-
 }
 
-/*
+
 // TFSF boundaries
+// We are testing this for a 3d case, not sure if we need to over-update 
+// bounds... as in, we might not need to update Hy and Hz in the first loop.
+// I am also not sure about the += and -=
+// Previous TFSF can be found in TFSF2
 void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
 
-    int dx, dy;
+    int dx, dy, dz;
 
     // TFSF boundary
     Bound first, last;
     first.x = 10; last.x = 290;
     first.y = 65; last.y = 115;
+    first.z = 65; last.z = 115;
 
     // Update along right edge!
     dx = last.x;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Hy(dx,dy) += lass.HyE(dx, dy) * EM.Ez1d[dx];
+        for (int dz = first.z; dz <= last.z; dz++){
+            EM.Hy(dx,dy,dz) += lass.HyE(dx, dy, dz) * EM.Ez1d[dx];
+            EM.Hz(dx,dy,dz) += lass.HzE(dx, dy, dz) * EM.Ez1d[dx];
+        }
     }
 
     // Updating along left edge
     dx = first.x - 1;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Hy(dx,dy) -= lass.HyE(dx, dy) * EM.Ez1d[dx+1];
+        for (int dz = first.z; dz <= last.z; dz++){
+            EM.Hy(dx,dy,dz) -= lass.HyE(dx, dy, dz) * EM.Ez1d[dx+1];
+            EM.Hz(dx,dy,dz) -= lass.HzE(dx, dy, dz) * EM.Ez1d[dx+1];
+
+        }
     }
 
     // Updating along top
     dy = last.y;
     for (int dx = first.x; dx <= last.x; dx++){
-        EM.Hx(dx,dy) -= lass.HxE(dx, dy) * EM.Ez1d[dx];
+        for (int dz = first.z; dz <= last.z; dz++){
+            EM.Hx(dx,dy,dz) -= lass.HxE(dx, dy, dz) * EM.Ez1d[dx];
+            EM.Hz(dx,dy,dz) -= lass.HzE(dx, dy, dz) * EM.Ez1d[dx];
+        }
     }
 
     // Update along bot
     dy = first.y - 1;
     for (int dx = first.x; dx <= last.x; dx++){
-        EM.Hx(dx,dy) += lass.HxE(dx, dy) * EM.Ez1d[dx];
+        for (int dz = first.z; dz <= last.z; dz++){
+            EM.Hx(dx,dy,dz) += lass.HxE(dx, dy, dz) * EM.Ez1d[dx];
+            EM.Hz(dx,dy,dz) += lass.HzE(dx, dy, dz) * EM.Ez1d[dx];
+
+        }
     }
+
+    // Update along forw
+    dz = first.z - 1;
+    for (int dx = first.x; dx <= last.x; dx++){
+        for (int dy = first.y; dy <= last.y; dy++){
+            EM.Hx(dx,dy,dz) -= lass.HxE(dx, dy, dz) * EM.Ez1d[dx];
+            EM.Hy(dx,dy,dz) -= lass.HyE(dx, dy, dz) * EM.Ez1d[dx];
+        }
+    }
+
+    // Update along back
+    dz = last.z;
+    for (int dx = first.x; dx <= last.x; dx++){
+        for (int dy = first.y; dy <= last.y; dy++){
+            EM.Hx(dx,dy,dz) += lass.HxE(dx, dy, dz) * EM.Ez1d[dx];
+            EM.Hy(dx,dy,dz) += lass.HyE(dx, dy, dz) * EM.Ez1d[dx];
+        }
+    }
+
+
 
     // Insert 1d grid stuff here. Update magnetic and electric field
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
     //EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    //EM.Ez1d[10] = planewave(EM.t, 15, Cour, 10);
+    EM.Ez1d[10] = planewave(EM.t, 15, Cour, 10);
     //EM.Ez1d[290] = planewave(EM.t, 15, Cour, 10);
     EM.t++;
     std::cout << EM.t << '\n';
@@ -428,17 +465,60 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
     // Update along right
     dx = last.x;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Ez(dx, dy) += lass.EzH(dx, dy) * EM.Hy1d[dx];
+        for (int dz = first.z; dz <= last.z; dz++){
+            EM.Ez(dx,dy,dz) += lass.EzH(dx,dy,dz) * EM.Hy1d[dx];
+            EM.Ey(dx,dy,dz) += lass.EyH(dx,dy,dz) * EM.Hy1d[dx];
+        }
     }
 
     // Updating Ez along left
     dx = first.x;
     for (int dy = first.y; dy <= last.y; dy++){
-        EM.Ez(dx, dy) -= lass.EzH(dx, dy) * EM.Hy1d[dx - 1];
+        for (int dz = first.z; dz <= last.z; dz++){
+            EM.Ez(dx,dy,dz) -= lass.EzH(dx,dy,dz) * EM.Hy1d[dx-1];
+            EM.Ey(dx,dy,dz) -= lass.EyH(dx,dy,dz) * EM.Hy1d[dx-1];
+        }
+    }
+
+    dy = last.y;
+    for (int dx = first.x; dx <= last.x; dx++){
+        for (int dz = first.z; dz <= last.z; dz++){
+            EM.Ex(dx,dy,dz) += lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
+            EM.Ez(dx,dy,dz) += lass.EzH(dx,dy,dz) * EM.Hy1d[dx];
+        }
+    }
+
+    // Updating Ez along left
+    dy = first.y;
+    for (int dx = first.x; dx <= last.x; dx++){
+        for (int dz = first.z; dz <= last.z; dz++){
+            EM.Ez(dx,dy,dz) -= lass.EzH(dx,dy,dz) * EM.Hy1d[dx];
+            EM.Ex(dx,dy,dz) -= lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
+        }
+    }
+
+    // Updating along back
+    dz = last.z;
+    for (int dy = first.y; dy <= last.y; dy++){
+        for (int dx = first.x; dx <= last.x; dx++){
+            EM.Ex(dx,dy,dz) += lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
+            EM.Ey(dx,dy,dz) += lass.EyH(dx,dy,dz) * EM.Hy1d[dx];
+        }
+    }
+
+    // Updating Ez along forw
+    dz = first.z;
+    for (int dy = first.y; dy <= last.y; dy++){
+        for (int dx = first.x; dx <= last.x; dx++){
+            EM.Ex(dx,dy,dz) -= lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
+            EM.Ey(dx,dy,dz) -= lass.EyH(dx,dy,dz) * EM.Hy1d[dx];
+        }
     }
 
 
 }
+
+/*
 
 // second TFSF boundary
 void TFSF2(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
@@ -571,6 +651,7 @@ void ABCcheck(Field &EM, Loss &lass){
 
 }
 
+*/
 
 // Adding plane wave
 double planewave(int time, int loc, double Cour, int ppw){
@@ -582,4 +663,4 @@ double planewave(int time, int loc, double Cour, int ppw){
 
     return plane;
 }
-*/
+
