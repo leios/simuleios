@@ -578,80 +578,162 @@ void TFSF2(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
 
 
 }
-
+*/
 
 // Checking Absorbing Boundary Conditions (ABC)
+// Adding multiple fileds different polarization possibilities.
+// note: running int he TMz polarization, so we will memorize Ez at end.
 void ABCcheck(Field &EM, Loss &lass){
 
     // defining constant for  ABC
     double c1, c2, c3, temp1, temp2;
-    temp1 = sqrt(lass.EzH(0,0) * lass.HyE(0,0));
+    temp1 = sqrt(lass.EzH(0,0,0) * lass.HyE(0,0,0));
     temp2 = 1.0 / temp1 + 2.0 + temp1;
     c1 = -(1.0 / temp1 - 2.0 + temp1) / temp2;
     c2 = -2.0 * (temp1 - 1.0 / temp1) / temp2;
     c3 = 4.0 * (temp1 + 1.0 / temp1) / temp2;
-    size_t dx, dy;
+    size_t dx, dy, dz;
 
     // Setting ABC for top
     for (dx = 0; dx < spacex; dx++){
-        EM.Ez(dx, spacey - 1) = c1 * (EM.Ez(dx, spacey - 3) + EM.Etop(0, 1, dx))
-                      + c2 * (EM.Etop(0, 0, dx) + EM.Etop(2, 0 , dx)
-                              -EM.Ez(dx,spacey - 2) -EM.Etop(1, 1, dx))
-                      + c3 * EM.Etop(1, 0, dx) - EM.Etop(2, 1, dx);
+        for (dz = 0; dz < spacez; dz++){
+            EM.Ez(dx,spacey-1,dz) = c1 * (EM.Ez(dx, spacey - 3,dz) 
+                          + EM.Etop(0, 1, dx))
+                          + c2 * (EM.Etop(0, 0, dx) + EM.Etop(2, 0 , dx)
+                                  -EM.Ez(dx,spacey - 2,dz) -EM.Etop(1, 1, dx))
+                          + c3 * EM.Etop(1, 0, dx) - EM.Etop(2, 1, dx);
 
-       // memorizing fields...
-        for (dy = 0; dy < 3; dy++){
-            EM.Etop(dy, 1, dx) = EM.Etop(dy, 0, dx);
-            EM.Etop(dy, 0, dx) = EM.Ez(dx, spacey - 1 - dy);
+            EM.Ex(dx,spacey-1,dz) = c1 * (EM.Ex(dx, spacey - 3,dz) 
+                          + EM.Etop(0, 1, dx))
+                          + c2 * (EM.Etop(0, 0, dx) + EM.Etop(2, 0 , dx)
+                                  -EM.Ex(dx,spacey - 2,dz) -EM.Etop(1, 1, dx))
+                          + c3 * EM.Etop(1, 0, dx) - EM.Etop(2, 1, dx);
+
+            // memorizing fields...
+            for (dy = 0; dy < 3; dy++){
+                EM.Etop(dy, 1, dx) = EM.Etop(dy, 0, dx);
+                EM.Etop(dy, 0, dx) = EM.Ez(dx, spacey - 1 - dy,dx);
+            }
         }
     }
 
     // Setting ABC for bottom
     for (dx = 0; dx < spacex; dx++){
-        EM.Ez(dx,0) = c1 * (EM.Ez(dx, 2) + EM.Ebot(0, 1, dx))
-                      + c2 * (EM.Ebot(0, 0, dx) + EM.Ebot(2, 0 , dx)
-                              -EM.Ez(dx,1) -EM.Ebot(1, 1, dx))
-                      + c3 * EM.Ebot(1, 0, dx) - EM.Ebot(2, 1, dx);
+        for (dz = 0; dz < spacez; dz++){
+            EM.Ez(dx,0,dz) = c1 * (EM.Ez(dx, 2,dz) + EM.Ebot(0, 1, dx))
+                          + c2 * (EM.Ebot(0, 0, dx) + EM.Ebot(2, 0 , dx)
+                                  -EM.Ez(dx,1,dz) -EM.Ebot(1, 1, dx))
+                          + c3 * EM.Ebot(1, 0, dx) - EM.Ebot(2, 1, dx);
 
-        // memorizing fields...
-        for (dy = 0; dy < 3; dy++){
-            EM.Ebot(dy, 1, dx) = EM.Ebot(dy, 0, dx);
-            EM.Ebot(dy, 0, dx) = EM.Ez(dx, dy);
+            EM.Ex(dx,0,dz) = c1 * (EM.Ex(dx, 2,dz) + EM.Ebot(0, 1, dx))
+                          + c2 * (EM.Ebot(0, 0, dx) + EM.Ebot(2, 0 , dx)
+                                  -EM.Ex(dx,1,dz) -EM.Ebot(1, 1, dx))
+                          + c3 * EM.Ebot(1, 0, dx) - EM.Ebot(2, 1, dx);
+
+
+            // memorizing fields...
+            for (dy = 0; dy < 3; dy++){
+                EM.Ebot(dy, 1, dx) = EM.Ebot(dy, 0, dx);
+                EM.Ebot(dy, 0, dx) = EM.Ez(dx, dy, dz);
+            }
         }
     }
 
     // ABC on right
     for (dy = 0; dy < spacey; dy++){
-        EM.Ez(spacex - 1,dy) = c1 * (EM.Ez(spacex - 3,dy) + EM.Eright(0, 1, dy))
-                      + c2 * (EM.Eright(0, 0, dy) + EM.Eright(2, 0 , dy)
-                              -EM.Ez(spacex - 2,dy) -EM.Eright(1, 1, dy))
-                      + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy);
+        for (dz = 0; dz < spacez; dz++){
+            EM.Ez(spacex - 1,dy,dz) = c1 * (EM.Ez(spacex - 3,dy,dz) 
+                                  + EM.Eright(0, 1, dy))
+                          + c2 * (EM.Eright(0, 0, dy) + EM.Eright(2, 0 , dy)
+                                  -EM.Ez(spacex - 2,dy,dz) -EM.Eright(1, 1, dy))
+                          + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy);
 
-        // memorizing fields...
-        for (dx = 0; dx < 3; dx++){
-            EM.Eright(dx, 1, dy) = EM.Eright(dx, 0, dy);
-            EM.Eright(dx, 0, dy) = EM.Ez(spacex - 1 - dx, dy);
+            EM.Ey(spacex - 1,dy,dz) = c1 * (EM.Ey(spacex - 3,dy,dz) 
+                                  + EM.Eright(0, 1, dy))
+                          + c2 * (EM.Eright(0, 0, dy) + EM.Eright(2, 0 , dy)
+                                  -EM.Ey(spacex - 2,dy,dz) -EM.Eright(1, 1, dy))
+                          + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy);
+
+            // memorizing fields...
+            for (dx = 0; dx < 3; dx++){
+                EM.Eright(dx, 1, dy) = EM.Eright(dx, 0, dy);
+                EM.Eright(dx, 0, dy) = EM.Ez(spacex - 1 - dx, dy, dz);
+            }
         }
     }
 
 
     // Setting ABC for left side of grid. Woo!
     for (dy = 0; dy < spacey; dy++){
-        EM.Ez(0,dy) = c1 * (EM.Ez(2,dy) + EM.Eleft(0, 1, dy))
-                      + c2 * (EM.Eleft(0, 0, dy) + EM.Eleft(2, 0 , dy)
-                              -EM.Ez(1,dy) -EM.Eleft(1, 1, dy))
-                      + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy);
+        for (dz = 0; dz < spacez; dz++){
+            EM.Ez(0,dy,dz) = c1 * (EM.Ez(2,dy,dz) + EM.Eleft(0, 1, dy))
+                          + c2 * (EM.Eleft(0, 0, dy) + EM.Eleft(2, 0 , dy)
+                                  -EM.Ez(1,dy,dz) -EM.Eleft(1, 1, dy))
+                          + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy);
 
-        // memorizing fields...
-        for (dx = 0; dx < 3; dx++){
-            EM.Eleft(dx, 1, dy) = EM.Eleft(dx, 0, dy);
-            EM.Eleft(dx, 0, dy) = EM.Ez(dx, dy);
+            EM.Ey(0,dy,dz) = c1 * (EM.Ey(2,dy,dz) + EM.Eleft(0, 1, dy))
+                          + c2 * (EM.Eleft(0, 0, dy) + EM.Eleft(2, 0 , dy)
+                                  -EM.Ey(1,dy,dz) -EM.Eleft(1, 1, dy))
+                          + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy);
+
+
+            // memorizing fields...
+            for (dx = 0; dx < 3; dx++){
+                EM.Eleft(dx, 1, dy) = EM.Eleft(dx, 0, dy);
+                EM.Eleft(dx, 0, dy) = EM.Ez(dx, dy, dz);
+            }
         }
     }
 
+    // ABC on back
+    for (dy = 0; dy < spacey; dy++){
+        for (dx = 0; dx < spacez; dx++){
+            EM.Ex(spacex - 1,dy,dz) = c1 * (EM.Ex(spacex - 3,dy,dz) 
+                                  + EM.Eright(0, 1, dy))
+                          + c2 * (EM.Eright(0, 0, dy) + EM.Eright(2, 0 , dy)
+                                  -EM.Ex(spacex - 2,dy,dz) -EM.Eright(1, 1, dy))
+                          + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy);
+
+            EM.Ey(spacex - 1,dy,dz) = c1 * (EM.Ey(spacex - 3,dy,dz) 
+                                  + EM.Eright(0, 1, dy))
+                          + c2 * (EM.Eright(0, 0, dy) + EM.Eright(2, 0 , dy)
+                                  -EM.Ey(spacex - 2,dy,dz) -EM.Eright(1, 1, dy))
+                          + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy);
+
+            // memorizing fields...
+            for (dx = 0; dx < 3; dx++){
+                EM.Eright(dx, 1, dy) = EM.Eright(dx, 0, dy);
+                EM.Eright(dx, 0, dy) = EM.Ez(spacex - 1 - dx, dy, dz);
+            }
+        }
+    }
+
+
+    // Setting ABC for forw
+    for (dy = 0; dy < spacey; dy++){
+        for (dx = 0; dx < spacez; dx++){
+            EM.Ex(0,dy,dz) = c1 * (EM.Ex(2,dy,dz) + EM.Eleft(0, 1, dy))
+                          + c2 * (EM.Eleft(0, 0, dy) + EM.Eleft(2, 0 , dy)
+                                  -EM.Ex(1,dy,dz) -EM.Eleft(1, 1, dy))
+                          + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy);
+
+            EM.Ey(0,dy,dz) = c1 * (EM.Ey(2,dy,dz) + EM.Eleft(0, 1, dy))
+                          + c2 * (EM.Eleft(0, 0, dy) + EM.Eleft(2, 0 , dy)
+                                  -EM.Ey(1,dy,dz) -EM.Eleft(1, 1, dy))
+                          + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy);
+
+
+            // memorizing fields...
+            for (dx = 0; dx < 3; dx++){
+                EM.Eleft(dx, 1, dy) = EM.Eleft(dx, 0, dy);
+                EM.Eleft(dx, 0, dy) = EM.Ez(dx, dy, dz);
+            }
+        }
+    }
+
+
 }
 
-*/
 
 // Adding plane wave
 double planewave(int time, int loc, double Cour, int ppw){
