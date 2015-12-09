@@ -16,9 +16,9 @@
 #include <cmath>
 #include <fstream>
 
-static const size_t spacey = 300;
-static const size_t spacex = 500;
-static const size_t spacez = 300;
+static const size_t spacey = 50;
+static const size_t spacex = 50;
+static const size_t spacez = 50;
 static const size_t losslayer = 20;
 
 struct Bound{
@@ -176,23 +176,21 @@ void FDTD(Field EM,
     for (int t = 0; t < final_time; t++){
 
         Hupdate3d(EM, lass, t);
-        TFSF(EM, lass, lass1d, Cour);
+        //TFSF(EM, lass, lass1d, Cour);
         //TFSF2(EM, lass, lass1d, Cour);
         Eupdate3d(EM,lass,t);
-        //ABCcheck(EM, lass);
+        ABCcheck(EM, lass);
         EM.Ez(200,100,100) = ricker(t, 0, Cour);
 
+        std::cout << t << '\n';
         // Outputting to a file
         int check = 50;
         if (t % check == 0){
             for (size_t dx = 0; dx < spacex; dx++){
                 for (size_t dy = 0; dy < spacey; dy++){
-                    for (size_t dz = 0; dz < spacez; dz++){
                         output << t << '\t' << dx <<'\t' << dy << '\t'
-                               << dz << '\t'
-                               << EM.Ez(dx, dy, dz) << '\t' << EM.Hy(dx, dy, dz)
-                               << '\t' << EM.Hx(dx, dy, dz) << '\t' << '\n';
-                    }
+                               << EM.Ez(dx, dy, 25) << '\t' << EM.Hy(dx, dy, 25)
+                               << '\t' << EM.Hx(dx, dy, 25) << '\t' << '\n';
                 }
             }
 
@@ -383,16 +381,15 @@ void createloss1d(Loss1d &lass1d, double eps, double Cour, double loss){
 // We are testing this for a 3d case, not sure if we need to over-update 
 // bounds... as in, we might not need to update Hy and Hz in the first loop.
 // I am also not sure about the += and -=
-// Previous TFSF can be found in TFSF2
 void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
 
     int dx, dy, dz;
 
     // TFSF boundary
     Bound first, last;
-    first.x = 10; last.x = 290;
-    first.y = 65; last.y = 115;
-    first.z = 65; last.z = 115;
+    first.x = 10; last.x = 40;
+    first.y = 10; last.y = 40;
+    first.z = 10; last.z = 40;
 
     // Update along right edge!
     dx = last.x;
@@ -462,7 +459,7 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
     //EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    EM.Ez1d[10] = planewave(EM.t, 15, Cour, 10);
+    //EM.Ez1d[10] = planewave(EM.t, 15, Cour, 10);
     //EM.Ez1d[290] = planewave(EM.t, 15, Cour, 10);
     EM.t++;
     std::cout << EM.t << '\n';
@@ -544,6 +541,8 @@ void ABCcheck(Field &EM, Loss &lass){
     c3 = 4.0 * (temp1 + 1.0 / temp1) / temp2;
     size_t dx, dy, dz;
 
+    std::cout << "ABC top" << '\n';
+
     // Setting ABC for top
     #pragma omp parallel for
     for (dx = 0; dx < spacex; dx++){
@@ -568,6 +567,7 @@ void ABCcheck(Field &EM, Loss &lass){
         }
     }
 
+    std::cout << "ABC bot" << '\n';
     // Setting ABC for bottom
     #pragma omp parallel for
     for (dx = 0; dx < spacex; dx++){
@@ -590,6 +590,8 @@ void ABCcheck(Field &EM, Loss &lass){
             }
         }
     }
+
+    std::cout << "ABC right" << '\n';
 
     // ABC on right
     #pragma omp parallel for
@@ -615,6 +617,7 @@ void ABCcheck(Field &EM, Loss &lass){
         }
     }
 
+    std::cout << "ABC left" << '\n';
 
     // Setting ABC for left side of grid. Woo!
     #pragma omp parallel for
@@ -639,50 +642,55 @@ void ABCcheck(Field &EM, Loss &lass){
         }
     }
 
-    // ABC on back
-    #pragma omp parallel for
-    for (dy = 0; dy < spacey; dy++){
-        for (dx = 0; dx < spacez; dx++){
-            EM.Ex(spacex - 1,dy,dz) = c1 * (EM.Ex(spacex - 3,dy,dz) 
-                                  + EM.Eright(0, 1, dy))
-                          + c2 * (EM.Eright(0, 0, dy) + EM.Eright(2, 0 , dy)
-                                  -EM.Ex(spacex - 2,dy,dz) -EM.Eright(1, 1, dy))
-                          + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy);
+    std::cout << "ABC back" << '\n';
 
-            EM.Ey(spacex - 1,dy,dz) = c1 * (EM.Ey(spacex - 3,dy,dz) 
-                                  + EM.Eright(0, 1, dy))
-                          + c2 * (EM.Eright(0, 0, dy) + EM.Eright(2, 0 , dy)
-                                  -EM.Ey(spacex - 2,dy,dz) -EM.Eright(1, 1, dy))
-                          + c3 * EM.Eright(1, 0, dy) - EM.Eright(2, 1, dy);
+    // ABC on back
+    //#pragma omp parallel for
+    for (dy = 0; dy < spacey; dy++){
+        for (dx = 0; dx < spacex; dx++){
+            EM.Ex(dx,dy,spacez-1) = c1 * (EM.Ex(spacex - 3,dy,dz) 
+                                  + EM.Eback(0, 1, dy))
+                          + c2 * (EM.Eback(0, 0, dy) + EM.Eback(2, 0 , dy)
+                                  -EM.Ex(spacex - 2,dy,dz) -EM.Eback(1, 1, dy))
+                          + c3 * EM.Eback(1, 0, dy) - EM.Eback(2, 1, dy);
+
+            EM.Ey(dy,dy,spacez-1) = c1 * (EM.Ey(spacex - 3,dy,dz) 
+                                  + EM.Eback(0, 1, dy))
+                          + c2 * (EM.Eback(0, 0, dy) + EM.Eback(2, 0 , dy)
+                                  -EM.Ey(spacex - 2,dy,dz) -EM.Eback(1, 1, dy))
+                          + c3 * EM.Eback(1, 0, dy) - EM.Eback(2, 1, dy);
+
+            std::cout << dx << '\t' << dy  << '\n';
 
             // memorizing fields...
-            for (dx = 0; dx < 3; dx++){
-                EM.Eright(dx, 1, dy) = EM.Eright(dx, 0, dy);
-                EM.Eright(dx, 0, dy) = EM.Ez(spacex - 1 - dx, dy, dz);
+            for (dz = 0; dz < 3; dz++){
+                EM.Eback(dy, 1, dz) = EM.Eback(dx, 0, dy);
+                EM.Eback(dy, 0, dz) = EM.Ez(spacex - 1 - dx, dy, dz);
             }
         }
     }
 
+    std::cout << "ABC Forw" << '\n';
 
     // Setting ABC for forw
     #pragma omp parallel for
     for (dy = 0; dy < spacey; dy++){
-        for (dx = 0; dx < spacez; dx++){
-            EM.Ex(0,dy,dz) = c1 * (EM.Ex(2,dy,dz) + EM.Eleft(0, 1, dy))
-                          + c2 * (EM.Eleft(0, 0, dy) + EM.Eleft(2, 0 , dy)
-                                  -EM.Ex(1,dy,dz) -EM.Eleft(1, 1, dy))
-                          + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy);
+        for (dx = 0; dx < spacex; dx++){
+            EM.Ex(dx,dy,0) = c1 * (EM.Ex(2,dy,dz) + EM.Etop(0, 1, dy))
+                          + c2 * (EM.Etop(0, 0, dy) + EM.Etop(2, 0 , dy)
+                                  -EM.Ex(1,dy,dz) -EM.Etop(1, 1, dy))
+                          + c3 * EM.Etop(1, 0, dy) - EM.Etop(2, 1, dy);
 
-            EM.Ey(0,dy,dz) = c1 * (EM.Ey(2,dy,dz) + EM.Eleft(0, 1, dy))
-                          + c2 * (EM.Eleft(0, 0, dy) + EM.Eleft(2, 0 , dy)
-                                  -EM.Ey(1,dy,dz) -EM.Eleft(1, 1, dy))
-                          + c3 * EM.Eleft(1, 0, dy) - EM.Eleft(2, 1, dy);
+            EM.Ey(dx,dy,0) = c1 * (EM.Ey(2,dy,dz) + EM.Etop(0, 1, dy))
+                          + c2 * (EM.Etop(0, 0, dy) + EM.Etop(2, 0 , dy)
+                                  -EM.Ey(1,dy,dz) -EM.Etop(1, 1, dy))
+                          + c3 * EM.Etop(1, 0, dy) - EM.Etop(2, 1, dy);
 
 
             // memorizing fields...
-            for (dx = 0; dx < 3; dx++){
-                EM.Eleft(dx, 1, dy) = EM.Eleft(dx, 0, dy);
-                EM.Eleft(dx, 0, dy) = EM.Ez(dx, dy, dz);
+            for (dz = 0; dz < 3; dz++){
+                EM.Etop(dy, 1, dz) = EM.Etop(dx, 0, dy);
+                EM.Etop(dy, 0, dz) = EM.Ez(dx, dy, dz);
             }
         }
     }
