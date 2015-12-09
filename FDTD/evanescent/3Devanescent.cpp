@@ -143,7 +143,7 @@ int main(){
     // defines output
     std::ofstream output("3Devanescent.dat", std::ofstream::out);
 
-    int final_time = 2001;
+    int final_time = 501;
     double eps = 377.0;
 
     // define initial E and H fields
@@ -165,7 +165,7 @@ void FDTD(Field EM,
           std::ofstream& output){
 
     double loss = 0.00;
-    double Cour = 1 / sqrt(2);
+    double Cour = 1 / sqrt(3);
 
     Loss lass;
     createloss3d(lass, eps, Cour, loss);
@@ -179,12 +179,11 @@ void FDTD(Field EM,
         //TFSF(EM, lass, lass1d, Cour);
         //TFSF2(EM, lass, lass1d, Cour);
         Eupdate3d(EM,lass,t);
-        ABCcheck(EM, lass);
-        EM.Ez(200,100,100) = ricker(t, 0, Cour);
+        //ABCcheck(EM, lass);
+        EM.Ez(25,25,25) = ricker(t, 0, Cour);
 
-        std::cout << t << '\n';
         // Outputting to a file
-        int check = 50;
+        int check = 10;
         if (t % check == 0){
             for (size_t dx = 0; dx < spacex; dx++){
                 for (size_t dy = 0; dy < spacey; dy++){
@@ -232,10 +231,10 @@ void Hupdate3d(Field &EM, Loss &lass, int t){
         for (size_t dy = 0; dy < spacey; dy++){
             for (size_t dz = 0; dz < spacez - 1; dz++){
                 EM.Hy(dx,dy,dz) = lass.HyH(dx,dy,dz) * EM.Hy(dx,dy,dz)
-                                + lass.HyE(dx,dy,dz) * ((EM.Ez(dx+1,dy,dz)
-                                                      - EM.Ez(dx,dy,dz))
-                                                      - (EM.Ex(dx,dy,dz+1)
-                                                      - EM.Ex(dx,dy,dz)));
+                                - lass.HyE(dx,dy,dz) * ((EM.Ex(dx,dy,dz+1)
+                                                      - EM.Ex(dx,dy,dz))
+                                                      - (EM.Ez(dx+1,dy,dz)
+                                                      - EM.Ez(dx,dy,dz)));
             }
         }
     }
@@ -245,7 +244,7 @@ void Hupdate3d(Field &EM, Loss &lass, int t){
         for (size_t dy = 0; dy < spacey - 1; dy++){
             for (size_t dz = 0; dz < spacez; dz++){
                 EM.Hz(dx,dy,dz) = lass.HzH(dx,dy,dz) * EM.Hz(dx,dy,dz)
-                                + lass.HzE(dx,dy,dz) * ((EM.Ey(dx+1,dy,dz)
+                                - lass.HzE(dx,dy,dz) * ((EM.Ey(dx+1,dy,dz)
                                                       - EM.Ey(dx,dy,dz))
                                                       - (EM.Ex(dx,dy+1,dz)
                                                       - EM.Ex(dx,dy,dz)));
@@ -338,8 +337,8 @@ void createloss3d(Loss &lass, double eps, double Cour, double loss){
                     lass.ExH(dx, dy, dz) = Cour * eps;
                     lass.ExE(dx, dy, dz) = 1.0;
 
-                    lass.HyH(dx, dy, dz) = 1.0;
                     lass.HyE(dx, dy, dz) = Cour * (1.0 / eps);
+                    lass.HyH(dx, dy, dz) = 1.0;
                     lass.HxE(dx, dy, dz) = Cour * (1.0 / eps);
                     lass.HxH(dx, dy, dz) = 1.0;
                     lass.HzE(dx, dy, dz) = Cour * (1.0 / eps);
@@ -462,7 +461,6 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
     //EM.Ez1d[10] = planewave(EM.t, 15, Cour, 10);
     //EM.Ez1d[290] = planewave(EM.t, 15, Cour, 10);
     EM.t++;
-    std::cout << EM.t << '\n';
 
     // Check mag instead of ricker.
     // Update along right
@@ -541,8 +539,6 @@ void ABCcheck(Field &EM, Loss &lass){
     c3 = 4.0 * (temp1 + 1.0 / temp1) / temp2;
     size_t dx, dy, dz;
 
-    std::cout << "ABC top" << '\n';
-
     // Setting ABC for top
     #pragma omp parallel for
     for (dx = 0; dx < spacex; dx++){
@@ -567,7 +563,6 @@ void ABCcheck(Field &EM, Loss &lass){
         }
     }
 
-    std::cout << "ABC bot" << '\n';
     // Setting ABC for bottom
     #pragma omp parallel for
     for (dx = 0; dx < spacex; dx++){
@@ -590,8 +585,6 @@ void ABCcheck(Field &EM, Loss &lass){
             }
         }
     }
-
-    std::cout << "ABC right" << '\n';
 
     // ABC on right
     #pragma omp parallel for
@@ -617,8 +610,6 @@ void ABCcheck(Field &EM, Loss &lass){
         }
     }
 
-    std::cout << "ABC left" << '\n';
-
     // Setting ABC for left side of grid. Woo!
     #pragma omp parallel for
     for (dy = 0; dy < spacey; dy++){
@@ -642,10 +633,8 @@ void ABCcheck(Field &EM, Loss &lass){
         }
     }
 
-    std::cout << "ABC back" << '\n';
-
     // ABC on back
-    //#pragma omp parallel for
+    #pragma omp parallel for
     for (dy = 0; dy < spacey; dy++){
         for (dx = 0; dx < spacex; dx++){
             EM.Ex(dx,dy,spacez-1) = c1 * (EM.Ex(spacex - 3,dy,dz) 
@@ -660,7 +649,6 @@ void ABCcheck(Field &EM, Loss &lass){
                                   -EM.Ey(spacex - 2,dy,dz) -EM.Eback(1, 1, dy))
                           + c3 * EM.Eback(1, 0, dy) - EM.Eback(2, 1, dy);
 
-            std::cout << dx << '\t' << dy  << '\n';
 
             // memorizing fields...
             for (dz = 0; dz < 3; dz++){
@@ -669,8 +657,6 @@ void ABCcheck(Field &EM, Loss &lass){
             }
         }
     }
-
-    std::cout << "ABC Forw" << '\n';
 
     // Setting ABC for forw
     #pragma omp parallel for
@@ -694,7 +680,6 @@ void ABCcheck(Field &EM, Loss &lass){
             }
         }
     }
-
 
 }
 
