@@ -6,9 +6,9 @@
 !
 !   Notes: the value array has 3 accessory elements for different things:
 !              1. Centroid position
-!              2. Contraction / Expansion
-!              3. Reflection
 !
+!   ERROR: All of the points become equal after a few interations.
+!          This is probably due to an index mismatch
 !!----------------------------------------------------------------------------!!
 
 program nelder
@@ -17,10 +17,10 @@ program nelder
 !  DEFINITIONS
 !!----------------------------------------------------------------------------!!
 
-      integer, parameter :: dim = 6
+      integer, parameter :: dim = 4
       integer :: min, max, i
       real*8, dimension(2, dim)  :: pos
-      real*8, dimension(dim)     :: value
+      real*8, dimension(dim - 1)     :: value
       real*8  :: x, y, alpha, beta, gamma
 
       call downhill
@@ -35,11 +35,11 @@ end program
 !! The nelder mead method 
 subroutine downhill
       implicit none
-      integer, parameter         :: dim = 6
+      integer, parameter         :: dim = 4
       integer :: min, max, i, minsave, maxsave
       real*8, dimension(2, dim)  :: pos
-      real*8, dimension(dim)     :: value
-      real*8  :: x, y, alpha = 0.5, beta = 0.5, gamma = 0.5, dist, cutoff = 0.1
+      real*8, dimension(dim - 1)     :: value
+      real*8  :: x, y, alpha = 0.5, beta = 0.5, gamma = 0.5, dist, cutoff = 0.00001
       real*8  :: xsave, ysave
 
       interface
@@ -82,8 +82,8 @@ subroutine downhill
       interface
           subroutine contract(pos, min, dim, beta)
               real*8, intent(inout)  :: pos(:,:)
-              integer, intent(in)    :: min, dim
               real*8, intent(in)     :: beta
+              integer, intent(in)    :: dim, min
           end subroutine contract
       end interface
 
@@ -109,11 +109,21 @@ subroutine downhill
       call minmax(value, min, max)
       call centroid(pos, min, max, dim)
 
-      dist = sqrt((pos(1, min) - pos(1, max)) * (pos(1, min) - pos(1, max)) &
-                  + (pos(2, min) - pos(2, max)) * (pos(2, min) - pos(2, max)))
+      !write(*,*) pos(1,1), pos(1,2), pos(1,3), pos(1,4)
+      !write(*,*) pos(2,1), pos(2,2), pos(2,3), pos(2,4)
+      !write(*,*) min, max, dim
+
       i = 0
 
+      dist = sqrt((pos(1,min)-pos(1,max)) * (pos(1,min)-pos(1,max)) &
+                  + (pos(2,min)-pos(2,max)) * (pos(2,min)-pos(2,max)))
+
+      !write(*,*) dist
+
+      !! Nelder-Mead optimal control
       do while (dist > cutoff)
+      !do while (i < 10)
+          !! Reflection first
           write(*,*) i
           minsave = min
           xsave = pos(1, min)
@@ -121,37 +131,65 @@ subroutine downhill
           call reflect(pos, min, dim, alpha)
           call findval(pos, value, dim)
           call minmax(value, min, max)
+          call centroid(pos, min, max, dim)
 
+          !! Expansion if the minimum value becomes the maximum
           if (minsave.EQ.max) then
-              write(*,*) "expanding..."
+              write(*,*) "expanding...", dist
+             
               maxsave = max
               xsave = pos(1, max)
               ysave = pos(2, max)
               call expand(pos, max, dim, gamma)
               call findval(pos, value, dim)
               call minmax(value, min, max)
+              call centroid(pos, min, max, dim)
 
+              !! Setting things back, if expansion is worse than 
+              !! standard reflection
               if (maxsave.NE.max) then
-                  pos(1, max) = xsave
-                  pos(2, max) = ysave
+                  pos(1, maxsave) = xsave
+                  pos(2, maxsave) = ysave
+                  call findval(pos, value, dim)
+                  call minmax(value, min, max)
               end if
 
+          !! Contract from old position if minima value is still minima value
           else if (minsave.EQ.min) then
-              write(*,*) "contracting..."
+              !write(*,*) "contracting...", dist
               xsave = pos(1, min)
               ysave = pos(2, min)
 
               pos(1, min) = xsave
               pos(2, min) = ysave
               call contract(pos, min, dim, beta)
+              call findval(pos, value, dim)
+              call minmax(value, min, max)
+              call centroid(pos, min, max, dim)
 
+              !! if minima is still minima, contract everything towards max
               if (minsave.EQ.min) then
+                  !write(*,*) "Contract all...", dist, min, max
+                  !write(*,*) pos(1,1), pos(1,2), pos(1,3), pos(1,4)
+                  !write(*,*) pos(2,:)
+                  !write(*,*) pos
                   call contractall(pos, max, dim)
+                  call findval(pos, value, dim)
+                  call minmax(value, min, max)
+                  call centroid(pos, min, max, dim)
+
               end if
 
           end if
           i = i + 1
+          dist = sqrt((pos(1,min)-pos(1,max)) * (pos(1,min)-pos(1,max)) &
+                      + (pos(2,min)-pos(2,max)) * (pos(2,min)-pos(2,max)))
+
       end do
+
+      write(*,*) pos(1,1), pos(1,2), pos(1,3), pos(1,4)
+      write(*,*) pos(2,1), pos(2,2), pos(2,3), pos(2,4)
+      write(*,*) min, max, dim
 
 end subroutine
 
@@ -161,8 +199,9 @@ pure subroutine contractall(pos, max, dim)
       real*8, dimension(:,:), intent(inout) :: pos
       integer, intent(in)                   :: max, dim
       integer                               :: i
+      real*8                                :: xsum, ysum
 
-      do i = 1, dim - 3
+      do i = 1, dim - 1
           if (i.NE.max) then
               pos(1,i) = (pos(1, i) + pos(1, max)) * 0.5
               pos(2,i) = (pos(2, i) + pos(2, max)) * 0.5
@@ -178,8 +217,8 @@ pure subroutine reflect(pos, min, dim, alpha)
       integer, intent(in)                   :: min, dim
       real*8, intent(in)                    :: alpha
 
-      pos(1,min) = (1 + alpha) * pos(1,dim - 2) - alpha * pos(1, min)
-      pos(2,min) = (1 + alpha) * pos(2,dim - 2) - alpha * pos(2, min)
+      pos(1,min) = (1 + alpha) * pos(1,dim) - alpha * pos(1, min)
+      pos(2,min) = (1 + alpha) * pos(2,dim) - alpha * pos(2, min)
 
 end subroutine
 
@@ -190,8 +229,8 @@ pure subroutine contract(pos, min, dim, beta)
       integer, intent(in)                   :: min, dim
       real*8, intent(in)                    :: beta
 
-      pos(1,min) = (1 - beta) * pos(1,dim - 2) + beta * pos(1, min)
-      pos(2,min) = (1 - beta) * pos(2,dim - 2) + beta * pos(2, min)
+      pos(1,min) = (1 - beta) * pos(1,dim) + beta * pos(1, min)
+      pos(2,min) = (1 - beta) * pos(2,dim) + beta * pos(2, min)
 
 end subroutine
 
@@ -202,8 +241,8 @@ pure subroutine expand(pos, min, dim, gamma)
       integer, intent(in)                   :: min, dim
       real*8, intent(in)                    :: gamma
 
-      pos(1,min) = (1 - gamma) * pos(1,dim - 2) + gamma * pos(1, min)
-      pos(2,min) = (1 - gamma) * pos(2,dim - 2) + gamma * pos(2, min)
+      pos(1,min) = (1 - gamma) * pos(1,dim) + gamma * pos(1, min)
+      pos(2,min) = (1 - gamma) * pos(2,dim) + gamma * pos(2, min)
 
 
 end subroutine
@@ -232,32 +271,37 @@ subroutine populate(pos, dim)
 
       !!call init_random_seed()
 
-      do i = 1,dim - 3
+      do i = 1,dim -1
           call random_number(pos(1,i))
+          pos(1,i) = (pos(1,i) - 0.5)* 10
           call random_number(pos(2,i))
+          pos(2,i) = (pos(2,i) - 0.5) * 10
       end do
       
 end subroutine
 
 !! finds centroid position 
-pure subroutine centroid(pos, min, max, dim)
+subroutine centroid(pos, min, max, dim)
       implicit none
       real*8, intent(inout)  :: pos(:,:)
       integer, intent(in)    :: min, max, dim
       integer                :: i
+      real*8                 :: xsum, ysum
 
-      pos(1, dim-2) = 0
-      pos(2, dim-2) = 0
+      pos(1, dim) = 0
+      pos(2, dim) = 0
+      xsum = 0
+      ysum = 0
 
-      do i = 1,dim - 2
-          if (i.NE.max) then
-             pos(1, dim-2) = pos(1, dim-2) + pos(1, i)
-             pos(2, dim-2) = pos(2, dim-2) + pos(2, i)
+      do i = 1,dim - 1
+          if (i.NE.min) then
+             xsum = xsum + pos(1, i)
+             ysum = ysum + pos(2, i)
           end if
       end do
 
-      pos(1, dim - 2) = pos(1, dim - 2) / real(dim - 3)
-      pos(1, dim - 2) = pos(2, dim - 2) / real(dim - 3)
+      pos(1, dim) = xsum / real(dim - 2)
+      pos(2, dim) = ysum / real(dim - 2)
       
 end subroutine
 
@@ -270,13 +314,9 @@ subroutine findval(pos, value, dim)
       integer                :: dim
       integer                :: i
 
-      do i = 1, dim - 3
+      do i = 1, dim - 1
           value(i) = sqrt((pos(1,i) - sourcex) * (pos(1,i) - sourcex) &
                      + (pos(2,i) - sourcey) * (pos(2,i) - sourcey))
-      end do
-
-      do i = dim - 2, dim
-          value(i) = 0
       end do
 
 end subroutine
