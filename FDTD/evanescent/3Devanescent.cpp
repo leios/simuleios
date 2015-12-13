@@ -106,19 +106,19 @@ struct Field{
 #define Ey(i, j, k) Ey[(i) + (j) *  spacex + (k) * spacey * spacex]
 #define Ez(i, j, k) Ez[(i) + (j) *  spacex + (k) * spacey * spacex]
 
-#define Eyx0(k, j) Eyx0[(k) * spacez + (j)]
+#define Eyx0(k, j) Eyx0[(k) * spacey + (j)]
 #define Ezx0(k, j) Ezx0[(k) * (spacez - 1) + (j)]
-#define Eyx1(k, j) Eyx1[(k) * spacez + (j)]
+#define Eyx1(k, j) Eyx1[(k) * spacey + (j)]
 #define Ezx1(k, j) Ezx1[(k) * (spacez - 1) + (j)]
 
-#define Exy0(k, j) Exy0[(k) * spacez + (j)]
+#define Exy0(k, j) Exy0[(k) * spacex + (j)]
 #define Ezy0(k, j) Ezy0[(k) * (spacez - 1) + (j)]
-#define Exy1(k, j) Exy1[(k) * spacez + (j)]
+#define Exy1(k, j) Exy1[(k) * spacey + (j)]
 #define Ezy1(k, j) Ezy1[(k) * (spacez - 1) + (j)]
 
-#define Exz0(k, j) Exz0[(k) * spacey + (j)]
+#define Exz0(k, j) Exz0[(k) * spacex + (j)]
 #define Eyz0(k, j) Eyz0[(k) * (spacey - 1) + (j)]
-#define Exz1(k, j) Exz1[(k) * spacey + (j)]
+#define Exz1(k, j) Exz1[(k) * spacex + (j)]
 #define Eyz1(k, j) Eyz1[(k) * (spacey - 1) + (j)]
 
 void FDTD(Field EM,
@@ -194,7 +194,7 @@ void FDTD(Field EM,
         //TFSF(EM, lass, lass1d, Cour);
         Eupdate3d(EM,lass,t);
         ABCcheck(EM, lass, Cour);
-        EM.Ez(25,25,25) = ricker(t, 0, Cour);
+        EM.Ez(25,25,25) = 100 * ricker(t, 0, Cour);
 
         // Outputting to a file
         int check = 10;
@@ -552,14 +552,14 @@ void ABCcheck(Field &EM, Loss &lass, double Cour){
     dx = 0;
     for (dy = 0; dy < spacey - 1; dy++){
         for (dz = 0; dz < spacez; dz++){
-            EM.Ey(dy,dy,dz) = EM.Eyx0(dy,dz) 
+            EM.Ey(dx,dy,dz) = EM.Eyx0(dy,dz) 
                               + abccoef*(EM.Ey(dx+1,dy,dz)-EM.Ey(dx,dy,dz));
             EM.Eyx0(dy,dz) = EM.Ey(dx+1,dy,dz);
         }
     }
     for (dy = 0; dy < spacey; dy++){
         for (dz = 0; dz < spacez - 1; dz++){
-            EM.Ez(dy,dy,dz) = EM.Ezx0(dy,dz) 
+            EM.Ez(dx,dy,dz) = EM.Ezx0(dy,dz) 
                               + abccoef*(EM.Ez(dx+1,dy,dz)-EM.Ez(dx,dy,dz));
             EM.Ezx0(dy,dz) = EM.Ez(dx+1,dy,dz);
         }
@@ -569,14 +569,14 @@ void ABCcheck(Field &EM, Loss &lass, double Cour){
     dx = spacex - 1;
     for (dy = 0; dy < spacey - 1; dy++){
         for (dz = 0; dz < spacez; dz++){
-            EM.Ey(dy,dy,dz) = EM.Eyx1(dy,dz) 
+            EM.Ey(dx,dy,dz) = EM.Eyx1(dy,dz) 
                               + abccoef*(EM.Ey(dx-1,dy,dz)-EM.Ey(dx,dy,dz));
             EM.Eyx1(dy,dz) = EM.Ey(dx-1,dy,dz);
         }
     }
     for (dy = 0; dy < spacey; dy++){
         for (dz = 0; dz < spacez - 1; dz++){
-            EM.Ez(dy,dy,dz) = EM.Ezx1(dy,dz) 
+            EM.Ez(dx,dy,dz) = EM.Ezx1(dy,dz) 
                               + abccoef*(EM.Ez(dx-1,dy,dz)-EM.Ez(dx,dy,dz));
             EM.Ezx1(dy,dz) = EM.Ez(dx-1,dy,dz);
         }
@@ -586,14 +586,14 @@ void ABCcheck(Field &EM, Loss &lass, double Cour){
     dy = 0;
     for (dx = 0; dx < spacex - 1; dx++){
         for (dz = 0; dz < spacez; dz++){
-            EM.Ex(dy,dy,dz) = EM.Exy0(dx,dz) 
+            EM.Ex(dx,dy,dz) = EM.Exy0(dx,dz) 
                               + abccoef*(EM.Ex(dx,dy+1,dz)-EM.Ex(dx,dy,dz));
             EM.Exy0(dx,dz) = EM.Ex(dx,dy+1,dz);
         }
     }
     for (dx = 0; dx < spacey; dx++){
         for (dz = 0; dz < spacez - 1; dz++){
-            EM.Ez(dy,dy,dz) = EM.Ezy0(dx,dz) 
+            EM.Ez(dx,dy,dz) = EM.Ezy0(dx,dz) 
                               + abccoef*(EM.Ez(dx,dy+1,dz)-EM.Ez(dx,dy,dz));
             EM.Ezy0(dx,dz) = EM.Ez(dx,dy+1,dz);
         }
@@ -603,14 +603,14 @@ void ABCcheck(Field &EM, Loss &lass, double Cour){
     dy = spacey - 1;
     for (dx = 0; dx < spacex - 1; dx++){
         for (dz = 0; dz < spacez; dz++){
-            EM.Ex(dy,dy,dz) = EM.Exy1(dx,dz) 
+            EM.Ex(dx,dy,dz) = EM.Exy1(dx,dz) 
                               + abccoef*(EM.Ex(dx,dy-1,dz)-EM.Ex(dx,dy,dz));
             EM.Exy1(dx,dz) = EM.Ex(dx,dy-1,dz);
         }
     }
     for (dx = 0; dx < spacey; dx++){
         for (dz = 0; dz < spacez - 1; dz++){
-            EM.Ez(dy,dy,dz) = EM.Ezy1(dx,dz) 
+            EM.Ez(dx,dy,dz) = EM.Ezy1(dx,dz) 
                               + abccoef*(EM.Ez(dx,dy-1,dz)-EM.Ez(dx,dy,dz));
             EM.Ezy1(dx,dz) = EM.Ez(dx,dy-1,dz);
         }
@@ -620,14 +620,14 @@ void ABCcheck(Field &EM, Loss &lass, double Cour){
     dz = 0;
     for (dx = 0; dx < spacex - 1; dx++){
         for (dy = 0; dy < spacey; dy++){
-            EM.Ex(dy,dy,dz) = EM.Exz0(dx,dy) 
+            EM.Ex(dx,dy,dz) = EM.Exz0(dx,dy) 
                               + abccoef*(EM.Ex(dx,dy,dz+1)-EM.Ex(dx,dy,dz));
             EM.Exz0(dx,dy) = EM.Ex(dx,dy,dz+1);
         }
     }
     for (dx = 0; dx < spacey; dx++){
         for (dy = 0; dy < spacey - 1; dy++){
-            EM.Ey(dy,dy,dz) = EM.Eyz0(dx,dy) 
+            EM.Ey(dx,dy,dz) = EM.Eyz0(dx,dy) 
                               + abccoef*(EM.Ey(dx,dy,dz+1)-EM.Ey(dx,dy,dz));
             EM.Eyz0(dx,dy) = EM.Ey(dx,dy,dz+1);
         }
@@ -637,14 +637,14 @@ void ABCcheck(Field &EM, Loss &lass, double Cour){
     dz = spacez - 1;
     for (dx = 0; dx < spacex - 1; dx++){
         for (dy = 0; dy < spacey; dy++){
-            EM.Ex(dy,dy,dz) = EM.Exz1(dx,dy) 
+            EM.Ex(dx,dy,dz) = EM.Exz1(dx,dy) 
                               + abccoef*(EM.Ex(dx,dy,dz-1)-EM.Ex(dx,dy,dz));
             EM.Exz1(dx,dy) = EM.Ex(dx,dy,dz-1);
         }
     }
     for (dx = 0; dx < spacey; dx++){
         for (dy = 0; dy < spacey - 1; dy++){
-            EM.Ey(dy,dy,dz) = EM.Eyz1(dx,dy) 
+            EM.Ey(dx,dy,dz) = EM.Eyz1(dx,dy) 
                               + abccoef*(EM.Ey(dx,dy,dz-1)-EM.Ey(dx,dy,dz));
             EM.Eyz1(dx,dy) = EM.Ey(dx,dy,dz-1);
         }
