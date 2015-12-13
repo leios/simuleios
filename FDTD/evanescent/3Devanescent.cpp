@@ -16,8 +16,10 @@
 #include <cmath>
 #include <fstream>
 
+// ERROR: changing these guys will sometimes break things. 
+//        I don't know why.
 static const size_t spacey = 50;
-static const size_t spacex = 50;
+static const size_t spacex = 55;
 static const size_t spacez = 50;
 static const size_t losslayer = 20;
 
@@ -78,8 +80,8 @@ struct Field{
 
                          Exz0 = std::vector<double>(spacex * spacey, 0),
                          Eyz0 = std::vector<double>(spacex * spacey, 0),
-                         Exz1 = std::vector<double>(spacez * spacey, 0),
-                         Eyz1 = std::vector<double>(spacez * spacey, 0);
+                         Exz1 = std::vector<double>(spacex * spacey, 0),
+                         Eyz1 = std::vector<double>(spacex * spacey, 0);
 
     int t;
 };
@@ -106,20 +108,21 @@ struct Field{
 #define Ey(i, j, k) Ey[(i) + (j) *  spacex + (k) * spacey * spacex]
 #define Ez(i, j, k) Ez[(i) + (j) *  spacex + (k) * spacey * spacex]
 
-#define Eyx0(k, j) Eyx0[(k) * spacey + (j)]
-#define Ezx0(k, j) Ezx0[(k) * (spacez - 1) + (j)]
-#define Eyx1(k, j) Eyx1[(k) * spacey + (j)]
-#define Ezx1(k, j) Ezx1[(k) * (spacez - 1) + (j)]
+// I was not sure about the defines.
+#define Eyx0(k, j) Eyx0[(k) * spacez + (j)]
+#define Ezx0(k, j) Ezx0[(k) * spacez + (j)]
+#define Eyx1(k, j) Eyx1[(k) * spacez + (j)]
+#define Ezx1(k, j) Ezx1[(k) * spacez + (j)]
 
-#define Exy0(k, j) Exy0[(k) * spacex + (j)]
-#define Ezy0(k, j) Ezy0[(k) * (spacez - 1) + (j)]
-#define Exy1(k, j) Exy1[(k) * spacey + (j)]
-#define Ezy1(k, j) Ezy1[(k) * (spacez - 1) + (j)]
+#define Exy0(k, j) Exy0[(k) * spacez + (j)]
+#define Ezy0(k, j) Ezy0[(k) * spacez + (j)]
+#define Exy1(k, j) Exy1[(k) * spacez + (j)]
+#define Ezy1(k, j) Ezy1[(k) * spacez + (j)]
 
-#define Exz0(k, j) Exz0[(k) * spacex + (j)]
-#define Eyz0(k, j) Eyz0[(k) * (spacey - 1) + (j)]
-#define Exz1(k, j) Exz1[(k) * spacex + (j)]
-#define Eyz1(k, j) Eyz1[(k) * (spacey - 1) + (j)]
+#define Exz0(k, j) Exz0[(k) * spacey + (j)]
+#define Eyz0(k, j) Eyz0[(k) * spacey + (j)]
+#define Exz1(k, j) Exz1[(k) * spacey + (j)]
+#define Eyz1(k, j) Eyz1[(k) * spacey + (j)]
 
 void FDTD(Field EM,
           const int final_time, const double eps,
@@ -311,7 +314,6 @@ void Eupdate3d(Field &EM, Loss &lass, int t){
     }
 
 }
-
 // 1 dimensional update functions for E / H
 void Hupdate1d(Field &EM, Loss1d &lass1d, int t){
     // update magnetic field, y direction
@@ -329,7 +331,6 @@ void Eupdate1d(Field &EM, Loss1d &lass1d, int t){
         EM.Ez1d[dx] = lass1d.EzE[dx] * EM.Ez1d[dx]
                   + lass1d.EzH[dx] * (EM.Hy1d[dx] - EM.Hy1d[dx - 1]);
     }
-
 
 }
 
@@ -363,7 +364,6 @@ void createloss3d(Loss &lass, double eps, double Cour, double loss){
     }
 
 }
-
 void createloss1d(Loss1d &lass1d, double eps, double Cour, double loss){
 
     double depth, lossfactor;
