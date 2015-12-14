@@ -18,9 +18,9 @@
 
 // ERROR: changing these guys will sometimes break things. 
 //        I don't know why.
-static const size_t spacey = 50;
-static const size_t spacex = 50;
-static const size_t spacez = 50;
+static const size_t spacey = 64;
+static const size_t spacex = 64;
+static const size_t spacez = 64;
 static const size_t losslayer = 20;
 
 struct Bound_pos{
@@ -194,19 +194,21 @@ void FDTD(Field EM,
     for (int t = 0; t < final_time; t++){
 
         Hupdate3d(EM, lass, t);
-        TFSF(EM, lass, lass1d, Cour);
+        //TFSF(EM, lass, lass1d, Cour);
         Eupdate3d(EM,lass,t);
-        ABCcheck(EM, lass, Cour);
-        //EM.Ez(25,25,25) = 100 * ricker(t, 0, Cour);
+        //ABCcheck(EM, lass, Cour);
+        EM.Ez(25,25,25) = 100 * ricker(t, 0, Cour);
 
         // Outputting to a file
-        int check = 10;
-        if (t % check == 0){
+        int check = 500;
+        if (t % check == 0 && t != 0){
             for (size_t dx = 0; dx < spacex; dx++){
                 for (size_t dy = 0; dy < spacey; dy++){
-                        output << t << '\t' << dx <<'\t' << dy << '\t'
-                               << EM.Ez(dx, dy, 25) << '\t' << EM.Hy(dx, dy, 25)
-                               << '\t' << EM.Hx(dx, dy, 25) << '\t' << '\n';
+                    for (size_t dz = 0; dz < spacez; dz++){
+                        output << dx <<'\t' << dy << '\t' 
+                               << dz << '\t'
+                               << EM.Ez(dx, dy, dz) << '\t' << '\n';
+                    }
                 }
             }
 
@@ -400,9 +402,9 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
 
     // TFSF boundary
     Bound_pos first, last;
-    first.x = 5; last.x = 45;
-    first.y = 5; last.y = 45;
-    first.z = 5; last.z = 45;
+    first.x = 5; last.x = 95;
+    first.y = 5; last.y = 25;
+    first.z = 5; last.z = 25;
 
     // Update along right edge!
     dx = last.x;
