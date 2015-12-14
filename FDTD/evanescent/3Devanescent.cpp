@@ -7,7 +7,7 @@
 *
 *   Notes: Most of this is coming from the following link:
 *             http://www.eecs.wsu.edu/~schneidj/ufdtd/chap3.pdf
-*             http://www.eecs.wsu.edu/~schneidj/ufdtd/chap8.pdf
+*             http://www.eecs.wsu.edu/~schneidj/ufdtd/chap9.pdf
 *
 *-----------------------------------------------------------------------------*/
 
@@ -19,7 +19,7 @@
 // ERROR: changing these guys will sometimes break things. 
 //        I don't know why.
 static const size_t spacey = 50;
-static const size_t spacex = 55;
+static const size_t spacex = 50;
 static const size_t spacez = 50;
 static const size_t losslayer = 20;
 
@@ -591,7 +591,7 @@ void ABCcheck(Field &EM, Loss &lass, double Cour){
             EM.Exy0(dx,dz) = EM.Ex(dx,dy+1,dz);
         }
     }
-    for (dx = 0; dx < spacey; dx++){
+    for (dx = 0; dx < spacex; dx++){
         for (dz = 0; dz < spacez - 1; dz++){
             EM.Ez(dx,dy,dz) = EM.Ezy0(dx,dz) 
                               + abccoef*(EM.Ez(dx,dy+1,dz)-EM.Ez(dx,dy,dz));
@@ -608,7 +608,7 @@ void ABCcheck(Field &EM, Loss &lass, double Cour){
             EM.Exy1(dx,dz) = EM.Ex(dx,dy-1,dz);
         }
     }
-    for (dx = 0; dx < spacey; dx++){
+    for (dx = 0; dx < spacex; dx++){
         for (dz = 0; dz < spacez - 1; dz++){
             EM.Ez(dx,dy,dz) = EM.Ezy1(dx,dz) 
                               + abccoef*(EM.Ez(dx,dy-1,dz)-EM.Ez(dx,dy,dz));
@@ -625,7 +625,7 @@ void ABCcheck(Field &EM, Loss &lass, double Cour){
             EM.Exz0(dx,dy) = EM.Ex(dx,dy,dz+1);
         }
     }
-    for (dx = 0; dx < spacey; dx++){
+    for (dx = 0; dx < spacex; dx++){
         for (dy = 0; dy < spacey - 1; dy++){
             EM.Ey(dx,dy,dz) = EM.Eyz0(dx,dy) 
                               + abccoef*(EM.Ey(dx,dy,dz+1)-EM.Ey(dx,dy,dz));
@@ -642,7 +642,7 @@ void ABCcheck(Field &EM, Loss &lass, double Cour){
             EM.Exz1(dx,dy) = EM.Ex(dx,dy,dz-1);
         }
     }
-    for (dx = 0; dx < spacey; dx++){
+    for (dx = 0; dx < spacex; dx++){
         for (dy = 0; dy < spacey - 1; dy++){
             EM.Ey(dx,dy,dz) = EM.Eyz1(dx,dy) 
                               + abccoef*(EM.Ey(dx,dy,dz-1)-EM.Ey(dx,dy,dz));
