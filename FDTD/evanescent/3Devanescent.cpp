@@ -194,10 +194,10 @@ void FDTD(Field EM,
     for (int t = 0; t < final_time; t++){
 
         Hupdate3d(EM, lass, t);
-        //TFSF(EM, lass, lass1d, Cour);
+        TFSF(EM, lass, lass1d, Cour);
         Eupdate3d(EM,lass,t);
         ABCcheck(EM, lass, Cour);
-        EM.Ez(25,25,25) = 100 * ricker(t, 0, Cour);
+        //EM.Ez(25,25,25) = 100 * ricker(t, 0, Cour);
 
         // Outputting to a file
         int check = 10;
@@ -400,9 +400,9 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
 
     // TFSF boundary
     Bound_pos first, last;
-    first.x = 10; last.x = 40;
-    first.y = 10; last.y = 40;
-    first.z = 10; last.z = 40;
+    first.x = 5; last.x = 45;
+    first.y = 5; last.y = 45;
+    first.z = 5; last.z = 45;
 
     // Update along right edge!
     dx = last.x;
@@ -410,18 +410,15 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
     for (int dy = first.y; dy <= last.y; dy++){
         for (int dz = first.z; dz <= last.z; dz++){
             EM.Hy(dx,dy,dz) += lass.HyE(dx, dy, dz) * EM.Ez1d[dx];
-            EM.Hz(dx,dy,dz) += lass.HzE(dx, dy, dz) * EM.Ez1d[dx];
         }
     }
 
     // Updating along left edge
-    dx = first.x - 1;
+    dx = first.x;
     #pragma omp parallel for
     for (int dy = first.y; dy <= last.y; dy++){
         for (int dz = first.z; dz <= last.z; dz++){
             EM.Hy(dx,dy,dz) -= lass.HyE(dx, dy, dz) * EM.Ez1d[dx+1];
-            EM.Hz(dx,dy,dz) -= lass.HzE(dx, dy, dz) * EM.Ez1d[dx+1];
-
         }
     }
 
@@ -431,21 +428,19 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
     for (int dx = first.x; dx <= last.x; dx++){
         for (int dz = first.z; dz <= last.z; dz++){
             EM.Hx(dx,dy,dz) -= lass.HxE(dx, dy, dz) * EM.Ez1d[dx];
-            EM.Hz(dx,dy,dz) -= lass.HzE(dx, dy, dz) * EM.Ez1d[dx];
         }
     }
 
     // Update along bot
-    dy = first.y - 1;
+    dy = first.y;
     #pragma omp parallel for
     for (int dx = first.x; dx <= last.x; dx++){
         for (int dz = first.z; dz <= last.z; dz++){
             EM.Hx(dx,dy,dz) += lass.HxE(dx, dy, dz) * EM.Ez1d[dx];
-            EM.Hz(dx,dy,dz) += lass.HzE(dx, dy, dz) * EM.Ez1d[dx];
-
         }
     }
 
+/*
     // Update along forw
     dz = first.z - 1;
     #pragma omp parallel for
@@ -465,25 +460,22 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
             EM.Hy(dx,dy,dz) += lass.HyE(dx, dy, dz) * EM.Ez1d[dx];
         }
     }
-
-
+*/
 
     // Insert 1d grid stuff here. Update magnetic and electric field
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
-    EM.Ez1d[10] = ricker(EM.t,0, Cour);
-    //EM.Ez1d[10] = planewave(EM.t, 15, Cour, 10);
+    EM.Ez1d[5] = ricker(EM.t,0, Cour);
+    //EM.Ez1d[5] = planewave(EM.t, 15, Cour, 5);
     //EM.Ez1d[290] = planewave(EM.t, 15, Cour, 10);
     EM.t++;
 
-    // Check mag instead of ricker.
     // Update along right
     dx = last.x;
     #pragma omp parallel for
     for (int dy = first.y; dy <= last.y; dy++){
         for (int dz = first.z; dz <= last.z; dz++){
             EM.Ez(dx,dy,dz) += lass.EzH(dx,dy,dz) * EM.Hy1d[dx];
-            EM.Ey(dx,dy,dz) += lass.EyH(dx,dy,dz) * EM.Hy1d[dx];
         }
     }
 
@@ -493,10 +485,10 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
     for (int dy = first.y; dy <= last.y; dy++){
         for (int dz = first.z; dz <= last.z; dz++){
             EM.Ez(dx,dy,dz) -= lass.EzH(dx,dy,dz) * EM.Hy1d[dx-1];
-            EM.Ey(dx,dy,dz) -= lass.EyH(dx,dy,dz) * EM.Hy1d[dx-1];
         }
     }
 
+/*
     dy = last.y;
     #pragma omp parallel for
     for (int dx = first.x; dx <= last.x; dx++){
@@ -515,14 +507,14 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
             EM.Ex(dx,dy,dz) -= lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
         }
     }
+*/
 
     // Updating along back
     dz = last.z;
     #pragma omp parallel for
     for (int dy = first.y; dy <= last.y; dy++){
         for (int dx = first.x; dx <= last.x; dx++){
-            EM.Ex(dx,dy,dz) += lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
-            EM.Ey(dx,dy,dz) += lass.EyH(dx,dy,dz) * EM.Hy1d[dx];
+            EM.Ex(dx,dy,dz) -= lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
         }
     }
 
@@ -531,8 +523,7 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
     #pragma omp parallel for
     for (int dy = first.y; dy <= last.y; dy++){
         for (int dx = first.x; dx <= last.x; dx++){
-            EM.Ex(dx,dy,dz) -= lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
-            EM.Ey(dx,dy,dz) -= lass.EyH(dx,dy,dz) * EM.Hy1d[dx];
+            EM.Ex(dx,dy,dz) += lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
         }
     }
 
