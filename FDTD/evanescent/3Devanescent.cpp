@@ -15,6 +15,7 @@
 #include <vector>
 #include <cmath>
 #include <fstream>
+#include <algorithm>
 
 // ERROR: changing these guys will sometimes break things. 
 //        I don't know why.
@@ -184,6 +185,7 @@ void FDTD(Field EM,
 
     double loss = 0.00;
     double Cour = 1 / sqrt(3);
+    double value, min;
 
     Loss lass;
     createloss3d(lass, eps, Cour, loss);
@@ -202,12 +204,17 @@ void FDTD(Field EM,
         // Outputting to a file
         int check = 500;
         if (t % check == 0 && t != 0){
+            min = *std::min_element(std::begin(EM.Ez), std::end(EM.Ez));
             for (size_t dx = 0; dx < spacex; dx++){
                 for (size_t dy = 0; dy < spacey; dy++){
                     for (size_t dz = 0; dz < spacez; dz++){
+                        value = EM.Ez(dx, dy, dy) - min;
+
+                        value = round(value * 512);
+
                         output << dx <<'\t' << dy << '\t' 
                                << dz << '\t'
-                               << EM.Ez(dx, dy, dz) << '\t' << '\n';
+                               << value << '\t' << '\n';
                     }
                 }
             }
