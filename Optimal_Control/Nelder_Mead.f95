@@ -36,10 +36,10 @@ end program
 subroutine downhill
       implicit none
       integer, parameter         :: dim = 4
-      integer :: min, max, i, minsave, maxsave
+      integer :: min, max, i, minsave, maxsave, check, minval, maxval
       real*8, dimension(2, dim)  :: pos
       real*8, dimension(dim - 1)     :: value
-      real*8  :: x, y, alpha = 0.5, beta = 0.5, gamma = 0.5, dist, cutoff = 0.00001
+      real*8  :: x, y, alpha = 1, beta = 0.5, gamma = 1.5, dist, cutoff = 0.00001
       real*8  :: xsave, ysave
 
       interface
@@ -102,6 +102,8 @@ subroutine downhill
           end subroutine contractall
       end interface
 
+      !open(100, file = "simplex_points.dat")
+      !open(200, file = "centroids.dat")
 
       !! initialize everything
       call populate(pos, dim)
@@ -124,8 +126,9 @@ subroutine downhill
       do while (dist > cutoff)
       !do while (i < 10)
           !! Reflection first
-          write(*,*) i
+          !write(*,*) i
           minsave = min
+          minval = value(min)
           xsave = pos(1, min)
           ysave = pos(2, min)
           call reflect(pos, min, dim, alpha)
@@ -135,7 +138,7 @@ subroutine downhill
 
           !! Expansion if the minimum value becomes the maximum
           if (minsave.EQ.max) then
-              write(*,*) "expanding...", dist
+              !write(*,*) "expanding...", dist
              
               maxsave = max
               xsave = pos(1, max)
@@ -143,7 +146,6 @@ subroutine downhill
               call expand(pos, max, dim, gamma)
               call findval(pos, value, dim)
               call minmax(value, min, max)
-              call centroid(pos, min, max, dim)
 
               !! Setting things back, if expansion is worse than 
               !! standard reflection
@@ -154,29 +156,47 @@ subroutine downhill
                   call minmax(value, min, max)
               end if
 
-          !! Contract from old position if minima value is still minima value
-          else if (minsave.EQ.min) then
-              !write(*,*) "contracting...", dist
-              xsave = pos(1, min)
-              ysave = pos(2, min)
-
-              pos(1, min) = xsave
-              pos(2, min) = ysave
-              call contract(pos, min, dim, beta)
-              call findval(pos, value, dim)
-              call minmax(value, min, max)
               call centroid(pos, min, max, dim)
+
+
+          !! Contract from old position if minima value is still minima value
+          else if (minsave.NE.max) then
+              !write(*,*) "it's okay, checking to keep", dist
 
               !! if minima is still minima, contract everything towards max
               if (minsave.EQ.min) then
-                  !write(*,*) "Contract all...", dist, min, max
+                  !write(*,*) "it's still bad, checking to keep", dist
                   !write(*,*) pos(1,1), pos(1,2), pos(1,3), pos(1,4)
                   !write(*,*) pos(2,:)
                   !write(*,*) pos
-                  call contractall(pos, max, dim)
+
+                  check = value(min)
+
+                  if (check < minval) then
+                      !write(*,*) "It's awful! flipping back!", dist
+                      pos(1, min) = xsave
+                      pos(2, min) = ysave
+                      value(min) = minval
+                  end if
+
+                  minval = value(min)
+
+                  !write(*,*) "contracting...", dist
+
+                  call contract(pos, min, dim, beta)
                   call findval(pos, value, dim)
                   call minmax(value, min, max)
                   call centroid(pos, min, max, dim)
+
+                  check = value(min)
+
+                  if (check < minval) then
+                      !write(*,*) "contract all...", dist
+                      call contractall(pos, max, dim)
+                      call findval(pos, value, dim)
+                      call minmax(value, min, max)
+                      call centroid(pos, min, max, dim)
+                  end if
 
               end if
 
@@ -185,11 +205,19 @@ subroutine downhill
           dist = sqrt((pos(1,min)-pos(1,max)) * (pos(1,min)-pos(1,max)) &
                       + (pos(2,min)-pos(2,max)) * (pos(2,min)-pos(2,max)))
 
+          !write(100,*) pos(1,1), pos(2,1)
+          !write(100,*) pos(1,2), pos(2,2)
+          !write(100,*) pos(1,3), pos(2,3)
+          !write(100,*) pos(1,1), pos(2,1)
+          !write(100,*)
+          !write(100,*)
+
       end do
 
       write(*,*) pos(1,1), pos(1,2), pos(1,3), pos(1,4)
       write(*,*) pos(2,1), pos(2,2), pos(2,3), pos(2,4)
       write(*,*) min, max, dim
+
 
 end subroutine
 
@@ -273,9 +301,9 @@ subroutine populate(pos, dim)
 
       do i = 1,dim -1
           call random_number(pos(1,i))
-          pos(1,i) = (pos(1,i) - 0.5)* 10
+          pos(1,i) = (pos(1,i) - 0.5)
           call random_number(pos(2,i))
-          pos(2,i) = (pos(2,i) - 0.5) * 10
+          pos(2,i) = (pos(2,i) - 0.5)
       end do
       
 end subroutine
@@ -315,7 +343,7 @@ subroutine findval(pos, value, dim)
       integer                :: i
 
       do i = 1, dim - 1
-          value(i) = sqrt((pos(1,i) - sourcex) * (pos(1,i) - sourcex) &
+          value(i) = -sqrt((pos(1,i) - sourcex) * (pos(1,i) - sourcex) &
                      + (pos(2,i) - sourcey) * (pos(2,i) - sourcey))
       end do
 
