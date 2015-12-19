@@ -14,18 +14,7 @@ import numpy as np
 import struct
 
 # Files and data and such
-infile = open("sample_data.dat",'r')
-vfile = open("raw_plot.raw",'wb')
-voxelfile = "sample.raw"
-vdata = np.genfromtxt("sample_data.dat")
-
-# function to write data to .raw file for blender
-# note, the density muct be an integer between 0 and 255
-def voxel_gen(vdata, vfile, ii):
-    for i in range(0,ii):
-        vfile.write(struct.pack('B', abs(int(vdata[i][3]))))
-    vfile.flush()
-    vfile.close()
+voxelfile = "raw_plot.raw"
 
 # Define Scene
 def def_scene(box_length):
@@ -45,8 +34,6 @@ def def_scene(box_length):
     r_camy = 0
     r_camz = 0
     '''
-    
-
     scene = bpy.context.scene
 
     scene.camera.location.x = box_length * x_cam
@@ -60,7 +47,7 @@ def def_scene(box_length):
 
     # Sets field of view
     scene.camera.data.angle = 50*(np.pi/180.0)
-    bpy.data.cameras['Camera'].type = 'ORTHO'
+    #bpy.data.cameras['Camera'].type = 'ORTHO'
     bpy.data.cameras['Camera'].ortho_scale = 21.0
 
     # Scene resolution
@@ -136,5 +123,5 @@ def render_img(filename):
 #------------------------------------------------------------------------------#
 
 def_scene(5)
-createcube(5,64,64,64,0.1,0.5, voxelfile, 1)
+createcube(5,64,64,64,0.01,0.5, voxelfile, 1)
 render_img("check.png")
