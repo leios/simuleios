@@ -17,8 +17,6 @@
 #include <fstream>
 #include <algorithm>
 
-// ERROR: changing these guys will sometimes break things. 
-//        I don't know why.
 static const size_t spacey = 64;
 static const size_t spacex = 64;
 static const size_t spacez = 64;
@@ -185,7 +183,7 @@ void FDTD(Field EM,
 
     double loss = 0.00;
     double Cour = 1 / sqrt(3);
-    double value, min;
+    double value, min, max;
 
     Loss lass;
     createloss3d(lass, eps, Cour, loss);
@@ -202,24 +200,29 @@ void FDTD(Field EM,
         EM.Ez(25,25,25) = 100 * ricker(t, 0, Cour);
 
         // Outputting to a file
-        int check = 500;
+        int check = 100;
         if (t % check == 0 && t != 0){
             min = *std::min_element(std::begin(EM.Ez), std::end(EM.Ez));
+            max = *std::max_element(std::begin(EM.Ez), std::end(EM.Ez));
             for (size_t dx = 0; dx < spacex; dx++){
                 for (size_t dy = 0; dy < spacey; dy++){
                     for (size_t dz = 0; dz < spacez; dz++){
-                        value = EM.Ez(dx, dy, dy) - min;
+                        value = (EM.Ez(dx, dy, dz) - min) / (max - min);
 
-                        value = round(value * 512);
+                        value = round(value * 255);
 
+                        output << value << '\n';
+
+                        /*
                         output << dx <<'\t' << dy << '\t' 
                                << dz << '\t'
-                               << value << '\t' << '\n';
+                               << value << '\n';
+                        */
                     }
                 }
             }
 
-            output << '\n' << '\n';
+            //output << '\n' << '\n';
         }
 
     }
