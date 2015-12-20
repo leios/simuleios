@@ -5,6 +5,10 @@
 # Purpose: Create cool visualizations for FDTD in 3d
 #
 #   Notes: This is a dummy file until tomorrow.
+#          To run this script, use:
+#              blender -b -P createdens.py
+#                  -b runs without GUI
+#                  -P executes python script
 #
 #     Add: Color ramp
 #------------------------------------------------------------------------------#
@@ -124,4 +128,4 @@ def render_img(filename):
 
 def_scene(5)
 createcube(5,64,64,64,0.01,0.5, voxelfile, 1)
-render_img("check.png")
+#render_img("check.png")

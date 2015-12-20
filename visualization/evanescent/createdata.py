@@ -2,6 +2,9 @@
 #
 #           Create Density plot for 3d FDTD
 #
+# Purpose: Takes data from 3Devanescent.cpp and turns it into a blender readible
+#          format. 
+#
 #------------------------------------------------------------------------------#
 
 #import bpy

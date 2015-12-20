@@ -1,3 +1,12 @@
+#-------------createsample.py--------------------------------------------------#
+#
+#             create sample.py
+#
+# Purpose: To create sample blender data for testing voxel stuff with.
+#
+#------------------------------------------------------------------------------#
+
+
 #import bpy
 import numpy as np
 import struct
@@ -8,6 +17,7 @@ vfile = open("sample.raw",'wb')
 n = 64
 vdata = [[[0 for k in range(n)] for j in range(n)] for i in range(n)]
 
+# creating initial gradient for viewing. 0 to 255 at x,y,z = box_length
 for i in range(64):
     for j in range(64):
         for k in range(64):
