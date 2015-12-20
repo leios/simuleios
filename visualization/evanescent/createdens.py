@@ -57,7 +57,10 @@ def def_scene(box_length):
     # Scene resolution
     scene.render.resolution_x = 1366*2
     scene.render.resolution_y = 768*2
-    scene.render.threads = 8
+
+    # set number of cores used
+    #scene.render.threads_mode = "FIXED"
+    #scene.render.threads = 8
 
     # sets background to be black
     bpy.data.worlds['World'].horizon_color = (0,0,0)
@@ -75,6 +78,11 @@ def createcube(box_length, xres, yres, zres, step_size, dens_scale, voxelfile, c
     mat = createVolume('MaterialVolume', xres, yres, zres, step_size, dens_scale
 , voxelfile, color_num)
     me.materials.append(mat)
+    bpy.ops.object.modifier_add(type="WIREFRAME")
+    cageMat = createCage("wire")
+    me.materials.append(cageMat)
+    bpy.data.objects["Cube"].modifiers["Wireframe"].material_offset = 1
+    bpy.data.objects["Cube"].modifiers["Wireframe"].use_replace = False
     return cube
 
 # Create Material
@@ -116,6 +124,11 @@ def createVolume (passedName, xres, yres, zres, step_size, dens_scale, voxelfile
     matTex.density_factor = 1
     return volMat
 
+def createCage(passedName):
+    cageMat = bpy.data.materials.new(passedName)
+    cageMat.use_shadeless = True
+    return cageMat
+
 # Render Scene into image
 def render_img(filename):
     bpy.data.scenes['Scene'].render.filepath = filename
@@ -128,4 +141,4 @@ def render_img(filename):
 
 def_scene(5)
 createcube(5,64,64,64,0.01,0.5, voxelfile, 1)
-#render_img("check.png")
+render_img("check.png")
