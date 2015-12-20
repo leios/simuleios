@@ -9,8 +9,10 @@
 #              blender -b -P createdens.py
 #                  -b runs without GUI
 #                  -P executes python script
+#          Startup file has no cube or lighting. This can be set by initilially
+#              removing the lighting and cube and then clicking the "Save 
+#              Startup File" button; however, we remove the objects too.
 #
-#     Add: Color ramp
 #------------------------------------------------------------------------------#
 
 import bpy
@@ -19,6 +21,12 @@ import struct
 
 # Files and data and such
 voxelfile = "raw_plot.raw"
+
+# Removes objects in scene
+def remove_obj( scene ):
+    for ob in scene.objects: 
+        if ob.name !='Camera':
+            scene.objects.unlink( ob )
 
 # Define Scene
 def def_scene(box_length):
@@ -40,6 +48,8 @@ def def_scene(box_length):
     '''
     scene = bpy.context.scene
 
+    remove_obj(scene)
+
     scene.camera.location.x = box_length * x_cam
     scene.camera.location.y = box_length * y_cam
     scene.camera.location.z = box_length * z_cam
@@ -59,8 +69,8 @@ def def_scene(box_length):
     scene.render.resolution_y = 768*2
 
     # set number of cores used
-    #scene.render.threads_mode = "FIXED"
-    #scene.render.threads = 8
+    scene.render.threads_mode = "FIXED"
+    scene.render.threads = 8
 
     # sets background to be black
     bpy.data.worlds['World'].horizon_color = (0,0,0)
@@ -101,8 +111,7 @@ def createVolume (passedName, xres, yres, zres, step_size, dens_scale, voxelfile
     voxTex.color_ramp.color_mode = "RGB"
     ramp = voxTex.color_ramp
 
-    '''
-    values = det_color(color_num)
+    values = [(0.0, (0,0,1,0)), (1.0, (1,0,0,1))]
 
     for n,value in enumerate(values):
         ramp.elements.new((n+1)*0.2)
@@ -110,7 +119,6 @@ def createVolume (passedName, xres, yres, zres, step_size, dens_scale, voxelfile
         (pos, color) = value
         elt.position = pos
         elt.color = color
-    '''
     voxTex.voxel_data.filepath = voxelfile
     voxTex.voxel_data.resolution = (xres, yres, zres)
     matTex.texture = voxTex
