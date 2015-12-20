@@ -13,14 +13,22 @@
 #              removing the lighting and cube and then clicking the "Save 
 #              Startup File" button; however, we remove the objects too.
 #
+#   ERROR: If you do not run voxel_gen, the .raw file is erased.
+#          I don't know why.
+#
 #------------------------------------------------------------------------------#
 
 import bpy
 import numpy as np
 import struct
+#from createdata.py import *
 
 # Files and data and such
-voxelfile = "raw_plot.raw"
+voxelfile = "3Dsample.raw"
+input = "sample.dat"
+infile = open(input,'r')
+outfile = open(voxelfile,'wb')
+vdata = np.genfromtxt(input)
 
 # Removes objects in scene
 def remove_obj( scene ):
@@ -142,11 +150,21 @@ def render_img(filename):
     bpy.data.scenes['Scene'].render.filepath = filename
     bpy.ops.render.render( write_still=True )
 
+# function to write data to .raw file for blender
+# note, the density muct be an integer between 0 and 255
+def voxel_gen(vdata, outfile, ii):
+    for i in range(0,ii):
+        print(i)
+        outfile.write(struct.pack('B', abs(int(vdata[i]))))
+    outfile.flush()
+    outfile.close()
+
 
 #------------------------------------------------------------------------------#
 # MAIN
 #------------------------------------------------------------------------------#
 
+voxel_gen(vdata, outfile, len(vdata))
 def_scene(5)
 createcube(5,64,64,64,0.01,0.5, voxelfile, 1)
 render_img("check.png")
