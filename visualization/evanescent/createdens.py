@@ -25,7 +25,7 @@ import struct
 
 # Files and data and such
 voxelfile = "3Dsample.raw"
-input = "sample.dat"
+input = "sampleviddata.dat"
 infile = open(input,'r')
 outfile = open(voxelfile,'wb')
 vdata = np.genfromtxt(input)
@@ -150,6 +150,26 @@ def render_img(filename):
     bpy.data.scenes['Scene'].render.filepath = filename
     bpy.ops.render.render( write_still=True )
 
+# Render_Movie
+def render_movie():
+    scene = bpy.context.scene
+    bpy.data.scenes[0].render.image_settings.file_format="PNG"
+    bpy.ops.render.render( write_still=True )
+    print("rendering movie")
+    scene.sequence_editor_create()
+    bpy.data.scenes["Scene"].render.fps = 1
+    bpy.data.scenes["Scene"].render.image_settings.file_format = 'FFMPEG'
+    bpy.data.scenes["Scene"].render.ffmpeg.video_bitrate = 1000
+    bpy.data.scenes["Scene"].render.ffmpeg.format = 'MPEG4'
+    bpy.data.scenes["Scene"].render.ffmpeg.audio_codec = 'NONE'
+    bpy.data.scenes["Scene"].render.ffmpeg.minrate = 0
+    bpy.data.scenes["Scene"].render.ffmpeg.maxrate = 1500
+    bpy.data.scenes["Scene"].render.ffmpeg.codec = 'H264'
+    bpy.data.scenes["Scene"].render.filepath = 'out.mp4'
+    bpy.data.scenes["Scene"].render.use_file_extension = False
+    bpy.data.scenes["Scene"].frame_end = 5
+    bpy.ops.render.render( animation=True ) 
+
 # function to write data to .raw file for blender
 # note, the density muct be an integer between 0 and 255
 def voxel_gen(vdata, outfile, ii):
@@ -167,4 +187,4 @@ def voxel_gen(vdata, outfile, ii):
 voxel_gen(vdata, outfile, len(vdata))
 def_scene(5)
 createcube(5,64,64,64,0.01,0.5, voxelfile, 1)
-render_img("check.png")
+render_movie()
