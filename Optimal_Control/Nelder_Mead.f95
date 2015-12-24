@@ -17,13 +17,32 @@ program nelder
 !  DEFINITIONS
 !!----------------------------------------------------------------------------!!
 
-      integer, parameter :: dim = 4
-      integer :: min, max, i
-      real*8, dimension(2, dim)  :: pos
+      integer, parameter             :: dim = 4
+      integer                        :: min, max, i
+      integer, dimension(dim, dim-1) :: list
+      real*8, dimension(2, dim)      :: pos
       real*8, dimension(dim - 1)     :: value
-      real*8  :: x, y, alpha, beta, gamma
+      real*8                         :: x, y, alpha, beta, gamma
+
+      interface
+          subroutine pop_list(list, dim)
+              integer, dimension(:,:) :: list
+              integer                 :: dim
+          end subroutine pop_list
+      end interface
 
       call downhill
+      call pop_list(list, dim)
+
+      write(*,*)
+
+      do i = 1,dim
+          do j = 1,dim-1
+              write(*,*) list(i,j)
+          end do
+          write(*,*)
+      end do
+      write(*,*) "yoyoyo, santa claus gave you some yoyos!"
 
 end program
 
@@ -35,11 +54,12 @@ end program
 !! The nelder mead method 
 subroutine downhill
       implicit none
-      integer, parameter         :: dim = 4
+      integer, parameter             :: dim = 4
       integer :: min, max, i, minsave, maxsave, check, minval, maxval
-      real*8, dimension(2, dim)  :: pos
+      integer, dimension(dim, dim-1) :: list
+      real*8, dimension(2, dim)      :: pos
       real*8, dimension(dim - 1)     :: value
-      real*8  :: x, y, alpha = 1, beta = 0.5, gamma = 1.5, dist, cutoff = 0.00001
+      real*8  :: x, y, alpha = 1, beta = 0.5, gamma = 1.5, dist, cutoff = 0.0001
       real*8  :: xsave, ysave
 
       interface
@@ -51,10 +71,26 @@ subroutine downhill
       end interface
 
       interface
+          subroutine findval_santa(pos, list, dim)
+              real*8, dimension(:,:) :: pos
+              integer, dimension(:,:):: list
+              real*8, dimension(:)   :: value
+              integer                :: dim
+          end subroutine findval_santa
+      end interface
+
+      interface
           subroutine populate(pos, dim)
               real*8, dimension(:,:) :: pos
               integer                :: dim
           end subroutine populate
+      end interface
+
+      interface
+          subroutine pop_list(list, dim)
+              integer, dimension(:,:) :: list
+              integer                 :: dim
+          end subroutine pop_list
       end interface
 
       interface
@@ -338,7 +374,7 @@ subroutine findval(pos, value, dim)
       implicit none
       real*8,  dimension(:,:):: pos
       real*8,  dimension(:)  :: value
-      real*8                 :: sourcex = 0.5, sourcey = 0.5
+      real*8                 :: sourcex = 1.0, sourcey = 1.0
       integer                :: dim
       integer                :: i
 
@@ -347,4 +383,52 @@ subroutine findval(pos, value, dim)
                      + (pos(2,i) - sourcey) * (pos(2,i) - sourcey))
       end do
 
+end subroutine
+
+!! Finds the initial list variable set
+subroutine pop_list(list, dim)
+      implicit none
+      integer, dimension(:,:) :: list
+      integer                 :: dim, i, j, k, swap, tmp
+      integer, parameter      :: seed = 1
+      real*8                  :: var
+
+      !! Initialization!
+      do i = 1, dim
+          do j = 1,dim
+              list(i,j) = j
+          end do 
+          do k = dim-1, 1, -1
+              call random_number(var)
+              swap = mod(ceiling(var*dim-1), k) + 1
+              write(*,*) swap, k
+              tmp = list(i, k) 
+              list(i,k) = list(i,swap)
+              list(i,swap) = tmp
+          end do
+      end do
+
+end subroutine
+
+!! finding new values for new possible routes with Santa Claus
+subroutine findval_santa(pos, list, dim, value)
+      implicit none
+      integer, dimension(:,:) :: list
+      real*8, dimension(:,:)  :: pos
+      real*8, dimension(:)    :: value
+      real*8                  :: dist
+      integer                 :: dim
+
+      do i = 1,dim
+          do j = 1,dim-1
+              dist = sqrt(((pos(1,list(i,j)) - pos(1,list(i,j+1))) 
+                          * (pos(1,list(i,j)) - pos(1,list(i,j+1))))
+                          -((pos(2,list(i,j)) - pos(2,list(i,j+1))) 
+                          * (pos(2,list(i,j)) - pos(2,list(i,j+1)))))
+
+              value(i) = value + dist
+          end do
+      end do
+
+      
 end subroutine
