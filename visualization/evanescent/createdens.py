@@ -36,24 +36,26 @@ def remove_obj( scene ):
 def def_scene(box_length, res_stand, xres, yres, zres):
 
     # Camera stuff
+    '''
     x_cam = 2.2
     y_cam = 2.75
     z_cam = 1.45
 
-    '''
     x_cam = 0
     y_cam = 0.5
     z_cam = 4
-    r_camx = 0
-    r_camy = 0
-    r_camz = 0
     '''
+
+    x_cam = 3.0
+    y_cam = 3.2
+    z_cam = 2.0
+
     scene = bpy.context.scene
 
     remove_obj(scene)
 
     # Defining dummy point to point camera at
-    bpy.ops.object.add(type='EMPTY', location=(box_length * 4 * xres / (10 * res_stand), 0, box_length * zres / (5 * res_stand)))
+    bpy.ops.object.add(type='EMPTY', location=(box_length * xres * 0.5 / res_stand, box_length * yres * 0.5 / res_stand, box_length * zres * 0.5 / res_stand))
 
     # This is not working. Cannot figure out how to select camera.
     context = bpy.context
@@ -172,7 +174,7 @@ def render_movie():
     bpy.data.scenes["Scene"].render.ffmpeg.codec = 'H264'
     bpy.data.scenes["Scene"].render.filepath = 'out.mp4'
     bpy.data.scenes["Scene"].render.use_file_extension = False
-    bpy.data.scenes["Scene"].frame_end = 20
+    bpy.data.scenes["Scene"].frame_end = 40
     bpy.ops.render.render( animation=True ) 
 
 # function to write data to .raw file for blender
@@ -191,6 +193,7 @@ def voxel_gen(vdata, outfile, ii):
 #------------------------------------------------------------------------------#
 
 voxel_gen(vdata, outfile, len(vdata))
-def_scene(5,64,128, 64, 64)
+def_scene(5,64,128,64,64)
 createcube(5,64,128,64,64,0.1,0.5, voxelfile, 1)
-render_movie()
+#render_movie()
+render_img("image.png")
