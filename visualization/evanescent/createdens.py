@@ -13,19 +13,15 @@
 #              removing the lighting and cube and then clicking the "Save 
 #              Startup File" button; however, we remove the objects too.
 #
-#   ERROR: If you do not run voxel_gen, the .raw file is erased.
-#          I don't know why.
-#
 #------------------------------------------------------------------------------#
 
 import bpy
 import numpy as np
 import struct
-#from createdata.py import *
 
 # Files and data and such
 voxelfile = "3Dsample.raw"
-input = "sampleviddata.dat"
+input = "3Devanescent.dat"
 infile = open(input,'r')
 outfile = open(voxelfile,'wb')
 vdata = np.genfromtxt(input)
@@ -37,14 +33,12 @@ def remove_obj( scene ):
             scene.objects.unlink( ob )
 
 # Define Scene
-def def_scene(box_length):
+def def_scene(box_length, res_stand, xres, yres, zres):
+
     # Camera stuff
     x_cam = 2.2
     y_cam = 2.75
-    z_cam = 1.43
-    r_camx = 70
-    r_camy = 0
-    r_camz = 145
+    z_cam = 1.45
 
     '''
     x_cam = 0
@@ -58,14 +52,25 @@ def def_scene(box_length):
 
     remove_obj(scene)
 
-    scene.camera.location.x = box_length * x_cam
-    scene.camera.location.y = box_length * y_cam
-    scene.camera.location.z = box_length * z_cam
+    # Defining dummy point to point camera at
+    bpy.ops.object.add(type='EMPTY', location=(box_length * 4 * xres / (10 * res_stand), 0, box_length * zres / (5 * res_stand)))
 
-    scene.camera.rotation_mode = 'XYZ'
-    scene.camera.rotation_euler[0] = (np.pi/180.0) * r_camx
-    scene.camera.rotation_euler[1] = (np.pi/180.0) * r_camy
-    scene.camera.rotation_euler[2] = (np.pi/180.0) * r_camz
+    # This is not working. Cannot figure out how to select camera.
+    context = bpy.context
+
+    bpy.ops.object.select_pattern(pattern="Camera")
+    bpy.context.scene.objects.active = bpy.context.scene.objects["Camera"]
+    ob = bpy.data.objects['Camera']
+    bpy.ops.object.constraint_add(type="TRACK_TO")
+    target = bpy.data.objects.get('Empty', False)
+    ob.constraints['Track To'].target=target
+
+    ob.constraints['Track To'].track_axis = 'TRACK_NEGATIVE_Z'
+    ob.constraints['Track To'].up_axis = 'UP_Y'
+
+    scene.camera.location.x = box_length * x_cam * xres/res_stand
+    scene.camera.location.y = box_length * y_cam * yres/res_stand
+    scene.camera.location.z = box_length * z_cam * zres/res_stand
 
     # Sets field of view
     scene.camera.data.angle = 50*(np.pi/180.0)
@@ -86,12 +91,12 @@ def def_scene(box_length):
     return scene
 
 # Create Cube
-def createcube(box_length, xres, yres, zres, step_size, dens_scale, voxelfile, color_num):
-    cube = bpy.ops.mesh.primitive_cube_add(location=((box_length / 2), (box_length / 2), (box_length / 2)), radius = box_length / 2)
+def createcube(box_length, res_stand, xres, yres, zres, step_size, dens_scale, voxelfile, color_num):
+    cube = bpy.ops.mesh.primitive_cube_add(location=((box_length * xres / (2 * res_stand)), (box_length * yres / (2 * res_stand)), (box_length *zres / (2 * res_stand))), radius = box_length / 2)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.object.mode_set(mode='OBJECT')
     ob = bpy.context.object
-    #ob.scale=(0.5,0.5,0.5)
+    ob.scale=((xres/res_stand,yres/res_stand,zres/res_stand))
     me = ob.data
     mat = createVolume('MaterialVolume', xres, yres, zres, step_size, dens_scale
 , voxelfile, color_num)
@@ -119,7 +124,7 @@ def createVolume (passedName, xres, yres, zres, step_size, dens_scale, voxelfile
     voxTex.color_ramp.color_mode = "RGB"
     ramp = voxTex.color_ramp
 
-    values = [(0.0, (0,0,1,0)), (1.0, (1,0,0,1))]
+    values = [(0.0,(0,0,1,0)), (0.5,(1,0,1,0.3)), (1.0, (1,0,0,1))]
 
     for n,value in enumerate(values):
         ramp.elements.new((n+1)*0.2)
@@ -153,11 +158,11 @@ def render_img(filename):
 # Render_Movie
 def render_movie():
     scene = bpy.context.scene
-    bpy.data.scenes[0].render.image_settings.file_format="PNG"
+    #bpy.data.scenes[0].render.image_settings.file_format="PNG"
     bpy.ops.render.render( write_still=True )
     print("rendering movie")
     scene.sequence_editor_create()
-    bpy.data.scenes["Scene"].render.fps = 1
+    bpy.data.scenes["Scene"].render.fps = .1
     bpy.data.scenes["Scene"].render.image_settings.file_format = 'FFMPEG'
     bpy.data.scenes["Scene"].render.ffmpeg.video_bitrate = 1000
     bpy.data.scenes["Scene"].render.ffmpeg.format = 'MPEG4'
@@ -167,14 +172,15 @@ def render_movie():
     bpy.data.scenes["Scene"].render.ffmpeg.codec = 'H264'
     bpy.data.scenes["Scene"].render.filepath = 'out.mp4'
     bpy.data.scenes["Scene"].render.use_file_extension = False
-    bpy.data.scenes["Scene"].frame_end = 5
+    bpy.data.scenes["Scene"].frame_end = 20
     bpy.ops.render.render( animation=True ) 
 
 # function to write data to .raw file for blender
 # note, the density muct be an integer between 0 and 255
 def voxel_gen(vdata, outfile, ii):
+    print("generating voxel data.")
     for i in range(0,ii):
-        print(i)
+        #print(i)
         outfile.write(struct.pack('B', abs(int(vdata[i]))))
     outfile.flush()
     outfile.close()
@@ -185,6 +191,6 @@ def voxel_gen(vdata, outfile, ii):
 #------------------------------------------------------------------------------#
 
 voxel_gen(vdata, outfile, len(vdata))
-def_scene(5)
-createcube(5,64,64,64,0.01,0.5, voxelfile, 1)
+def_scene(5,64,128, 64, 64)
+createcube(5,64,128,64,64,0.1,0.5, voxelfile, 1)
 render_movie()
