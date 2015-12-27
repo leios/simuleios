@@ -6,8 +6,10 @@
 *          FDTD. Woo!
 *
 *   Notes: Most of this is coming from the following link:
-*             http://www.eecs.wsu.edu/~schneidj/ufdtd/chap3.pdf
-*             http://www.eecs.wsu.edu/~schneidj/ufdtd/chap9.pdf
+*              http://www.eecs.wsu.edu/~schneidj/ufdtd/chap3.pdf
+*              http://www.eecs.wsu.edu/~schneidj/ufdtd/chap9.pdf
+*          I am unsure of which bounds to use when outputting data to keep
+*              simulation from flickering with blender output.
 *
 *-----------------------------------------------------------------------------*/
 
@@ -17,9 +19,9 @@
 #include <fstream>
 #include <algorithm>
 
-static const size_t spacey = 64;
-static const size_t spacex = 64;
-static const size_t spacez = 64;
+static const size_t spacey = 128;
+static const size_t spacex = 128;
+static const size_t spacez = 128;
 static const size_t losslayer = 20;
 
 struct Bound_pos{
@@ -123,11 +125,11 @@ struct Field{
 #define Exz1(k, j) Exz1[(k) * spacey + (j)]
 #define Eyz1(k, j) Eyz1[(k) * spacey + (j)]
 
-void FDTD(Field EM,
+void FDTD(Field &EM,
           const int final_time, const double eps,
           std::ofstream& output);
 
-// Adding ricker solutuion
+// Adding ricker solution
 double ricker(int time, int loc, double Cour);
 
 // Adding plane wave
@@ -145,11 +147,18 @@ void Eupdate1d(Field &EM, Loss1d &lass1d, int t);
 void createloss3d(Loss &lass, double eps, double Cour, double loss);
 void createloss1d(Loss1d &lass1d, double eps, double Cour, double loss);
 
+// Creating index configurations
+void createfiber(Loss &lass, double eps, double Cour, double loss);
+
 // Total Field Scattered Field (TFSF) boundaries
 void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour);
 
 // Checking Absorbing Boundary Conditions (ABS)
 void ABCcheck(Field &EM, Loss &lass, double Cour);
+
+// Outputting to file
+void out3D(std::ofstream& output, int check, int t, const Field &EM);
+void out2D(std::ofstream& output, int check, int t, int slice, const Field &EM);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -160,7 +169,7 @@ int main(){
     // defines output
     std::ofstream output("3Devanescent.dat", std::ofstream::out);
 
-    int final_time = 501;
+    int final_time = 401;
     double eps = 377.0;
 
     // define initial E and H fields
@@ -177,13 +186,12 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // This is the function we writs the bulk of the code in
-void FDTD(Field EM,
+void FDTD(Field &EM,
           const int final_time, const double eps,
           std::ofstream& output){
 
     double loss = 0.00;
     double Cour = 1 / sqrt(3);
-    double value, min, max;
 
     Loss lass;
     createloss3d(lass, eps, Cour, loss);
@@ -194,39 +202,63 @@ void FDTD(Field EM,
     for (int t = 0; t < final_time; t++){
 
         Hupdate3d(EM, lass, t);
-        //TFSF(EM, lass, lass1d, Cour);
+        TFSF(EM, lass, lass1d, Cour);
         Eupdate3d(EM,lass,t);
-        //ABCcheck(EM, lass, Cour);
-        EM.Ez(25,25,25) = 100 * ricker(t, 0, Cour);
+        ABCcheck(EM, lass, Cour);
+        //EM.Ez(32,32,32) = 100 * ricker(t, 0, Cour);
 
         // Outputting to a file
-        int check = 100;
-        if (t % check == 0 && t != 0){
-            min = *std::min_element(std::begin(EM.Ez), std::end(EM.Ez));
-            max = *std::max_element(std::begin(EM.Ez), std::end(EM.Ez));
-            for (size_t dx = 0; dx < spacex; dx++){
-                for (size_t dy = 0; dy < spacey; dy++){
-                    for (size_t dz = 0; dz < spacez; dz++){
-                        value = (EM.Ez(dx, dy, dz) - min) / (max - min);
-
-                        value = round(value * 255);
-
-                        output << value << '\n';
-
-                        /*
-                        output << dx <<'\t' << dy << '\t' 
-                               << dz << '\t'
-                               << value << '\n';
-                        */
-                    }
-                }
-            }
-
-            //output << '\n' << '\n';
-        }
+        //out3D(output, 400, t, EM);
+        out2D(output, 400, t, 64, EM);
 
     }
 }
+
+// Outputting data in 3d voxel format for Blender
+// Note: Blender wants and integer value between 0 and 255
+void out3D(std::ofstream& output, int check, int t, const Field &EM){
+
+    double max, min, value;
+
+    if (t % check == 0 && t != 0){
+        //min = *std::min_element(std::begin(EM.Ez), std::end(EM.Ez));
+        //max = *std::max_element(std::begin(EM.Ez), std::end(EM.Ez));
+        min = -0.2;
+        max = 0.7;
+        for (size_t dz = 0; dz < spacez; dz++){
+            for (size_t dy = 0; dy < spacey; dy++){
+                for (size_t dx = 0; dx< spacex; dx++){
+                    value = (EM.Ez(dx, dy, dz) - min) / (max - min);
+                    value = round(value * 255);
+                    if (value > 255){
+                        value = 255;
+                    }
+                    if (value < 0){
+                        value = 0;
+                    }
+
+                    output << value << '\n';
+
+                }
+            }
+        }
+    }
+}
+
+// Outputting 2 dimenstions of 3D simulation for gnuplot to plot
+void out2D(std::ofstream& output, int check, int t, int slice, const Field &EM){
+
+    if (t % check == 0 && t != 0){
+        for (size_t dx = 0; dx < spacex; dx++){
+            for (size_t dy = 0; dy < spacey; dy++){
+                output << dx << '\t' << dy << '\t'
+                       << EM.Ez(dx, dy, slice) << '\n';
+
+            }
+        }
+    }
+}
+
 
 // Adding the ricker solution
 double ricker(int time, int loc, double Cour){
@@ -349,13 +381,46 @@ void Eupdate1d(Field &EM, Loss1d &lass1d, int t){
 // Creating loss
 void createloss3d(Loss &lass, double eps, double Cour, double loss){
 
-    int buffer = 5;
+    int radius = 50;
+    double dist, dist2;
+    Bound_pos source1, source2;
+    source1.x = -30;
+    source2.x = 60;
+    source1.y = 25;
+    source2.y = 25;
+    source1.z = 25;
+    source2.z = 25;
 
     for (size_t dx = 0; dx < spacex; dx++){
         for (size_t dy = 0; dy < spacey; dy++){
             for (size_t dz = 0; dz < spacez; dz++){
 
+                dist = sqrt( (dx - source1.x) * (dx - source1.x)
+                            +(dy - source1.y) * (dy - source1.y)
+                            +(dz - source1.z) * (dz - source1.z));
+                dist2 = sqrt( (dx - source2.x) * (dx - source2.x)
+                             +(dy - source2.y) * (dy - source2.y)
+                             +(dz - source2.z) * (dz - source2.z));
+
                 // For inhomogeneities add if statements
+                if (dist < radius && dist2 < radius){
+                //if (dx > 64 && dy > 64 && dz > 64){
+                    lass.EzH(dx, dy, dz) = Cour * eps / 9.0;
+                    lass.EzE(dx, dy, dz) = 1.0;
+                    lass.EyH(dx, dy, dz) = Cour * eps / 9.0;
+                    lass.EyE(dx, dy, dz) = 1.0;
+                    lass.ExH(dx, dy, dz) = Cour * eps / 9.0;
+                    lass.ExE(dx, dy, dz) = 1.0;
+
+                    lass.HyE(dx, dy, dz) = Cour * (1.0 / eps);
+                    lass.HyH(dx, dy, dz) = 1.0;
+                    lass.HxE(dx, dy, dz) = Cour * (1.0 / eps);
+                    lass.HxH(dx, dy, dz) = 1.0;
+                    lass.HzE(dx, dy, dz) = Cour * (1.0 / eps);
+                    lass.HzH(dx, dy, dz) = 1.0;
+
+                }
+                else{
 
                     lass.EzH(dx, dy, dz) = Cour * eps;
                     lass.EzE(dx, dy, dz) = 1.0;
@@ -370,12 +435,73 @@ void createloss3d(Loss &lass, double eps, double Cour, double loss){
                     lass.HxH(dx, dy, dz) = 1.0;
                     lass.HzE(dx, dy, dz) = Cour * (1.0 / eps);
                     lass.HzH(dx, dy, dz) = 1.0;
+                }
 
             }
         }
     }
-
 }
+
+// Note: This function is a copy of "createloss3d." In this case, we are 
+//       creating a 3D waveguide / fiber for the light to propagate through.
+//       to do this, we are going to give the fiber a 2d x,y source and create
+//       a circle around that point, and then move that circle through the 
+//       remaining dimension to create a cylinder.
+void createfiber(Loss &lass, double eps, double Cour, double loss){
+
+    int radius = 50;
+    double dist;
+    Bound_pos source;
+    source.x = 0;
+    source.y = 64;
+    source.z = 64;
+
+    for (size_t dx = 0; dx < spacex; dx++){
+        for (size_t dy = 0; dy < spacey; dy++){
+            for (size_t dz = 0; dz < spacez; dz++){
+
+                dist = sqrt( (dy - source.y) * (dy - source.y)
+                            +(dz - source.z) * (dz - source.z));
+
+                // For inhomogeneities add if statements
+                if (dist < radius){
+                    lass.EzH(dx, dy, dz) = Cour * eps / 9.0;
+                    lass.EzE(dx, dy, dz) = 1.0;
+                    lass.EyH(dx, dy, dz) = Cour * eps / 9.0;
+                    lass.EyE(dx, dy, dz) = 1.0;
+                    lass.ExH(dx, dy, dz) = Cour * eps / 9.0;
+                    lass.ExE(dx, dy, dz) = 1.0;
+
+                    lass.HyE(dx, dy, dz) = Cour * (1.0 / eps);
+                    lass.HyH(dx, dy, dz) = 1.0;
+                    lass.HxE(dx, dy, dz) = Cour * (1.0 / eps);
+                    lass.HxH(dx, dy, dz) = 1.0;
+                    lass.HzE(dx, dy, dz) = Cour * (1.0 / eps);
+                    lass.HzH(dx, dy, dz) = 1.0;
+
+                }
+                else{
+
+                    lass.EzH(dx, dy, dz) = Cour * eps;
+                    lass.EzE(dx, dy, dz) = 1.0;
+                    lass.EyH(dx, dy, dz) = Cour * eps;
+                    lass.EyE(dx, dy, dz) = 1.0;
+                    lass.ExH(dx, dy, dz) = Cour * eps;
+                    lass.ExE(dx, dy, dz) = 1.0;
+
+                    lass.HyE(dx, dy, dz) = Cour * (1.0 / eps);
+                    lass.HyH(dx, dy, dz) = 1.0;
+                    lass.HxE(dx, dy, dz) = Cour * (1.0 / eps);
+                    lass.HxH(dx, dy, dz) = 1.0;
+                    lass.HzE(dx, dy, dz) = Cour * (1.0 / eps);
+                    lass.HzH(dx, dy, dz) = 1.0;
+                }
+
+            }
+        }
+    }
+}
+
 void createloss1d(Loss1d &lass1d, double eps, double Cour, double loss){
 
     double depth, lossfactor;
@@ -412,9 +538,9 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
 
     // TFSF boundary
     Bound_pos first, last;
-    first.x = 5; last.x = 95;
-    first.y = 5; last.y = 25;
-    first.z = 5; last.z = 25;
+    first.x = 10; last.x = 120;
+    first.y = 10; last.y = 120;
+    first.z = 10; last.z = 120;
 
     // Update along right edge!
     dx = last.x;
@@ -452,33 +578,11 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
         }
     }
 
-/*
-    // Update along forw
-    dz = first.z - 1;
-    #pragma omp parallel for
-    for (int dx = first.x; dx <= last.x; dx++){
-        for (int dy = first.y; dy <= last.y; dy++){
-            EM.Hx(dx,dy,dz) -= lass.HxE(dx, dy, dz) * EM.Ez1d[dx];
-            EM.Hy(dx,dy,dz) -= lass.HyE(dx, dy, dz) * EM.Ez1d[dx];
-        }
-    }
-
-    // Update along back
-    dz = last.z;
-    #pragma omp parallel for
-    for (int dx = first.x; dx <= last.x; dx++){
-        for (int dy = first.y; dy <= last.y; dy++){
-            EM.Hx(dx,dy,dz) += lass.HxE(dx, dy, dz) * EM.Ez1d[dx];
-            EM.Hy(dx,dy,dz) += lass.HyE(dx, dy, dz) * EM.Ez1d[dx];
-        }
-    }
-*/
-
     // Insert 1d grid stuff here. Update magnetic and electric field
     Hupdate1d(EM, lass1d, EM.t);
     Eupdate1d(EM, lass1d, EM.t);
-    EM.Ez1d[5] = ricker(EM.t,0, Cour);
-    //EM.Ez1d[5] = planewave(EM.t, 15, Cour, 5);
+    EM.Ez1d[10] = ricker(EM.t,0, Cour);
+    //EM.Ez1d[10] = planewave(EM.t, 15, Cour, 5);
     //EM.Ez1d[290] = planewave(EM.t, 15, Cour, 10);
     EM.t++;
 
@@ -499,27 +603,6 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
             EM.Ez(dx,dy,dz) -= lass.EzH(dx,dy,dz) * EM.Hy1d[dx-1];
         }
     }
-
-/*
-    dy = last.y;
-    #pragma omp parallel for
-    for (int dx = first.x; dx <= last.x; dx++){
-        for (int dz = first.z; dz <= last.z; dz++){
-            EM.Ex(dx,dy,dz) += lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
-            EM.Ez(dx,dy,dz) += lass.EzH(dx,dy,dz) * EM.Hy1d[dx];
-        }
-    }
-
-    // Updating Ez along left
-    dy = first.y;
-    #pragma omp parallel for
-    for (int dx = first.x; dx <= last.x; dx++){
-        for (int dz = first.z; dz <= last.z; dz++){
-            EM.Ez(dx,dy,dz) -= lass.EzH(dx,dy,dz) * EM.Hy1d[dx];
-            EM.Ex(dx,dy,dz) -= lass.ExH(dx,dy,dz) * EM.Hy1d[dx];
-        }
-    }
-*/
 
     // Updating along back
     dz = last.z;
