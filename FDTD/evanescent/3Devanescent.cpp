@@ -58,7 +58,9 @@ struct Field{
 
                          Ex = std::vector<double>(spacex * spacey * spacez, 0),
                          Ey = std::vector<double>(spacex * spacey * spacez, 0),
-                         Ez = std::vector<double>(spacex * spacey * spacez, 0);
+                         Ez = std::vector<double>(spacex * spacey * spacez, 0),
+
+                         Po = std::vector<double>(spacex * spacey * spacez, 0);
 
 
     std::vector <double> Hy1d = std::vector<double>(spacex + losslayer, 0),
@@ -101,6 +103,8 @@ struct Field{
 #define HzH(i, j, k) HzH[(i) + (j) *  spacex + (k) * spacey * spacex]
 #define HzE(i, j, k) HzE[(i) + (j) *  spacex + (k) * spacey * spacex]
 
+#define Po(i, j, k) Po[(i) + (j) *  spacex + (k) * spacey * spacex]
+
 #define Hx(i, j, k) Hx[(i) + (j) *  spacex + (k) * spacey * spacex]
 #define Hy(i, j, k) Hy[(i) + (j) *  spacex + (k) * spacey * spacex]
 #define Hz(i, j, k) Hz[(i) + (j) *  spacex + (k) * spacey * spacex]
@@ -136,12 +140,13 @@ double ricker(int time, int loc, double Cour);
 double planewave(int time, int loc, double Cour, int ppw);
 
 // 2 dimensional functions for E / H movement
-void Hupdate3d(Field &EM, Loss &lass, int t);
-void Eupdate3d(Field &EM, Loss &lass, int t);
+void Hupdate3d(Field &EM, Loss &lass);
+void Eupdate3d(Field &EM, Loss &lass);
+void Pupdate3d(Field &EM);
 
 // 1 dimensional update functions for E / H
-void Hupdate1d(Field &EM, Loss1d &lass1d, int t);
-void Eupdate1d(Field &EM, Loss1d &lass1d, int t);
+void Hupdate1d(Field &EM, Loss1d &lass1d);
+void Eupdate1d(Field &EM, Loss1d &lass1d);
 
 // Creating loss
 void createloss3d(Loss &lass, double eps, double Cour, double loss);
@@ -201,15 +206,16 @@ void FDTD(Field &EM,
     // Time looping
     for (int t = 0; t < final_time; t++){
 
-        Hupdate3d(EM, lass, t);
+        Hupdate3d(EM, lass);
         TFSF(EM, lass, lass1d, Cour);
-        Eupdate3d(EM,lass,t);
+        Eupdate3d(EM,lass);
         ABCcheck(EM, lass, Cour);
+        Pupdate3d(EM);
         //EM.Ez(32,32,32) = 100 * ricker(t, 0, Cour);
 
         // Outputting to a file
-        //out3D(output, 400, t, EM);
-        out2D(output, 400, t, 64, EM);
+        out3D(output, 100, t, EM);
+        //out2D(output, 10, t, 64, EM);
 
     }
 }
@@ -223,12 +229,12 @@ void out3D(std::ofstream& output, int check, int t, const Field &EM){
     if (t % check == 0 && t != 0){
         //min = *std::min_element(std::begin(EM.Ez), std::end(EM.Ez));
         //max = *std::max_element(std::begin(EM.Ez), std::end(EM.Ez));
-        min = -0.2;
-        max = 0.7;
+        min = 0;
+        max = 0.005;
         for (size_t dz = 0; dz < spacez; dz++){
             for (size_t dy = 0; dy < spacey; dy++){
                 for (size_t dx = 0; dx< spacex; dx++){
-                    value = (EM.Ez(dx, dy, dz) - min) / (max - min);
+                    value = (EM.Po(dx, dy, dz) - min) / (max - min);
                     value = round(value * 255);
                     if (value > 255){
                         value = 255;
@@ -252,10 +258,11 @@ void out2D(std::ofstream& output, int check, int t, int slice, const Field &EM){
         for (size_t dx = 0; dx < spacex; dx++){
             for (size_t dy = 0; dy < spacey; dy++){
                 output << dx << '\t' << dy << '\t'
-                       << EM.Ez(dx, dy, slice) << '\n';
+                       << EM.Po(dx, dy, slice) << '\n';
 
             }
         }
+        output << '\n' << '\n';
     }
 }
 
@@ -271,7 +278,7 @@ double ricker(int time, int loc, double Cour){
 }
 
 // 3 dimensional functions for E / H movement
-void Hupdate3d(Field &EM, Loss &lass, int t){
+void Hupdate3d(Field &EM, Loss &lass){
     // update magnetic field, x direction
     #pragma omp parallel for
     for (size_t dx = 0; dx < spacex; dx++){
@@ -316,7 +323,7 @@ void Hupdate3d(Field &EM, Loss &lass, int t){
 }
 
 
-void Eupdate3d(Field &EM, Loss &lass, int t){
+void Eupdate3d(Field &EM, Loss &lass){
     // update electric field
     #pragma omp parallel for
     for (size_t dx = 1; dx < spacex - 1; dx++){
@@ -358,8 +365,34 @@ void Eupdate3d(Field &EM, Loss &lass, int t){
     }
 
 }
+
+// Outputting the magnetude of the Poynting vector every spatial step
+void Pupdate3d(Field &EM){
+
+    #pragma omp parallel for
+    for (size_t dx = 0; dx < spacex; dx++){
+        for (size_t dy = 0; dy < spacey; dy++){
+            for (size_t dz = 0; dz < spacez; dz++){
+                EM.Po(dx,dy,dz) = 
+                       sqrt(((EM.Ey(dx,dy,dz) * EM.Hz(dx,dy,dz) 
+                               - EM.Ez(dx,dy,dz) * EM.Hy(dx,dy,dz)) *
+                             (EM.Ey(dx,dy,dz) * EM.Hz(dx,dy,dz)
+                               - EM.Ez(dx,dy,dz) * EM.Hy(dx,dy,dz))) +
+                             ((EM.Ex(dx,dy,dz) * EM.Hz(dx,dy,dz) 
+                               - EM.Ez(dx,dy,dz) * EM.Hx(dx,dy,dz)) *
+                             (EM.Ex(dx,dy,dz) * EM.Hz(dx,dy,dz) 
+                               - EM.Ez(dx,dy,dz) * EM.Hx(dx,dy,dz))) +
+                             ((EM.Ex(dx,dy,dz) * EM.Hy(dx,dy,dz)
+                               - EM.Ey(dx,dy,dz) * EM.Hx(dx,dy,dz)) *
+                              (EM.Ex(dx,dy,dz) * EM.Hy(dx,dy,dz) 
+                               - EM.Ey(dx,dy,dz) * EM.Hx(dx,dy,dz))));
+            }
+        }
+    }
+}
+
 // 1 dimensional update functions for E / H
-void Hupdate1d(Field &EM, Loss1d &lass1d, int t){
+void Hupdate1d(Field &EM, Loss1d &lass1d){
     // update magnetic field, y direction
     #pragma omp parallel for
     for (size_t dx = 0; dx < spacex - 1; dx++){
@@ -369,7 +402,7 @@ void Hupdate1d(Field &EM, Loss1d &lass1d, int t){
 
 }
 
-void Eupdate1d(Field &EM, Loss1d &lass1d, int t){
+void Eupdate1d(Field &EM, Loss1d &lass1d){
     // update electric field, y direction
     for (size_t dx = 1; dx < spacex - 1; dx++){
         EM.Ez1d[dx] = lass1d.EzE[dx] * EM.Ez1d[dx]
@@ -579,8 +612,8 @@ void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
     }
 
     // Insert 1d grid stuff here. Update magnetic and electric field
-    Hupdate1d(EM, lass1d, EM.t);
-    Eupdate1d(EM, lass1d, EM.t);
+    Hupdate1d(EM, lass1d);
+    Eupdate1d(EM, lass1d);
     EM.Ez1d[10] = ricker(EM.t,0, Cour);
     //EM.Ez1d[10] = planewave(EM.t, 15, Cour, 5);
     //EM.Ez1d[290] = planewave(EM.t, 15, Cour, 10);
