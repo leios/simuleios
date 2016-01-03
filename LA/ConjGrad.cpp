@@ -55,7 +55,13 @@ array2D matdiff(const array2D &A, const array2D &B);
 array2D matscale(const array2D &A, double scale);
 
 // Function for finding the magnitude of a vector... Note not array yet.
-double matmag(const array2D &A);
+double magnitude(const array2D &A);
+
+// Function for finding the transpose
+array2D transpose(const array2D &A);
+
+// For bpaf because he said I was lazy
+void matprint(const array2D &A);
 
 // Function for Conj Gradient -- All the big stuff happens here
 void conjgrad(const array2D &A, const array2D &b, array2D &x_0, double thresh);
@@ -66,19 +72,26 @@ void conjgrad(const array2D &A, const array2D &b, array2D &x_0, double thresh);
 
 int main(){
 
-    array2D a(2,2), b(2,1);
+    double thresh = 0.001;
+
+    array2D a(2,2), b(2,1), x(2,1);
 
     a(0,0) = 4; a(1,0) = 1; a(0,1) = 1; a(1,1) = 3;
-    b(0,0) = 2; b(0,1) = 1;
+    x(0,0) = 2; x(0,1) = 1;
+    b(0,0) = 1; b(0,1) = 2;
 
-    array2D c = matmul(a, b);
+    array2D c = matmul(a, x);
 
-    for (size_t i = 0; i < c.rows; i++){
-        for (size_t j = 0; j < c.columns; j++){
-            std::cout << c(i,j) << '\t';
-        }
-        std::cout << '\n';
-    }
+    std::cout << "Simple matrix multiplication check:" << '\n';
+    matprint(c);
+
+    std::cout << '\n';
+
+    conjgrad(a, b, x, thresh);
+
+    std::cout << "Conjugate Gradient output with threshold " << thresh << '\n';
+    matprint(x);
+
 }
 
 /*----------------------------------------------------------------------------//
@@ -107,31 +120,6 @@ array2D matmul(const array2D &A, const array2D &B){
     return C;
 }
 
-// Function for Conj Gradient -- All the big stuff happens here
-
-void conjgrad(const array2D &A, const array2D &b, array2D &x_0, double thresh){
-
-    // Not working. Messily break if someone tries to use it.
-    std::cout << "Not working" << '\n';
-    assert(thresh < 0);
-
-    array2D r(x_0.rows, x_0.columns), p(x_0.rows,x_0.columns);
-    double alpha, diff;
-
-    // definingin first r
-    array2D r_0 = matdiff(b, matmul(A,x_0));
-
-    // setting x arbitrarily high to start
-    array2D x = matscale(x_0, 4);
-
-    // *grumble... gustorn... grumble*
-    array2D p_0 = matscale(r_0,1);
-/*
-    while (diff > thresh){
-    }
-*/
-}
-
 // Function for scaling
 array2D matadd(const array2D &A, const array2D &B){
 
@@ -155,7 +143,7 @@ array2D matadd(const array2D &A, const array2D &B){
 array2D matdiff(const array2D &A, const array2D &B){
 
     if (A.rows != B.rows || A.columns != B.columns){
-        std::cout << "incorrect dimensions with addition" << '\n';
+        std::cout << "incorrect dimensions with difference" << '\n';
         assert(A.rows == B.rows || A.columns == B.columns);
     }
 
@@ -186,7 +174,7 @@ array2D matscale(const array2D &A, double scale){
 
 // Function for finding magnitude for a single columned array
 // Note: We should probably set this function to work for all types of matrices
-double matmag(const array2D &A){
+double magnitude(const array2D &A){
     double mag = 0;
 
     if (A.columns > 1){
@@ -201,3 +189,67 @@ double matmag(const array2D &A){
     mag = sqrt(mag);
     return mag;
 }
+
+// Function for finding the transpose
+array2D transpose(const array2D &A){
+    array2D C(A.columns, A.rows);
+
+    for (size_t i = 0; i < A.rows; i++){
+        for (size_t j = 0; j < A.columns; j++){
+            C(j, i) = A(i, j);
+        }
+    }
+    return C;
+}
+
+void matprint(const array2D &A){
+    for (size_t i = 0; i < A.rows; i++){
+        for (size_t j = 0; j < A.columns; j++){
+            std::cout << A(i,j) << '\t';
+        }
+        std::cout << '\n';
+    }
+
+}
+
+// Function for Conj Gradient -- All the big stuff happens here
+void conjgrad(const array2D &A, const array2D &b, array2D &x_0, double thresh){
+
+    array2D r(x_0.rows, x_0.columns), p(x_0.rows,x_0.columns), 
+            temp1(1,1), temp2(1,1);
+    double alpha, diff, beta;
+
+    // definingin first r
+    array2D r_0 = matdiff(b, matmul(A,x_0));
+
+    // setting x arbitrarily high to start
+    array2D x = matscale(x_0, 4);
+
+    // *grumble... gustorn... grumble*
+    array2D p_0 = matscale(r_0,1);
+
+    diff = magnitude(matdiff(x, x_0));
+    while (diff > thresh){
+
+        // Note, matmul will output a array2D with one element.
+        temp1 = matmul(transpose(r_0), r_0);
+        temp2 = matmul(transpose(p_0), matmul(A, p_0));
+        alpha = temp1(0,0) / temp2(0,0);
+
+        x = matadd(x_0, matscale(p_0,alpha));
+        r = matadd(r_0, matmul(matscale(A,-alpha),p_0));
+
+        temp1 = matmul(transpose(r),r);
+        temp2 = matmul(transpose(r_0),r_0);
+        
+        p = matadd(r, matscale(p_0,beta)); 
+
+        diff = magnitude(matdiff(x, x_0));
+
+        // set all the values to naughts
+        x_0 = matscale(x,1);
+        r_0 = matscale(r,1);
+        p_0 = matscale(p,1);
+    }
+}
+
