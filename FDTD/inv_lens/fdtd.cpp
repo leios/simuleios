@@ -16,8 +16,8 @@
 #include <cmath>
 #include <fstream>
 
-static const size_t spacey = 2000;
-static const size_t spacex = 3000;
+static const size_t spacey = 1500;
+static const size_t spacex = 2000;
 static const size_t losslayer = 20;
 
 struct Bound{
@@ -98,7 +98,7 @@ void createloss1d(Loss1d &lass1d, double eps, double Cour,
                   double loss);
 
 // Total Field Scattered Field (TFSF) boundaries
-void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour);
+void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour, int ppw);
 
 // Checking Absorbing Boundary Conditions (ABS)
 void ABCcheck(Field &EM, Loss &lass);
@@ -135,6 +135,7 @@ void FDTD(Field &EM,
 
     double loss = 0.00;
     double Cour = 1 / sqrt(2);
+    int numtry = 10, ppw;
 
     Loss lass;
     createloss2d(lass, eps, Cour, loss);
@@ -142,27 +143,31 @@ void FDTD(Field &EM,
     createloss1d(lass1d, eps, Cour, loss);
 
     // Time looping
-    for (int t = 0; t < final_time; t++){
+    for (int q = 0; q < numtry; q++){
+        ppw = 5 + (1/(double)numtry) * q;
+        for (int t = 0; t < final_time; t++){
 
-        Hupdate2d(EM, lass, t);
-        TFSF(EM, lass, lass1d, Cour);
-        Eupdate2d(EM,lass,t);
-        ABCcheck(EM, lass);
+            Hupdate2d(EM, lass, t);
+            TFSF(EM, lass, lass1d, Cour, ppw);
+            Eupdate2d(EM,lass,t);
+            ABCcheck(EM, lass);
         
-        // Outputting to a file
-        int check = 30000;
-        if (t % check == 0){
-            for (size_t dx = 0; dx < spacex; dx++){
-                for (size_t dy = 0; dy < spacey; dy++){
-                    output << t << '\t' << dx <<'\t' << dy << '\t'
-                           << EM.Ez(dx, dy) << '\t' << EM.Hy(dx, dy) 
-                           << '\t' << EM.Hx(dx, dy) << '\t' << '\n';
+            // Outputting to a file
+            int check = 30000;
+            if (t % check == 0 && t != 0){
+                for (size_t dx = 0; dx < spacex; dx++){
+                    for (size_t dy = 0; dy < spacey; dy++){
+                        output << t << '\t' << dx <<'\t' << dy << '\t'
+                               << EM.Ez(dx, dy) << '\n';
+                               // '\t' << EM.Hy(dx, dy) 
+                               // << '\t' << EM.Hx(dx, dy) << '\t' << '\n';
+                    }
                 }
+
+                output << '\n' << '\n';
             }
 
-            output << '\n' << '\n';
         }
-
     }
 }
 
@@ -245,9 +250,9 @@ void Eupdate1d(Field &EM, Loss1d &lass1d, int t){
 void createloss2d(Loss &lass, double eps, double Cour, 
                   double loss){
 
-    double radius = 850;
-    int sourcex = 860, sourcex2 = 250;
-    int sourcey = 1000, sourcey2 = 100;
+    double radius = 400;
+    int sourcex = 450, sourcex2 = 250;
+    int sourcey = 750, sourcey2 = 100;
     double dist, var, Q, epsp, mup, dist2, var_old;
     double cutoff = 1.5;
     for (size_t dx = 0; dx < spacex; dx++){
@@ -265,12 +270,12 @@ void createloss2d(Loss &lass, double eps, double Cour,
                 var = (Q - (1.0 / (3.0 * Q))) * (Q - (1.0 / (3.0 * Q)));
                 // var = radius / dist;
                 // var = 1.1;
-                if (var - var_old > cutoff){
+                if (abs(var - var_old) > cutoff){
                     var = var_old;
                 }
 
-                if (var - var_old < -cutoff){
-                    var = var_old;
+                if (var > 10){
+                    var = 10;
                 }
 
                 if (isnan(var)){
@@ -368,14 +373,14 @@ void createloss1d(Loss1d &lass1d, double eps, double Cour,
 }
 
 // TFSF boundaries
-void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour){
+void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour, int ppw){
 
-    int dx, dy, ppw = 50, loc = 15;
+    int dx, dy, loc = 0;
 
     // TFSF boundary
     Bound first, last;
-    first.x = 10; last.x = 2990;
-    first.y = 10; last.y = 1990;
+    first.x = 10; last.x = 1990;
+    first.y = 10; last.y = 1490;
 
     // Update along right edge!
     dx = last.x;
@@ -503,10 +508,8 @@ void ABCcheck(Field &EM, Loss &lass){
 double planewave(int time, int loc, double Cour, int ppw){
     double plane;
 
-    plane = sin((1 / (double)ppw) * (Cour * 1 * (double)time -
-                 (double)loc));
-    //plane = sin((double)(time-loc) * 3.5 / radius);
-
+    plane = sin((ppw / (Cour * 400))* (double)time -
+                 (double)loc);
     return plane;
 }
 
