@@ -7,12 +7,6 @@
 *              Where A is a square matrix of dimension N and x, b are vectors
 *              of length N. 
 *
-*   Notes: We can write this entire code without std:: vector. Think about it
-*          Need to make sure we are indexing arrays appropriately.
-*          Think about using LAPACK / BLAS
-*          matmag is not for matrices yet. Fix that.
-*          ConjGrad function not working or tested yet.
-*
 *-----------------------------------------------------------------------------*/
 
 #include <iostream>
@@ -241,6 +235,8 @@ void conjgrad(const array2D &A, const array2D &b, array2D &x_0, double thresh){
 
         temp1 = matmul(transpose(r),r);
         temp2 = matmul(transpose(r_0),r_0);
+
+        beta = temp1(0,0) / temp2(0,0);
         
         p = matadd(r, matscale(p_0,beta)); 
 
