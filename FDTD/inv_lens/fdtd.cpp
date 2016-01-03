@@ -81,7 +81,7 @@ void FDTD(Field &EM,
 double ricker(int time, int loc, double Cour);
 
 // Adding plane wave
-double planewave(int time, int loc, double Cour, int ppw);
+double planewave(int time, int loc, double Cour, double ppw);
 
 // 2 dimensional functions for E / H movement
 void Hupdate2d(Field &EM, Loss &lass, int t);
@@ -98,7 +98,7 @@ void createloss1d(Loss1d &lass1d, double eps, double Cour,
                   double loss);
 
 // Total Field Scattered Field (TFSF) boundaries
-void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour, int ppw);
+void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour, double ppw);
 
 // Checking Absorbing Boundary Conditions (ABS)
 void ABCcheck(Field &EM, Loss &lass);
@@ -134,8 +134,8 @@ void FDTD(Field &EM,
           std::ofstream& output){
 
     double loss = 0.00;
-    double Cour = 1 / sqrt(2);
-    int numtry = 10, ppw;
+    double Cour = 1 / sqrt(2), ppw;
+    int numtry = 10;
 
     Loss lass;
     createloss2d(lass, eps, Cour, loss);
@@ -373,7 +373,7 @@ void createloss1d(Loss1d &lass1d, double eps, double Cour,
 }
 
 // TFSF boundaries
-void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour, int ppw){
+void TFSF(Field &EM, Loss &lass, Loss1d &lass1d, double Cour, double ppw){
 
     int dx, dy, loc = 0;
 
@@ -505,7 +505,7 @@ void ABCcheck(Field &EM, Loss &lass){
 
 
 // Adding plane wave
-double planewave(int time, int loc, double Cour, int ppw){
+double planewave(int time, int loc, double Cour, double ppw){
     double plane;
 
     plane = sin((ppw / (Cour * 400))* (double)time -
