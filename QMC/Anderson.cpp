@@ -18,6 +18,7 @@
 #include <iostream>
 #include <random>
 #include <Eigen/Core>
+#include <fstream>
 
 #define DOF 6
 #define SIZE 2000
@@ -54,13 +55,15 @@ void diffuse(H3plus& state);
 
 int main(){
 
+    std::ofstream output("out.dat", std::ostream::out);
     H3plus state;
 
     state.Vref = 1;
+    state.psipnum = 250;
 
     populate(state);
 
-    std::cout << state.pos << '\n';
+    output << state.pos << '\n';
     
 }
 
