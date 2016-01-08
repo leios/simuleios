@@ -17,28 +17,10 @@ program nelder
 !  DEFINITIONS
 !!----------------------------------------------------------------------------!!
 
-      integer, parameter             :: dim = 8
-      integer                        :: i
-      integer, dimension(dim, dim-1) :: list
-
-      interface
-          subroutine pop_list(list, dim)
-              integer, dimension(:,:) :: list
-              integer                 :: dim
-          end subroutine pop_list
-      end interface
-
       call downhill
-      call pop_list(list, dim)
 
       write(*,*)
 
-      do i = 1,dim
-          do j = 1,dim-1
-              write(*,*) list(i,j)
-          end do
-          write(*,*)
-      end do
       write(*,*) "yoyoyo, sales claus gave you some yoyos!"
 
 end program
@@ -53,7 +35,7 @@ subroutine downhill
       implicit none
       integer, parameter             :: dim = 8
       integer :: min, max, i, minsave, maxsave
-      !!integer, dimension(dim, dim-1) :: list
+      integer, dimension(dim, dim-1) :: list
       real*8, dimension(2, dim)      :: pos
       real*8, dimension(dim - 1)     :: value
       real*8  :: alpha = 1, beta = 0.5, gamma = 1.5, dist, cutoff = 0.0001
@@ -84,8 +66,9 @@ subroutine downhill
       end interface
 
       interface
-          subroutine pop_list(list, dim)
+          subroutine pop_list(list, dim, pos)
               integer, dimension(:,:) :: list
+              real*8, dimension(:,:)  :: pos
               integer                 :: dim
           end subroutine pop_list
       end interface
@@ -251,6 +234,16 @@ subroutine downhill
       write(*,*) pos(2,:)
       write(*,*) min, max, dim
 
+      call pop_list(list, dim, pos)
+      do i = 1, dim
+          write(*,*) list(i,:)
+          write(*,*) pos(1, i), pos(2,i)
+      end do
+
+      call findval_sales(pos, list, value, dim)
+
+      write(*,*) value
+
 
 end subroutine
 
@@ -382,18 +375,20 @@ subroutine findval(pos, value, dim)
 end subroutine
 
 !! Finds the initial list variable set
-subroutine pop_list(list, dim)
+subroutine pop_list(list, dim, pos)
       implicit none
       integer, dimension(:,:) :: list
       integer                 :: dim, i, j, k, swap, tmp
       integer, parameter      :: seed = 1
-      real*8                  :: var
+      real*8                  :: var, theta
+      real*8, dimension(:,:)  :: pos
 
       !! Initialization!
       do i = 1, dim
           do j = 1,dim - 1
               list(i,j) = j
           end do 
+          !! This guy swaps everything around to get random init lists.
           do k = dim-1, 1, -1
               call random_number(var)
               swap = mod(ceiling(var*dim-1), k) + 1
@@ -404,6 +399,13 @@ subroutine pop_list(list, dim)
           end do
       end do
 
+      !! initialize each new position
+      do i = 1, dim
+          theta = i * 2 * 3.14159 / dim
+          pos(1,i) = cos(theta)
+          pos(2,i) = sqrt(1 - (pos(1,i) * pos(1,i)))
+      end do
+
 end subroutine
 
 !! finding new values for new possible routes with Santa Claus
@@ -412,19 +414,19 @@ subroutine findval_sales(pos, list, value, dim)
       integer, dimension(:,:) :: list
       real*8, dimension(:,:)  :: pos
       real*8, dimension(:)    :: value
-      real*8                  :: dist
+      real*8                  :: dist, delx, dely
       integer                 :: dim, i, j
 
-      do i = 1,dim
-          do j = 1,dim-1
-              dist = sqrt(((pos(1,list(i,j)) - pos(1,list(i,j+1))) & 
-                          * (pos(1,list(i,j)) - pos(1,list(i,j+1)))) &
-                          -((pos(2,list(i,j)) - pos(2,list(i,j+1))) &
-                          * (pos(2,list(i,j)) - pos(2,list(i,j+1)))))
+      do i = 1,dim-1
+          do j = 1,dim-2
+              delx = (pos(1,list(i,j)) - pos(1,list(i,j+1))) & 
+                     * (pos(1,list(i,j)) - pos(1,list(i,j+1)))
+              dely = (pos(2,list(i,j)) - pos(2,list(i,j+1))) & 
+                     * (pos(2,list(i,j)) - pos(2,list(i,j+1)))
+              dist = sqrt((delx * delx) + (dely * dely))
 
               value(i) = value(i) + dist
           end do
       end do
-
       
 end subroutine
