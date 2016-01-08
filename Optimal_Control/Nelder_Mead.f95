@@ -17,7 +17,7 @@ program nelder
 !  DEFINITIONS
 !!----------------------------------------------------------------------------!!
 
-      integer, parameter             :: dim = 4
+      integer, parameter             :: dim = 8
       integer                        :: min, max, i
       integer, dimension(dim, dim-1) :: list
       real*8, dimension(2, dim)      :: pos
@@ -42,7 +42,7 @@ program nelder
           end do
           write(*,*)
       end do
-      write(*,*) "yoyoyo, santa claus gave you some yoyos!"
+      write(*,*) "yoyoyo, sales claus gave you some yoyos!"
 
 end program
 
@@ -54,7 +54,7 @@ end program
 !! The nelder mead method 
 subroutine downhill
       implicit none
-      integer, parameter             :: dim = 4
+      integer, parameter             :: dim = 8
       integer :: min, max, i, minsave, maxsave, check, minval, maxval
       integer, dimension(dim, dim-1) :: list
       real*8, dimension(2, dim)      :: pos
@@ -71,12 +71,12 @@ subroutine downhill
       end interface
 
       interface
-          subroutine findval_santa(pos, list, dim)
+          subroutine findval_sales(pos, list, value, dim)
               real*8, dimension(:,:) :: pos
               integer, dimension(:,:):: list
               real*8, dimension(:)   :: value
               integer                :: dim
-          end subroutine findval_santa
+          end subroutine findval_sales
       end interface
 
       interface
@@ -162,7 +162,7 @@ subroutine downhill
       do while (dist > cutoff)
       !do while (i < 10)
           !! Reflection first
-          !write(*,*) i
+          write(*,*) i
           minsave = min
           minval = value(min)
           xsave = pos(1, min)
@@ -250,8 +250,8 @@ subroutine downhill
 
       end do
 
-      write(*,*) pos(1,1), pos(1,2), pos(1,3), pos(1,4)
-      write(*,*) pos(2,1), pos(2,2), pos(2,3), pos(2,4)
+      write(*,*) pos(1,:)
+      write(*,*) pos(2,:)
       write(*,*) min, max, dim
 
 
@@ -374,7 +374,7 @@ subroutine findval(pos, value, dim)
       implicit none
       real*8,  dimension(:,:):: pos
       real*8,  dimension(:)  :: value
-      real*8                 :: sourcex = 1.0, sourcey = 1.0
+      real*8                 :: sourcex = 0.5, sourcey = 1.0
       integer                :: dim
       integer                :: i
 
@@ -411,22 +411,22 @@ subroutine pop_list(list, dim)
 end subroutine
 
 !! finding new values for new possible routes with Santa Claus
-subroutine findval_santa(pos, list, dim, value)
+subroutine findval_sales(pos, list, value, dim)
       implicit none
       integer, dimension(:,:) :: list
       real*8, dimension(:,:)  :: pos
       real*8, dimension(:)    :: value
       real*8                  :: dist
-      integer                 :: dim
+      integer                 :: dim, i, j
 
       do i = 1,dim
           do j = 1,dim-1
-              dist = sqrt(((pos(1,list(i,j)) - pos(1,list(i,j+1))) 
-                          * (pos(1,list(i,j)) - pos(1,list(i,j+1))))
-                          -((pos(2,list(i,j)) - pos(2,list(i,j+1))) 
+              dist = sqrt(((pos(1,list(i,j)) - pos(1,list(i,j+1))) & 
+                          * (pos(1,list(i,j)) - pos(1,list(i,j+1)))) &
+                          -((pos(2,list(i,j)) - pos(2,list(i,j+1))) &
                           * (pos(2,list(i,j)) - pos(2,list(i,j+1)))))
 
-              value(i) = value + dist
+              value(i) = value(i) + dist
           end do
       end do
 
