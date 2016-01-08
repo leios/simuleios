@@ -18,11 +18,8 @@ program nelder
 !!----------------------------------------------------------------------------!!
 
       integer, parameter             :: dim = 8
-      integer                        :: min, max, i
+      integer                        :: i
       integer, dimension(dim, dim-1) :: list
-      real*8, dimension(2, dim)      :: pos
-      real*8, dimension(dim - 1)     :: value
-      real*8                         :: x, y, alpha, beta, gamma
 
       interface
           subroutine pop_list(list, dim)
@@ -55,12 +52,12 @@ end program
 subroutine downhill
       implicit none
       integer, parameter             :: dim = 8
-      integer :: min, max, i, minsave, maxsave, check, minval, maxval
-      integer, dimension(dim, dim-1) :: list
+      integer :: min, max, i, minsave, maxsave
+      !!integer, dimension(dim, dim-1) :: list
       real*8, dimension(2, dim)      :: pos
       real*8, dimension(dim - 1)     :: value
-      real*8  :: x, y, alpha = 1, beta = 0.5, gamma = 1.5, dist, cutoff = 0.0001
-      real*8  :: xsave, ysave
+      real*8  :: alpha = 1, beta = 0.5, gamma = 1.5, dist, cutoff = 0.0001
+      real*8  :: xsave, ysave, minval, check
 
       interface
           subroutine findval(pos, value, dim)
@@ -101,9 +98,9 @@ subroutine downhill
       end interface
 
       interface
-          subroutine centroid(pos, min, max, dim)
+          subroutine centroid(pos, min, dim)
               real*8, intent(inout)  :: pos(:,:)
-              integer, intent(in)    :: min, max, dim
+              integer, intent(in)    :: min, dim
           end subroutine centroid
       end interface
 
@@ -145,7 +142,7 @@ subroutine downhill
       call populate(pos, dim)
       call findval(pos, value, dim)
       call minmax(value, min, max)
-      call centroid(pos, min, max, dim)
+      call centroid(pos, min, dim)
 
       !write(*,*) pos(1,1), pos(1,2), pos(1,3), pos(1,4)
       !write(*,*) pos(2,1), pos(2,2), pos(2,3), pos(2,4)
@@ -170,7 +167,7 @@ subroutine downhill
           call reflect(pos, min, dim, alpha)
           call findval(pos, value, dim)
           call minmax(value, min, max)
-          call centroid(pos, min, max, dim)
+          call centroid(pos, min, dim)
 
           !! Expansion if the minimum value becomes the maximum
           if (minsave.EQ.max) then
@@ -192,7 +189,7 @@ subroutine downhill
                   call minmax(value, min, max)
               end if
 
-              call centroid(pos, min, max, dim)
+              call centroid(pos, min, dim)
 
 
           !! Contract from old position if minima value is still minima value
@@ -222,7 +219,7 @@ subroutine downhill
                   call contract(pos, min, dim, beta)
                   call findval(pos, value, dim)
                   call minmax(value, min, max)
-                  call centroid(pos, min, max, dim)
+                  call centroid(pos, min, dim)
 
                   check = value(min)
 
@@ -231,7 +228,7 @@ subroutine downhill
                       call contractall(pos, max, dim)
                       call findval(pos, value, dim)
                       call minmax(value, min, max)
-                      call centroid(pos, min, max, dim)
+                      call centroid(pos, min, dim)
                   end if
 
               end if
@@ -263,7 +260,6 @@ pure subroutine contractall(pos, max, dim)
       real*8, dimension(:,:), intent(inout) :: pos
       integer, intent(in)                   :: max, dim
       integer                               :: i
-      real*8                                :: xsum, ysum
 
       do i = 1, dim - 1
           if (i.NE.max) then
@@ -331,7 +327,7 @@ subroutine populate(pos, dim)
       implicit none
       integer                :: dim
       real*8, dimension(:,:) :: pos
-      integer                :: seed, i, x
+      integer                :: i
 
       !!call init_random_seed()
 
@@ -345,10 +341,10 @@ subroutine populate(pos, dim)
 end subroutine
 
 !! finds centroid position 
-subroutine centroid(pos, min, max, dim)
+subroutine centroid(pos, min, dim)
       implicit none
       real*8, intent(inout)  :: pos(:,:)
-      integer, intent(in)    :: min, max, dim
+      integer, intent(in)    :: min, dim
       integer                :: i
       real*8                 :: xsum, ysum
 
@@ -395,7 +391,7 @@ subroutine pop_list(list, dim)
 
       !! Initialization!
       do i = 1, dim
-          do j = 1,dim
+          do j = 1,dim - 1
               list(i,j) = j
           end do 
           do k = dim-1, 1, -1
