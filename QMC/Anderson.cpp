@@ -59,12 +59,13 @@ int main(){
     H3plus state;
 
     state.Vref = 1;
-    state.psipnum = 250;
+    state.psipnum = 4;
 
     populate(state);
+    diffuse(state);
 
     output << state.pos << '\n';
-    
+
 }
 
 /*----------------------------------------------------------------------------//
@@ -118,40 +119,65 @@ void find_weights(H3plus& state){
 // Branching scheme
 void branch(H3plus& state){
 
-    int variable, offset = 0, psip_old = state.psipnum;
+    int variable, offset = 0, psip_old = state.psipnum, births = 0;
 
     std::default_random_engine gen;
     std::uniform_real_distribution<double> distribution(0,1);
 
-    for (size_t i = 0; i < state.pos.rows(); i++){
-        variable = (unsigned int)(state.pos(i,DIMS) * distribution(gen));
+    for (size_t i = 0; i < psip_old + births; i++){
+        //variable = (unsigned int)(state.pos(i,DIMS-1) * distribution(gen));
+        if (state.pos(i,DIMS-1) == 0){
+            variable = 0;
+        } 
+        else{variable = 1;}
 
         if (variable > 3){
             variable = 3;
         }
 
+        if (i == 0){variable = 0;}
+        if (i == 1){variable = 3;}
+        if (i == 2){variable = 2;}
+        if (i == 3){variable = 1;}
+
         switch (variable){
             // Destruction
             case 0: state.psipnum--;
                     offset++;
+                    for (size_t j = 0; j < state.pos.cols(); j++){
+                        state.pos(i, j) = state.pos(i+offset, j);
+                    }
+                    std::cout << "deleting particle" << '\t' << i << '\n';
                     break;
 
-            // Nothing
-            // case 1: 
+            case 1: for (size_t j = 0; j < state.pos.cols(); j++){
+                        state.pos(i,j) = state.pos(i+offset,j);
+                    }
+                    break;
 
             // Creation of 1
             case 2: state.psipnum++;
-                    for (size_t j = 0; j < state.pos.cols(); j++){
-                        state.pos(psip_old, j) = state.pos(i+offset, j);
+                    births++;
+                    for (size_t j = 0; j < state.pos.cols() - 1; j++){
+                        state.pos(psip_old+births-1,j) = state.pos(i,j);
+                        state.pos(i,j) = state.pos(i+offset,j);
                     }
+                    state.pos(psip_old+births-1, DIMS-1) = 1;
+                    state.pos(i,DIMS-1) = state.pos(i+offset, DIMS-1);
                     break;
 
             // Creation of 2
             case 3: state.psipnum += 2;
+                    births += 2;
                     for (size_t k = 0; k < 2; k++){
-                        for (size_t j = 0; j < state.pos.cols(); j++){
-                            state.pos(psip_old - k, j) = state.pos(i, j);
+                        for (size_t j = 0; j < state.pos.cols() - 1; j++){
+                            state.pos(psip_old-k+births-1, j) = state.pos(i, j);
+                            std::cout << state.pos(psip_old-k+births-1, j) << '\n';
+                            state.pos(i,j) = state.pos(i+offset,j); 
                         }
+                        state.pos(psip_old-k+births, DIMS-1) = 1;
+                        state.pos(i,DIMS-1) = state.pos(i+offset,DIMS-1);
+                        std::cout << "writing: " << psip_old-k+births-1 << '\n';
                     }
                     break;
 
@@ -176,13 +202,13 @@ void diffuse(H3plus& state){
 
     // For now, I am going to set a definite number of timesteps
     // This will be replaced by a while loop in the future.
-    for (size_t t = 0; t < 100; t++){
+    for (size_t t = 0; t < 1; t++){
         for (size_t i = 0; i < state.psipnum; i++){
             for (size_t j = 0; j < state.pos.cols(); j++){
                 state.pos(i, j) += sqrt(dt) * gaussian(gen);
             }
         }
+        branch(state);
     }
 
-    branch(state);
 }
