@@ -126,10 +126,7 @@ void branch(H3plus& state){
 
     for (size_t i = 0; i < psip_old + births; i++){
         //variable = (unsigned int)(state.pos(i,DIMS-1) * distribution(gen));
-        if (state.pos(i,DIMS-1) == 0){
-            variable = 0;
-        } 
-        else{variable = 1;}
+        variable = 1;
 
         if (variable > 3){
             variable = 3;
@@ -137,22 +134,14 @@ void branch(H3plus& state){
 
         if (i == 0){variable = 0;}
         if (i == 1){variable = 3;}
-        if (i == 2){variable = 2;}
-        if (i == 3){variable = 1;}
+        if (i == 2){variable = 0;}
+        if (i == 3){variable = 3;}
 
         switch (variable){
             // Destruction
             case 0: state.psipnum--;
                     offset++;
-                    for (size_t j = 0; j < state.pos.cols(); j++){
-                        state.pos(i, j) = state.pos(i+offset, j);
-                    }
                     std::cout << "deleting particle" << '\t' << i << '\n';
-                    break;
-
-            case 1: for (size_t j = 0; j < state.pos.cols(); j++){
-                        state.pos(i,j) = state.pos(i+offset,j);
-                    }
                     break;
 
             // Creation of 1
@@ -160,10 +149,8 @@ void branch(H3plus& state){
                     births++;
                     for (size_t j = 0; j < state.pos.cols() - 1; j++){
                         state.pos(psip_old+births-1,j) = state.pos(i,j);
-                        state.pos(i,j) = state.pos(i+offset,j);
                     }
-                    state.pos(psip_old+births-1, DIMS-1) = 1;
-                    state.pos(i,DIMS-1) = state.pos(i+offset, DIMS-1);
+                    state.pos(psip_old+births-1,DIMS-1) = 1;
                     break;
 
             // Creation of 2
@@ -173,15 +160,18 @@ void branch(H3plus& state){
                         for (size_t j = 0; j < state.pos.cols() - 1; j++){
                             state.pos(psip_old-k+births-1, j) = state.pos(i, j);
                             std::cout << state.pos(psip_old-k+births-1, j) << '\n';
-                            state.pos(i,j) = state.pos(i+offset,j); 
                         }
-                        state.pos(psip_old-k+births, DIMS-1) = 1;
-                        state.pos(i,DIMS-1) = state.pos(i+offset,DIMS-1);
-                        std::cout << "writing: " << psip_old-k+births-1 << '\n';
+                        state.pos(psip_old-k+births-1,DIMS-1) = 1;
+                        std::cout << "writing: " << i << " to " << psip_old-k+births-1 << '\n';
                     }
                     break;
 
         }
+        // Adjustment for offeset
+        for (size_t j = 0; j < state.pos.cols(); j++){
+            state.pos(i,j) = state.pos(i+offset,j);
+        }
+
     }
 
 }
