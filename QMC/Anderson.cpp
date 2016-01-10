@@ -59,9 +59,14 @@ int main(){
     H3plus state;
 
     state.Vref = 1;
-    state.psipnum = 4;
+    state.psipnum = 7;
 
     populate(state);
+
+    for (size_t i = 0; i < state.psipnum; i++){
+        std::cout << " final element is: " << state.pos(i,DIMS-1) << '\n';
+    }
+
     diffuse(state);
 
     output << state.pos << '\n';
@@ -88,6 +93,10 @@ void populate(H3plus& state){
 
     find_weights(state);
 
+    for (size_t i = 0; i < state.psipnum; i++){
+        std::cout << state.pos(i,DIMS-1) << '\n';
+    }
+
 }
 
 // Calculates energy of a configuration and stores it into the final element of 
@@ -101,6 +110,13 @@ void find_weights(H3plus& state){
 
     double dist;
 
+    std::default_random_engine gen;
+    std::uniform_real_distribution<double> distribution(0,1);
+
+
+    // Note that this is specific to the Anderson paper
+    // Finding the distance between electrons, then adding the distances
+    // from the protons to the electrons.
     for (size_t i = 0; i < state.psipnum; i++){
         state.pos(i,DIMS-1) = 0;
         dist = sqrt((state.pos(i,0) - state.pos(i,3)) * 
@@ -110,32 +126,37 @@ void find_weights(H3plus& state){
                     (state.pos(i,2) - state.pos(i,5)) * 
                     (state.pos(i,2) - state.pos(i,5)));
         for (size_t j = 0; j < state.pos.cols() - 1; j++){
-            state.pos(i, DIMS-1) = exp(-(state.Vref - (1.0 / state.pos(i,j))));
+            state.pos(i, DIMS-1) -= exp(-(state.Vref - (1.0 / state.pos(i,j))));
         }
         state.pos(i,DIMS-1) += 1.0 / dist;
+        state.pos(i,DIMS-1) = (int)(state.pos(i,DIMS-1) * distribution(gen));
+        if (state.pos(i,DIMS-1) > 3){
+            state.pos(i,DIMS-1) = 3;
+        }
+        if (i == 0){state.pos(i,DIMS-1) = 0;}
+        if (i == 1){state.pos(i,DIMS-1) = 2;}
+        if (i == 2){state.pos(i,DIMS-1) = 0;}
+        if (i == 3){state.pos(i,DIMS-1) = 2;}
+        if (i == 4){state.pos(i,DIMS-1) = 0;}
+        if (i == 5){state.pos(i,DIMS-1) = 2;}
+        if (i == 6){state.pos(i,DIMS-1) = 0;}
+
     }
 }
 
 // Branching scheme
 void branch(H3plus& state){
 
-    int variable, offset = 0, psip_old = state.psipnum, births = 0;
+    for (size_t i = 0; i < state.psipnum; i++){
+        std::cout << state.pos(i,DIMS-1) << '\n';
+    }
 
-    std::default_random_engine gen;
-    std::uniform_real_distribution<double> distribution(0,1);
+
+    int variable, offset = 0, psip_old = state.psipnum, births = 0, off2;
 
     for (size_t i = 0; i < psip_old + births; i++){
-        //variable = (unsigned int)(state.pos(i,DIMS-1) * distribution(gen));
-        variable = 1;
 
-        if (variable > 3){
-            variable = 3;
-        }
-
-        if (i == 0){variable = 0;}
-        if (i == 1){variable = 3;}
-        if (i == 2){variable = 0;}
-        if (i == 3){variable = 3;}
+        variable = state.pos(i, DIMS-1);
 
         switch (variable){
             // Destruction
@@ -167,9 +188,15 @@ void branch(H3plus& state){
                     break;
 
         }
-        // Adjustment for offeset
+
+        // Adjustment for offset
+        off2 = 0;
+        while (state.pos(i+ offset + off2, DIMS-1) == 0){
+            off2++;
+        }
+        std::cout << "off2 is equal to: " << off2 << '\n';
         for (size_t j = 0; j < state.pos.cols(); j++){
-            state.pos(i,j) = state.pos(i+offset,j);
+            state.pos(i,j) = state.pos(i+offset+off2,j);
         }
 
     }
@@ -184,8 +211,6 @@ void diffuse(H3plus& state){
 
     double dt = 0.1;
 
-    populate(state);
-
     // Let's initialize the randomness
     std::default_random_engine gen;
     std::normal_distribution<double> gaussian(0,1);
@@ -194,7 +219,7 @@ void diffuse(H3plus& state){
     // This will be replaced by a while loop in the future.
     for (size_t t = 0; t < 1; t++){
         for (size_t i = 0; i < state.psipnum; i++){
-            for (size_t j = 0; j < state.pos.cols(); j++){
+            for (size_t j = 0; j < state.pos.cols() - 1; j++){
                 state.pos(i, j) += sqrt(dt) * gaussian(gen);
             }
         }
