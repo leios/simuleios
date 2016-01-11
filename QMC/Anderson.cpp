@@ -49,6 +49,9 @@ void branch(H3plus& state);
 // Random walking of matrix of position created in populate
 void diffuse(H3plus& state);
 
+// output certain elements in array
+void arrayout(H3plus& state, int length);
+
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
@@ -147,22 +150,25 @@ void find_weights(H3plus& state){
 // Branching scheme
 void branch(H3plus& state){
 
+    int offarr[SIZE];
+
     for (size_t i = 0; i < state.psipnum; i++){
         std::cout << state.pos(i,DIMS-1) << '\n';
     }
 
 
-    int variable, offset = 0, psip_old = state.psipnum, births = 0, off2;
+    int variable, offset = 0, psip_old = state.psipnum, births = 0, tmpoffset,
+        tmpi;
 
     for (size_t i = 0; i < psip_old + births; i++){
+
+        std::cout << i << '\n';
 
         variable = state.pos(i, DIMS-1);
 
         switch (variable){
             // Destruction
             case 0: state.psipnum--;
-                    offset++;
-                    std::cout << "deleting particle" << '\t' << i << '\n';
                     break;
 
             // Creation of 1
@@ -171,6 +177,7 @@ void branch(H3plus& state){
                     for (size_t j = 0; j < state.pos.cols() - 1; j++){
                         state.pos(psip_old+births-1,j) = state.pos(i,j);
                     }
+                    std::cout << "writing: " << i << " to " << psip_old+births-1 << '\n';
                     state.pos(psip_old+births-1,DIMS-1) = 1;
                     break;
 
@@ -189,16 +196,25 @@ void branch(H3plus& state){
 
         }
 
-        // Adjustment for offset
-        off2 = 0;
-        while (state.pos(i+ offset + off2, DIMS-1) == 0){
-            off2++;
-        }
-        std::cout << "off2 is equal to: " << off2 << '\n';
-        for (size_t j = 0; j < state.pos.cols(); j++){
-            state.pos(i,j) = state.pos(i+offset+off2,j);
-        }
+        arrayout(state, 10);
 
+    }
+
+    // Adjustment for offset
+    // Note: Account for the situation where offset is greater than arraysize
+    for (size_t i = 0; i < SIZE; i++){
+        if (state.pos(i,DIMS-1) != 0){
+            for (size_t j = 0; j < state.pos.cols(); j++){
+                state.pos(tmpi,j) = state.pos(i,j);
+            }
+            tmpi++;
+        }
+        if (i > state.psipnum){
+            for (size_t j = 0; j < state.pos.cols(); j++){
+                state.pos(tmpi,j) = 0;
+            }
+
+        }
     }
 
 }
@@ -227,3 +243,15 @@ void diffuse(H3plus& state){
     }
 
 }
+
+// output certain elements in array
+void arrayout(H3plus& state, int length){
+
+    for (size_t i = 0; i < length; i++){
+        for (size_t j  = 0; j < 2; j++){
+            std::cout << state.pos(i,DIMS - 1 - j) << '\t';
+        }
+        std::cout << '\n';
+    } 
+}
+
