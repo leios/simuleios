@@ -61,7 +61,7 @@ int main(){
     std::ofstream output("out.dat", std::ostream::out);
     H3plus state;
 
-    state.Vref = 1;
+    state.Vref = 0;
     state.psipnum = 7;
 
     populate(state);
@@ -82,16 +82,28 @@ int main(){
 
 // Populate a distribution of particles for QMC
 // Unlike Anderson, we are initilizing each psip randomly from a distribution.
-// This might screw things up, because
+// This might scre things up, because
 void populate(H3plus& state){
 
     std::default_random_engine generator;
     std::uniform_real_distribution<double> distribution(-1.0,1.0);
 
+    /*
     for (size_t i = 0; i < state.psipnum; i++){
         for (size_t j = 0; j < state.pos.cols()-1; j++){
             state.pos(i,j) = distribution(generator);
         }
+    }
+    */
+
+    for (size_t i = 0; i < state.psipnum; i++){
+        state.pos(i,0) = 0.5;
+        state.pos(i,1) = 0.5;
+        state.pos(i,2) = 0.5;
+        state.pos(i,3) = -0.5;
+        state.pos(i,4) = -0.5;
+        state.pos(i,5) = -0.5;
+
     }
 
     find_weights(state);
@@ -111,7 +123,7 @@ void populate(H3plus& state){
 // Note: Vref will be a dummy variable for now.
 void find_weights(H3plus& state){
 
-    double dist;
+    double dist, pot;
 
     std::default_random_engine gen;
     std::uniform_real_distribution<double> distribution(0,1);
@@ -121,7 +133,7 @@ void find_weights(H3plus& state){
     // Finding the distance between electrons, then adding the distances
     // from the protons to the electrons.
     for (size_t i = 0; i < state.psipnum; i++){
-        state.pos(i,DIMS-1) = 0;
+        pot = 0;
         dist = sqrt((state.pos(i,0) - state.pos(i,3)) * 
                     (state.pos(i,0) - state.pos(i,3)) +
                     (state.pos(i,1) - state.pos(i,4)) * 
@@ -129,21 +141,25 @@ void find_weights(H3plus& state){
                     (state.pos(i,2) - state.pos(i,5)) * 
                     (state.pos(i,2) - state.pos(i,5)));
         for (size_t j = 0; j < state.pos.cols() - 1; j++){
-            state.pos(i, DIMS-1) -= exp(-(state.Vref - (1.0 / state.pos(i,j))));
+            pot -= 1.0 / std::abs(state.pos(i,j));
         }
-        state.pos(i,DIMS-1) += 1.0 / dist;
-        state.pos(i,DIMS-1) = (int)(state.pos(i,DIMS-1) * distribution(gen));
+        pot += 1.0 / dist;
+        state.pos(i,DIMS-1) = (int)((1-state.Vref-pot)*0.1 + distribution(gen));
         if (state.pos(i,DIMS-1) > 3){
             state.pos(i,DIMS-1) = 3;
         }
+
+        // Comment these in for debugging the branching step
+        /*
         if (i == 0){state.pos(i,DIMS-1) = 0;}
-        if (i == 1){state.pos(i,DIMS-1) = 2;}
-        if (i == 2){state.pos(i,DIMS-1) = 0;}
+        if (i == 1){state.pos(i,DIMS-1) = 3;}
+        if (i == 2){state.pos(i,DIMS-1) = 3;}
         if (i == 3){state.pos(i,DIMS-1) = 2;}
         if (i == 4){state.pos(i,DIMS-1) = 0;}
-        if (i == 5){state.pos(i,DIMS-1) = 2;}
+        if (i == 5){state.pos(i,DIMS-1) = 0;}
         if (i == 6){state.pos(i,DIMS-1) = 0;}
-
+        */
+        std::cout << state.pos(i,DIMS-1) << '\n';
     }
 }
 
