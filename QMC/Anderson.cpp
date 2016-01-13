@@ -13,6 +13,8 @@
 *          A lot of this algorithm is more easily understood here:
 *              http://www.thphys.uni-heidelberg.de/~wetzel/qmc2006/KOSZ96.pdf
 *
+*   ERROR: Improper Vref defined, no equilibrium found  with multiple timesteps
+*
 *-----------------------------------------------------------------------------*/
 
 #include <iostream>
@@ -32,7 +34,7 @@ typedef Eigen::Matrix<double, // typename Scalar
 
 struct H3plus { 
     MatrixPSIP pos;
-    double Vref;
+    double Vref, dt;
     int psipnum;
 };
 
@@ -61,8 +63,9 @@ int main(){
     std::ofstream output("out.dat", std::ostream::out);
     H3plus state;
 
-    state.Vref = 0;
-    state.psipnum = 7;
+    state.Vref = -3.2;
+    state.dt = 0.1;
+    state.psipnum = 10;
 
     populate(state);
 
@@ -123,7 +126,7 @@ void populate(H3plus& state){
 // Note: Vref will be a dummy variable for now.
 void find_weights(H3plus& state){
 
-    double dist, pot;
+    double dist, pot, pot_tot = 0;
 
     std::default_random_engine gen;
     std::uniform_real_distribution<double> distribution(0,1);
@@ -144,10 +147,17 @@ void find_weights(H3plus& state){
             pot -= 1.0 / std::abs(state.pos(i,j));
         }
         pot += 1.0 / dist;
-        state.pos(i,DIMS-1) = (int)((1-state.Vref-pot)*0.1 + distribution(gen));
+        state.pos(i,DIMS-1) = (int)((1 - state.Vref - pot) * state.dt
+                              + distribution(gen));
         if (state.pos(i,DIMS-1) > 3){
             state.pos(i,DIMS-1) = 3;
         }
+
+        if (state.pos(i, DIMS-1) < 0){
+            state.pos(i, DIMS-1) = 0;
+        }
+
+        pot_tot += pot;
 
         // Comment these in for debugging the branching step
         /*
@@ -161,20 +171,23 @@ void find_weights(H3plus& state){
         */
         std::cout << state.pos(i,DIMS-1) << '\n';
     }
+
+    // defining the new reference potential to psipnum down.
+    // ERROR in multiple timesteps. Convergence not found
+    state.Vref = (pot_tot / state.psipnum) 
+                 - ((state.psipnum - 100) / (100 * state.dt));
 }
 
 // Branching scheme
 void branch(H3plus& state){
 
-    int offarr[SIZE];
-
+    /*
     for (size_t i = 0; i < state.psipnum; i++){
         std::cout << state.pos(i,DIMS-1) << '\n';
     }
+    */
 
-
-    int variable, offset = 0, psip_old = state.psipnum, births = 0, tmpoffset,
-        tmpi;
+    int variable, offset = 0, psip_old = state.psipnum, births = 0, tmpi = 0;
 
     for (size_t i = 0; i < psip_old + births; i++){
 
@@ -193,7 +206,8 @@ void branch(H3plus& state){
                     for (size_t j = 0; j < state.pos.cols() - 1; j++){
                         state.pos(psip_old+births-1,j) = state.pos(i,j);
                     }
-                    std::cout << "writing: " << i << " to " << psip_old+births-1 << '\n';
+                    std::cout << "writing: " << i << " to " 
+                              << psip_old+births-1 << '\n';
                     state.pos(psip_old+births-1,DIMS-1) = 1;
                     break;
 
@@ -203,18 +217,20 @@ void branch(H3plus& state){
                     for (size_t k = 0; k < 2; k++){
                         for (size_t j = 0; j < state.pos.cols() - 1; j++){
                             state.pos(psip_old-k+births-1, j) = state.pos(i, j);
-                            std::cout << state.pos(psip_old-k+births-1, j) << '\n';
+                            std::cout << state.pos(psip_old-k+births-1, j) 
+                                      << '\n';
                         }
                         state.pos(psip_old-k+births-1,DIMS-1) = 1;
-                        std::cout << "writing: " << i << " to " << psip_old-k+births-1 << '\n';
+                        std::cout << "writing: " << i << " to " 
+                                  << psip_old-k+births-1 << '\n';
                     }
                     break;
 
         }
 
-        arrayout(state, 10);
-
     }
+
+    arrayout(state, state.psipnum);
 
     // Adjustment for offset
     // Note: Account for the situation where offset is greater than arraysize
@@ -233,6 +249,8 @@ void branch(H3plus& state){
         }
     }
 
+    find_weights(state);
+
 }
 
 // Random walking of matrix of position created in populate
@@ -241,18 +259,16 @@ void branch(H3plus& state){
 // Step 3: check energy, end if needed.
 void diffuse(H3plus& state){
 
-    double dt = 0.1;
-
     // Let's initialize the randomness
     std::default_random_engine gen;
     std::normal_distribution<double> gaussian(0,1);
 
     // For now, I am going to set a definite number of timesteps
     // This will be replaced by a while loop in the future.
-    for (size_t t = 0; t < 1; t++){
+    for (size_t t = 0; t < 10; t++){
         for (size_t i = 0; i < state.psipnum; i++){
             for (size_t j = 0; j < state.pos.cols() - 1; j++){
-                state.pos(i, j) += sqrt(dt) * gaussian(gen);
+                state.pos(i, j) += sqrt(state.dt) * gaussian(gen);
             }
         }
         branch(state);
@@ -270,4 +286,3 @@ void arrayout(H3plus& state, int length){
         std::cout << '\n';
     } 
 }
-
