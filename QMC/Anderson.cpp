@@ -63,8 +63,8 @@ int main(){
     std::ofstream output("out.dat", std::ostream::out);
     H3plus state;
 
-    state.Vref = -3.2;
-    state.dt = 0.1;
+    state.Vref = 0;
+    state.dt = 0.001;
     state.psipnum = 10;
 
     populate(state);
@@ -144,10 +144,10 @@ void find_weights(H3plus& state){
                     (state.pos(i,2) - state.pos(i,5)) * 
                     (state.pos(i,2) - state.pos(i,5)));
         for (size_t j = 0; j < state.pos.cols() - 1; j++){
-            pot -= 1.0 / std::abs(state.pos(i,j));
+            pot -= 1.0 / (state.pos(i,j));
         }
         pot += 1.0 / dist;
-        state.pos(i,DIMS-1) = (int)((1 - state.Vref - pot) * state.dt
+        state.pos(i,DIMS-1) = (int)(1 - (state.Vref - pot) * state.dt
                               + distribution(gen));
         if (state.pos(i,DIMS-1) > 3){
             state.pos(i,DIMS-1) = 3;
@@ -175,7 +175,7 @@ void find_weights(H3plus& state){
     // defining the new reference potential to psipnum down.
     // ERROR in multiple timesteps. Convergence not found
     state.Vref = (pot_tot / state.psipnum) 
-                 - ((state.psipnum - 100) / (100 * state.dt));
+                 + ((state.psipnum - 1000) / (1000 * state.dt));
 }
 
 // Branching scheme
@@ -265,7 +265,7 @@ void diffuse(H3plus& state){
 
     // For now, I am going to set a definite number of timesteps
     // This will be replaced by a while loop in the future.
-    for (size_t t = 0; t < 10; t++){
+    for (size_t t = 0; t < 100; t++){
         for (size_t i = 0; i < state.psipnum; i++){
             for (size_t j = 0; j < state.pos.cols() - 1; j++){
                 state.pos(i, j) += sqrt(state.dt) * gaussian(gen);
