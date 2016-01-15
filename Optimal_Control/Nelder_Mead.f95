@@ -7,11 +7,9 @@
 !   Notes: the value array has 3 accessory elements for different things:
 !              1. Centroid position
 !
-!   ERROR: All of the points become equal after a few interations.
-!          This is probably due to an index mismatch
 !!----------------------------------------------------------------------------!!
 
-program nelder
+program neldermead
 
 !!----------------------------------------------------------------------------!!
 !  DEFINITIONS
@@ -36,6 +34,7 @@ subroutine downhill
       integer, parameter             :: dim = 8
       integer :: min, max, i, minsave, maxsave
       integer, dimension(dim, dim-1) :: list
+      real*8, dimension(dim, dim-1)  :: weights
       real*8, dimension(2, dim)      :: pos
       real*8, dimension(dim - 1)     :: value
       real*8  :: alpha = 1, beta = 0.5, gamma = 1.5, dist, cutoff = 0.0001
@@ -66,9 +65,9 @@ subroutine downhill
       end interface
 
       interface
-          subroutine pop_list(list, dim, pos)
+          subroutine pop_list(list, dim, pos, weights)
               integer, dimension(:,:) :: list
-              real*8, dimension(:,:)  :: pos
+              real*8, dimension(:,:)  :: pos, weights
               integer                 :: dim
           end subroutine pop_list
       end interface
@@ -88,11 +87,26 @@ subroutine downhill
       end interface
 
       interface
+          subroutine centroid_sales(weights, min, dim)
+              real*8, intent(inout)  :: weights(:,:)
+              integer, intent(in)    :: min, dim
+          end subroutine centroid_sales
+      end interface
+
+      interface
           subroutine reflect(pos, min, dim, alpha)
               real*8, intent(inout)  :: pos(:,:)
               integer, intent(in)    :: min, dim
               real*8, intent(in)     :: alpha
           end subroutine reflect
+      end interface
+
+      interface
+          subroutine reflect_sales(weights, min, dim, alpha)
+              real*8, intent(inout)  :: weights(:,:)
+              integer, intent(in)    :: min, dim
+              real*8, intent(in)     :: alpha
+          end subroutine reflect_sales
       end interface
 
       interface
@@ -104,6 +118,14 @@ subroutine downhill
       end interface
 
       interface
+          subroutine contract_sales(weights, min, dim, beta)
+              real*8, intent(inout)  :: weights(:,:)
+              real*8, intent(in)     :: beta
+              integer, intent(in)    :: dim, min
+          end subroutine contract_sales
+      end interface
+
+      interface
           subroutine expand(pos, min, dim, gamma)
               real*8, intent(inout)  :: pos(:,:)
               integer, intent(in)    :: min, dim
@@ -112,11 +134,27 @@ subroutine downhill
       end interface
 
       interface
+          subroutine expand_sales(weights, min, dim, gamma)
+              real*8, intent(inout)  :: weights(:,:)
+              integer, intent(in)    :: min, dim
+              real*8, intent(in)     :: gamma
+          end subroutine expand_sales
+      end interface
+
+      interface
           subroutine contractall(pos, min, dim)
               real*8, intent(inout)  :: pos(:,:)
               integer, intent(in)    :: min, dim
           end subroutine contractall
       end interface
+
+      interface
+          subroutine contractall_sales(weights, min, dim)
+              real*8, intent(inout)  :: weights(:,:)
+              integer, intent(in)    :: min, dim
+          end subroutine contractall_sales
+      end interface
+
 
       !open(100, file = "simplex_points.dat")
       !open(200, file = "centroids.dat")
@@ -234,13 +272,14 @@ subroutine downhill
       write(*,*) pos(2,:)
       write(*,*) min, max, dim
 
-      call pop_list(list, dim, pos)
-      do i = 1, dim
-          write(*,*) list(i,:)
-          write(*,*) pos(1, i), pos(2,i)
-      end do
+      !!call pop_list(list, dim, pos, weights)
+      !!do i = 1, dim
+      !!    write(*,*) list(i,:)
+      !!    write(*,*) pos(1, i), pos(2,i)
+      !!    write(*,*) weights(i,:)
+      !!end do
 
-      call findval_sales(pos, list, value, dim)
+      !!call findval_sales(pos, list, value, dim)
 
       write(*,*) value
 
@@ -263,6 +302,23 @@ pure subroutine contractall(pos, max, dim)
 
 end subroutine
 
+!! Total contraction for salesman
+pure subroutine contractall_sales(weights, max, dim)
+      implicit none
+      real*8, dimension(:,:), intent(inout) :: weights
+      integer, intent(in)                   :: max, dim
+      integer                               :: i, j
+
+      do i = 1, dim - 1
+          if (i.NE.max) then
+              do j = 1, dim - 1
+                  weights(i,j) = (weights(i,j) + weights(dim,j)) * 0.5
+              end do
+          end if
+      end do
+
+end subroutine
+
 !! for Nelder Mead reflections
 pure subroutine reflect(pos, min, dim, alpha)
       implicit none
@@ -275,15 +331,45 @@ pure subroutine reflect(pos, min, dim, alpha)
 
 end subroutine
 
+!! for Nelder Mead reflections for salesman
+pure subroutine reflect_sales(weights, min, dim, alpha)
+      implicit none
+      real*8, dimension(:,:), intent(inout) :: weights
+      integer, intent(in)                   :: min, dim
+      real*8, intent(in)                    :: alpha
+      integer                               :: i
+
+      do i = 1, dim - 1
+          weights(min,i) = (1 + alpha)*weights(dim,i) - alpha*weights(min, i)
+      end do
+
+end subroutine
+
+
 !! for Nelder Mead contractions
 pure subroutine contract(pos, min, dim, beta)
       implicit none
       real*8, dimension(:,:), intent(inout) :: pos
       integer, intent(in)                   :: min, dim
       real*8, intent(in)                    :: beta
+      integer                               :: i
 
       pos(1,min) = (1 - beta) * pos(1,dim) + beta * pos(1, min)
       pos(2,min) = (1 - beta) * pos(2,dim) + beta * pos(2, min)
+
+end subroutine
+
+!! for Nelder Mead contractions for salesman
+pure subroutine contract_sales(weights, min, dim, beta)
+      implicit none
+      real*8, dimension(:,:), intent(inout) :: weights
+      integer, intent(in)                   :: min, dim
+      real*8, intent(in)                    :: beta
+      integer                               :: i
+
+      do i = 1, dim - 1
+          weights(min,i) = (1 - beta)*weights(dim,i) + beta*weights(min, i)
+      end do
 
 end subroutine
 
@@ -297,6 +383,19 @@ pure subroutine expand(pos, min, dim, gamma)
       pos(1,min) = (1 - gamma) * pos(1,dim) + gamma * pos(1, min)
       pos(2,min) = (1 - gamma) * pos(2,dim) + gamma * pos(2, min)
 
+end subroutine
+
+!! for Nelder Mead expansions for salesman
+pure subroutine expand_sales(weights, min, dim, gamma)
+      implicit none
+      real*8, dimension(:,:), intent(inout) :: weights
+      integer, intent(in)                   :: min, dim
+      real*8, intent(in)                    :: gamma
+      integer                               :: i
+
+      do i = 1, dim - 1
+          weights(min,i) = (1 - gamma)*weights(dim,i) + gamma*weights(min, i)
+      end do
 
 end subroutine
 
@@ -315,7 +414,7 @@ subroutine minmax(value, min, max)
       max = max_array(1)
 end subroutine
 
-!! populates grid -- UNPURE, fix later!
+!! populates grid
 subroutine populate(pos, dim)
       implicit none
       integer                :: dim
@@ -348,8 +447,8 @@ subroutine centroid(pos, min, dim)
 
       do i = 1,dim - 1
           if (i.NE.min) then
-             xsum = xsum + pos(1, i)
-             ysum = ysum + pos(2, i)
+              xsum = xsum + pos(1, i)
+              ysum = ysum + pos(2, i)
           end if
       end do
 
@@ -357,6 +456,29 @@ subroutine centroid(pos, min, dim)
       pos(2, dim) = ysum / real(dim - 2)
       
 end subroutine
+
+!! finds centroid position for salesman
+subroutine centroid_sales(weights, min, dim)
+      implicit none
+      real*8, intent(inout)  :: weights(:,:)
+      integer, intent(in)    :: min, dim
+      integer                :: i, j
+
+
+      do i = 1,dim - 1
+          if (i.NE.min) then
+              do j = 1, dim - 1
+                  weights(dim, j) = weights(dim, j) + weights(i, j)
+              end do
+          end if
+      end do
+
+      do i = 1, dim - 1
+          weights(dim, j) = weights(dim, j) / (dim - 1)
+      end do
+
+end subroutine
+
 
 !! minimum currently set to 0.5, should be found via Downhill Simplex!
 subroutine findval(pos, value, dim)
@@ -375,16 +497,16 @@ subroutine findval(pos, value, dim)
 end subroutine
 
 !! Finds the initial list variable set
-subroutine pop_list(list, dim, pos)
+subroutine pop_list(list, dim, pos, weights)
       implicit none
       integer, dimension(:,:) :: list
       integer                 :: dim, i, j, k, swap, tmp
       integer, parameter      :: seed = 1
-      real*8                  :: var, theta
-      real*8, dimension(:,:)  :: pos
+      real*8                  :: var, theta, roll = 0
+      real*8, dimension(:,:)  :: pos, weights
 
       !! Initialization!
-      do i = 1, dim
+      do i = 1, dim - 1
           do j = 1,dim - 1
               list(i,j) = j
           end do 
@@ -400,10 +522,19 @@ subroutine pop_list(list, dim, pos)
       end do
 
       !! initialize each new position
-      do i = 1, dim
+      do i = 1, dim - 1
           theta = i * 2 * 3.14159 / dim
           pos(1,i) = cos(theta)
           pos(2,i) = sqrt(1 - (pos(1,i) * pos(1,i)))
+      end do
+
+      !! initialize the weighting scheme for NM transformations
+      do i = 1, dim - 1
+          roll = 0
+          do j = 1, dim - 1
+              weights(i, list(i,j)) = roll
+              roll = roll + 0.5
+          end do
       end do
 
 end subroutine
