@@ -22,7 +22,7 @@
 
 #define DOF 6
 #define SIZE 2000
-#define DIMS (DOF + 1)
+#define DIMS (DOF + 2)
 
 typedef Eigen::Matrix<double, // typename Scalar
    SIZE, // int RowsAtCompileTime,
@@ -33,7 +33,7 @@ typedef Eigen::Matrix<double, // typename Scalar
 struct H3plus { 
     MatrixPSIP pos;
     double Vref, dt, Energy;
-    int psipnum;
+    int psipnum, id;
 };
 
 // Populate a distribution of particles for QMC
@@ -62,9 +62,10 @@ int main(){
     H3plus state;
 
     state.Vref = 0;
-    state.dt = 0.001;
+    state.dt = 0.01;
     state.psipnum = 500;
     state.Energy = 0;
+    state.id = 0;
 
     populate(state);
 
@@ -72,7 +73,7 @@ int main(){
 
     /*
     for (size_t i = 0; i < state.psipnum; i++){
-        std::cout << " final element is: " << state.pos(i,DIMS-1) << '\n';
+        std::cout << " final element is: " << state.pos(i,DIMS-2) << '\n';
     }
     */
 
@@ -111,14 +112,15 @@ void populate(H3plus& state){
         state.pos(i,3) = -radius;
         state.pos(i,4) = -radius;
         state.pos(i,5) = -radius;
-
+        state.pos(i,DIMS-1) = state.id;
+        state.id++;
     }
 
     find_weights(state);
 
     /*
     for (size_t i = 0; i < state.psipnum; i++){
-        std::cout << state.pos(i,DIMS-1) << '\n';
+        std::cout << state.pos(i,DIMS-2) << '\n';
     }
     */
 
@@ -150,33 +152,25 @@ void find_weights(H3plus& state){
                     (state.pos(i,1) - state.pos(i,4)) +
                     (state.pos(i,2) - state.pos(i,5)) * 
                     (state.pos(i,2) - state.pos(i,5)));
-        for (size_t j = 0; j < state.pos.cols() - 1; j++){
+        for (size_t j = 0; j < state.pos.cols() - 2; j++){
             pot -= 1.0 / std::abs(state.pos(i,j));
         }
         pot += 1.0 / dist;
-        state.pos(i,DIMS-1) = pot;
-        //std::cout << pot << '\n';
-        /*
-        state.pos(i,DIMS-1) = (int)(exp(-(pot - state.Vref) * state.dt)
-                              + distribution(gen));
-        if (state.pos(i,DIMS-1) > 3){
-            state.pos(i,DIMS-1) = 3;
-        }
-        */
+        state.pos(i,DIMS-2) = pot;
 
         pot_tot += pot;
 
         // Comment these in for debugging the branching step
         /*
-        if (i == 0){state.pos(i,DIMS-1) = 0;}
-        if (i == 1){state.pos(i,DIMS-1) = 3;}
-        if (i == 2){state.pos(i,DIMS-1) = 3;}
-        if (i == 3){state.pos(i,DIMS-1) = 2;}
-        if (i == 4){state.pos(i,DIMS-1) = 0;}
-        if (i == 5){state.pos(i,DIMS-1) = 0;}
-        if (i == 6){state.pos(i,DIMS-1) = 0;}
+        if (i == 0){state.pos(i,DIMS-2) = 0;}
+        if (i == 1){state.pos(i,DIMS-2) = 3;}
+        if (i == 2){state.pos(i,DIMS-2) = 3;}
+        if (i == 3){state.pos(i,DIMS-2) = 2;}
+        if (i == 4){state.pos(i,DIMS-2) = 0;}
+        if (i == 5){state.pos(i,DIMS-2) = 0;}
+        if (i == 6){state.pos(i,DIMS-2) = 0;}
         */
-        //std::cout << state.pos(i,DIMS-1) << '\n';
+        //std::cout << state.pos(i,DIMS-2) << '\n';
     }
 
     // defining the new reference potential to psipnum down.
@@ -185,11 +179,11 @@ void find_weights(H3plus& state){
                  + ((state.psipnum - 500) / (500 * state.dt));
 
     for (size_t i = 0; i < state.psipnum; i++){
-        state.pos(i,DIMS-1) = (int)(exp(-(state.pos(i,DIMS-1) - state.Vref) 
+        state.pos(i,DIMS-2) = (int)(exp(-(state.pos(i,DIMS-2) - state.Vref) 
                                     * state.dt)
                               + distribution(gen));
-        if (state.pos(i,DIMS-1) > 3){
-            state.pos(i,DIMS-1) = 3;
+        if (state.pos(i,DIMS-2) > 3){
+            state.pos(i,DIMS-2) = 3;
         }
 
     }
@@ -202,7 +196,7 @@ void branch(H3plus& state){
 
     /*
     for (size_t i = 0; i < state.psipnum; i++){
-        std::cout << state.pos(i,DIMS-1) << '\n';
+        std::cout << state.pos(i,DIMS-2) << '\n';
     }
     */
 
@@ -212,7 +206,7 @@ void branch(H3plus& state){
 
         //std::cout << i << '\n';
 
-        variable = state.pos(i, DIMS-1);
+        variable = state.pos(i, DIMS-2);
 
         switch (variable){
             // Destruction
@@ -222,24 +216,28 @@ void branch(H3plus& state){
             // Creation of 1
             case 2: state.psipnum++;
                     births++;
-                    for (size_t j = 0; j < state.pos.cols() - 1; j++){
+                    for (size_t j = 0; j < state.pos.cols() - 2; j++){
                         state.pos(psip_old+births-1,j) = state.pos(i,j);
                     }
                     //std::cout << "writing: " << i << " to " 
                     //          << psip_old+births-1 << '\n';
-                    state.pos(psip_old+births-1,DIMS-1) = 1;
+                    state.pos(psip_old+births-1,DIMS-2) = 1;
+                    state.pos(psip_old+births-1,DIMS-1) = state.id;
+                    state.id++;
                     break;
 
             // Creation of 2
             case 3: state.psipnum += 2;
                     births += 2;
                     for (size_t k = 0; k < 2; k++){
-                        for (size_t j = 0; j < state.pos.cols() - 1; j++){
+                        for (size_t j = 0; j < state.pos.cols() - 2; j++){
                             state.pos(psip_old-k+births-1, j) = state.pos(i, j);
                             //std::cout << state.pos(psip_old-k+births-1, j) 
                             //          << '\n';
                         }
-                        state.pos(psip_old-k+births-1,DIMS-1) = 1;
+                        state.pos(psip_old-k+births-1,DIMS-2) = 1;
+                        state.pos(psip_old-k+births-1,DIMS-1) = state.id;
+                        state.id++;
                         //std::cout << "writing: " << i << " to " 
                         //          << psip_old-k+births-1 << '\n';
                     }
@@ -254,7 +252,7 @@ void branch(H3plus& state){
     // Adjustment for offset
     // Note: Account for the situation where offset is greater than arraysize
     for (size_t i = 0; i < SIZE; i++){
-        if (state.pos(i,DIMS-1) != 0){
+        if (state.pos(i,DIMS-2) != 0){
             for (size_t j = 0; j < state.pos.cols(); j++){
                 state.pos(tmpi,j) = state.pos(i,j);
             }
@@ -284,7 +282,7 @@ void diffuse(H3plus& state, std::ostream& output){
 
     // For now, I am going to set a definite number of timesteps
     // This will be replaced by a while loop in the future.
-    for (size_t t = 0; t < 100; t++){
+    for (size_t t = 0; t < 20; t++){
     //while (diff > 0.01){
         Vsave = state.Vref;
         for (size_t i = 0; i < state.psipnum; i++){
