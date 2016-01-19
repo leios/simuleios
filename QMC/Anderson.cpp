@@ -24,6 +24,10 @@
 #define SIZE 2000
 #define DIMS (DOF + 2)
 
+// Note that the array has two additional column elements:
+//     1. particle potential
+//     2. ID
+
 typedef Eigen::Matrix<double, // typename Scalar
    SIZE, // int RowsAtCompileTime,
    DIMS, // int ColsAtCompileTime,
@@ -62,8 +66,8 @@ int main(){
     H3plus state;
 
     state.Vref = 0;
-    state.dt = 0.01;
-    state.psipnum = 500;
+    state.dt = 0.001;
+    state.psipnum = 1000;
     state.Energy = 0;
     state.id = 0;
 
@@ -105,6 +109,7 @@ void populate(H3plus& state){
     }
     */
 
+    // Initializing position and ID, potential in find_weights beneath
     for (size_t i = 0; i < state.psipnum; i++){
         state.pos(i,0) = radius;
         state.pos(i,1) = radius;
@@ -146,12 +151,12 @@ void find_weights(H3plus& state){
     // from the protons to the electrons.
     for (size_t i = 0; i < state.psipnum; i++){
         pot = 0;
-        dist = sqrt((state.pos(i,0) - state.pos(i,3)) * 
-                    (state.pos(i,0) - state.pos(i,3)) +
-                    (state.pos(i,1) - state.pos(i,4)) * 
-                    (state.pos(i,1) - state.pos(i,4)) +
-                    (state.pos(i,2) - state.pos(i,5)) * 
-                    (state.pos(i,2) - state.pos(i,5)));
+        dist = sqrt(((state.pos(i,0) - state.pos(i,3)) * 
+                    (state.pos(i,0) - state.pos(i,3))) +
+                    ((state.pos(i,1) - state.pos(i,4)) * 
+                    (state.pos(i,1) - state.pos(i,4))) +
+                    ((state.pos(i,2) - state.pos(i,5)) * 
+                    (state.pos(i,2) - state.pos(i,5))));
         for (size_t j = 0; j < state.pos.cols() - 2; j++){
             pot -= 1.0 / std::abs(state.pos(i,j));
         }
@@ -176,11 +181,11 @@ void find_weights(H3plus& state){
     // defining the new reference potential to psipnum down.
     state.Energy = pot_tot / state.psipnum;
     state.Vref = state.Energy
-                 + ((state.psipnum - 500) / (500 * state.dt));
+                 - ((state.psipnum - 1000) / (1000 * state.dt));
 
     for (size_t i = 0; i < state.psipnum; i++){
-        state.pos(i,DIMS-2) = (int)(exp(-(state.pos(i,DIMS-2) - state.Vref) 
-                                    * state.dt)
+        state.pos(i,DIMS-2) = (int)(1-(state.pos(i,DIMS-2) - state.Vref) 
+                                    * state.dt
                               + distribution(gen));
         if (state.pos(i,DIMS-2) > 3){
             state.pos(i,DIMS-2) = 3;
@@ -282,7 +287,7 @@ void diffuse(H3plus& state, std::ostream& output){
 
     // For now, I am going to set a definite number of timesteps
     // This will be replaced by a while loop in the future.
-    for (size_t t = 0; t < 20; t++){
+    for (size_t t = 0; t < 10000; t++){
     //while (diff > 0.01){
         Vsave = state.Vref;
         for (size_t i = 0; i < state.psipnum; i++){
@@ -293,7 +298,7 @@ void diffuse(H3plus& state, std::ostream& output){
         branch(state);
         diff = sqrt((Vsave - state.Vref)*(Vsave - state.Vref));
         std::cout << state.Vref << '\t' << state.psipnum << '\n';
-        if (t % 1 == 0){
+        if (t % 1000 == 0){
             output << state.pos << '\n' << '\n' << '\n';
         }
     }
