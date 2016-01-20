@@ -36,8 +36,8 @@ def parse_data(num_part=0):
 
         place_spheres(array, num_part, linesInDataSet)
         
-        #numberOfFrames = int (linesInDataSet / num_part) 
-        numberOfFrames = 1
+        numberOfFrames = int (linesInDataSet / num_part) 
+        #numberOfFrames = 1
 
         print ("found " + str(numberOfFrames) + " and " + str(num_part) + " particles in first frame")   
 
@@ -56,8 +56,8 @@ def create_new_material (passedName,passedcolor):
         tempMat.specular_color = (0.9,0.9,0.9)
         tempMat.specular_shader = 'COOKTORR'
         tempMat.specular_intensity = 0.5
-        tempMat.use_transparency=False
-        tempMat.alpha = 0.5
+        tempMat.use_transparency=True
+        tempMat.alpha = 0.01
         tempMat.ambient = 0.3
         tempMat.emit = 0.2
         tempMat.keyframe_insert(data_path="diffuse_color", frame=1, index=-1)
@@ -98,7 +98,7 @@ def place_duplicates(x, y, z, id, ob = None):
 
 # function to place spheres in blender
 def place_spheres(array, num_part, i):
-    diam = 0.1
+    diam = 0.2
 
     for i in range(0, num_part):
         print(i)
@@ -113,11 +113,8 @@ def move_spheres(array, num_part, frame):
         offset = int(frame * num_part - num_part)
         current_frame = bpy.context.scene.frame_current
         for i in range(offset,num_part+offset):
-                vel = np.sqrt((array[i][3] * array[i][3]) 
-                      + (array[i][4] * array[i][4])
-                      + (array[i][5] * array[i][5]))
                 mat = bpy.data.materials[str(array[i][7])]
-                mat.diffuse_color = ( ratio,0,1-ratio)
+                mat.diffuse_color = (0,0,1)
                 mat.keyframe_insert(data_path="diffuse_color", frame=frame, 
                                     index=-1)
                 bpy.context.scene.objects[str(array[i][7])].location = (array[i][0],array[i][1],array[i][2])
@@ -215,7 +212,7 @@ def render_movie(scene):
     bpy.ops.render.render( write_still=True )
     print("rendering movie")
     scene.sequence_editor_create()
-    bpy.data.scenes["Scene"].render.fps = 120
+    bpy.data.scenes["Scene"].render.fps = 10
     bpy.data.scenes["Scene"].render.image_settings.file_format = 'FFMPEG'
     #bpy.data.scenes["Scene"].render.ffmpeg.video_bitrate = 24300
     bpy.data.scenes["Scene"].render.ffmpeg.format = 'MPEG4'
@@ -237,11 +234,9 @@ scene = def_scene(10,scene)
 remove_obj(scene)
 num = parse_data()
 #render_img("out.png")
-'''
 bpy.data.scenes["Scene"].frame_end = num
-cage_set(10, 1)
-cage_set(10, -1)
+#cage_set(10, 1)
+#cage_set(10, -1)
 scene.update()
 render_movie(scene)
 #print (array)
-'''
