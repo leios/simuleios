@@ -1,8 +1,8 @@
-#-------------demon.py---------------------------------------------------------#
+#-------------Anderson.py------------------------------------------------------#
 #
-#             demon.py
+#             Anderson.py
 # 
-# Purpose: Visualize the maxwell's demon code from earlier on stream!
+# Purpose: Visualize the Quantum Monte Carlo code from earlier on stream!
 #
 #   Notes: This code can be run by using the following command:
 #              blender -b -P demon.py
@@ -34,15 +34,16 @@ def parse_data(num_part=0):
                                 if (num_part == 0):
                                         num_part=linesInDataSet
 
-        (max_vel, min_vel) = place_spheres(array, num_part, linesInDataSet)
+        place_spheres(array, num_part, linesInDataSet)
         
-        numberOfFrames = int (linesInDataSet / num_part) 
+        #numberOfFrames = int (linesInDataSet / num_part) 
+        numberOfFrames = 1
 
         print ("found " + str(numberOfFrames) + " and " + str(num_part) + " particles in first frame")   
 
         for linesInDataSet in range(2, numberOfFrames+1):
                 if (linesInDataSet%100==0):print ("at frame " + str(linesInDataSet)+ " of " + str(numberOfFrames))
-                move_spheres(array, num_part, linesInDataSet, max_vel, min_vel)
+                move_spheres(array, num_part, linesInDataSet)
         return numberOfFrames
 
 # Creates sphere material
@@ -99,33 +100,15 @@ def place_duplicates(x, y, z, id, ob = None):
 def place_spheres(array, num_part, i):
     diam = 0.1
 
-    #print(array)
- 
-    # determine the final velocities
-    vel_max = 0
-    vel_min = 1000
-    for i in range (num_part):
-        vel = np.sqrt((array[i][3] * array[i][3]) + (array[i][4] * array[i][4])
-                      + (array[i][5] * array[i][5]))
-        if vel > vel_max:
-            vel_max = vel
-        if vel < vel_min:
-            vel_min = vel
-
-    vel_diff = vel_max - vel_min
-
     for i in range(0, num_part):
-        vel = np.sqrt((array[i][3] * array[i][3]) + (array[i][4] * array[i][4])
-                      + (array[i][5] * array[i][5]))
-
-        ratio = (vel - vel_min) / vel_diff
-
+        print(i)
         new_sphere(diam, array[i][0], array[i][1], array[i][2], 
-                   ratio, 0, 1 - ratio, array[i][7])
-    return (vel_max, vel_min)
+                   1, 0, 0, array[i][7])
+        new_sphere(diam, array[i][3], array[i][4], array[i][5], 
+                   0, 0, 1, array[i][7])
 
 # Function to moves spheres that are already there.
-def move_spheres(array, num_part, frame, max_vel, min_vel):
+def move_spheres(array, num_part, frame):
         bpy.context.scene.frame_set(frame)
         offset = int(frame * num_part - num_part)
         current_frame = bpy.context.scene.frame_current
@@ -133,8 +116,6 @@ def move_spheres(array, num_part, frame, max_vel, min_vel):
                 vel = np.sqrt((array[i][3] * array[i][3]) 
                       + (array[i][4] * array[i][4])
                       + (array[i][5] * array[i][5]))
-                diff_vel = max_vel - min_vel
-                ratio = (vel - min_vel) / diff_vel
                 mat = bpy.data.materials[str(array[i][7])]
                 mat.diffuse_color = ( ratio,0,1-ratio)
                 mat.keyframe_insert(data_path="diffuse_color", frame=frame, 
@@ -246,13 +227,21 @@ def render_movie(scene):
     bpy.data.scenes["Scene"].render.use_file_extension = False
     bpy.ops.render.render( animation=True ) 
 
+# Render Scene into image
+def render_img(filename):
+    bpy.data.scenes['Scene'].render.filepath = filename
+    bpy.ops.render.render( write_still=True )
+
 scene = bpy.context.scene
 scene = def_scene(10,scene)
 remove_obj(scene)
 num = parse_data()
+#render_img("out.png")
+'''
 bpy.data.scenes["Scene"].frame_end = num
 cage_set(10, 1)
 cage_set(10, -1)
 scene.update()
 render_movie(scene)
 #print (array)
+'''
