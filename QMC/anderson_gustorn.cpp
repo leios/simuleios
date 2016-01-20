@@ -26,8 +26,8 @@
 
 constexpr size_t DOF = 6;
 constexpr size_t MAX_SIZE = 2000;
-constexpr size_t INITIAL_SIZE = 500;
-constexpr double TIMESTEP = 0.01;
+constexpr size_t INITIAL_SIZE = 1000;
+constexpr double TIMESTEP = 0.001;
 constexpr double RADIUS = 1.8;
 
 using coord = std::array<double, DOF>;
@@ -55,7 +55,7 @@ struct h3plus {
     int global_id;
 
     // This wouldn't be strictly necessary,
-    // but preallocating should speed up the program a bit
+    // but pre-allocating should speed up the program a bit
     h3plus(size_t reserved_size) {
         particles.reserve(reserved_size);
     }
@@ -89,7 +89,7 @@ int main(){
     std::ofstream output("out.dat", std::ostream::out);
 
     auto state = generate_initial(INITIAL_SIZE, TIMESTEP);
-    std::cout << state.v_ref << '\t' << state.particles.size() << '\n';
+    //std::cout << state.v_ref << '\t' << state.particles.size() << '\n';
 
     diffuse(state, output);
 }
@@ -159,13 +159,13 @@ void find_weights(h3plus& state){
     }
 
     // defining the new reference potential
-    auto num_particles = state.particles.size();
+    double num_particles = state.particles.size();
     state.energy = potential_sum / num_particles;
-    state.v_ref = state.energy + ((num_particles - 500) / (500.0 * state.dt));
+    state.v_ref = state.energy - ((num_particles - INITIAL_SIZE) / (INITIAL_SIZE * state.dt));
 
     std::uniform_real_distribution<double> uniform(0.0, 1.0);
     for (auto& particle : state.particles) {
-        double w = exp(-(particle.potential - state.v_ref) * state.dt);
+        double w = 1.0 - (particle.potential - state.v_ref) * state.dt;
         particle.m_n = std::min((int)(w + random_double(uniform)), 3);
     }
 }
@@ -189,8 +189,9 @@ void branch(h3plus& state){
 
     // First, remove particles where M_n is zero, as per the Kosztin paper.
     // It's better to do it first to avoid unnecessary bookkeeping later
-    std::remove_if(std::begin(particles), std::end(particles),
-                   [](const particle& p) { return p.m_n == 0; });
+    auto remove = std::remove_if(std::begin(particles), std::end(particles),
+                                 [](const particle& p) { return p.m_n == 0; });
+    particles.erase(remove, std::end(particles));
 
     // Iterate over the current set of particles and add new ones as necessary.
     // The added particles will be skipped in the current iteration (which is
@@ -212,8 +213,7 @@ void branch(h3plus& state){
     }
 
     // Just truncate if the vector would grow too large.
-    // TODO: fix this, apparently it should be impossible.
-    //       As of now it happens pretty much every single time
+    // This should - theoratically - not happen
     if (particles.size() > MAX_SIZE) {
         particles.erase(std::begin(particles) + MAX_SIZE, std::end(particles));
     }
@@ -230,24 +230,24 @@ void diffuse(h3plus& state, std::ostream& output){
 
     // double diff = 1.0;
     // while (diff > 0.01) {
-    for (size_t t = 0; t < 20; t++){
+    for (size_t t = 0; t < 10000; t++){
         double v_last = state.v_ref;
 
         random_walk(state);
         branch(state);
         // diff = sqrt((v_last - state.v_ref) * (v_last - state.v_ref));
 
-        print_visualization_data(output, state);
+        // Debug information for the current timestep
+        std::cout << std::fixed
+                  << state.v_ref << '\t'
+                  << state.particles.size() << '\n';
+        if (t % 1000 == 0) {
+            print_visualization_data(output, state);
+        }
     }
 }
 
 void print_visualization_data(std::ostream& output, const h3plus& state) {
-    // Debug information for the current timestep
-    std::cout << std::fixed
-              << state.v_ref << '\t'
-              << state.particles.size() << '\n';
-
-    // Write the actual data requiered for visualization
     for (const auto& particle : state.particles) {
         for (const auto& coord : particle.coords) {
             output << std::fixed << coord << "  ";
@@ -255,14 +255,18 @@ void print_visualization_data(std::ostream& output, const h3plus& state) {
         output << particle.m_n << "  ";
         output << particle.id << "\n";
     }
-    output << '\n' << '\n' << '\n';
+    output << '\n' << '\n';
+}
+
+static inline std::mt19937& random_engine() {
+    static std::random_device rd;
+    // Use the Mersenne twister, the default random engine is not guaranteed
+    // to be high quality. Use engine(rd()) if you want to test different cases
+    static std::mt19937 engine; // engine(rd());
+    return engine;
 }
 
 template <typename T>
 double random_double(T distribution) {
-    // Use the Mersenne twister, the default random engine is not guaranteed
-    // to be high quality. Use engine(rd()) if you want to test different cases
-    static std::random_device rd;
-    static std::mt19937 engine; // engine(rd());
-    return distribution(engine);
+    return distribution(random_engine());
 }

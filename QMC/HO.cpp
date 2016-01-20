@@ -1,10 +1,9 @@
-/*-------------Anderson.cpp---------------------------------------------------//
+/*-------------HO.cpp---------------------------------------------------------//
 *
-*              Anderson.cpp -- Diffusion Monte Carlo for Schroedy
+*              HO.cpp -- Diffusion Monte Carlo for Schroedy
 *
-* Purpose: Implement the quantum Monte Carlo (diffusion) by Anderson:
-*             http://www.huy-nguyen.com/wp-content/uploads/QMC-papers/Anderson-JChemPhys-1975.pdf
-*          For H3+, with 3 protons and 2 electrons
+* Purpose: Implement the quantum Monte Carlo (diffusion) by Kosztin:
+*          http://www.thphys.uni-heidelberg.de/~wetzel/qmc2006/KOSZ96.pdf
 *
 *    Note: This algorithm may be improved by later work
 *          A "psip" is an imaginary configuration of electrons in space.
@@ -20,13 +19,9 @@
 #include <Eigen/Core>
 #include <fstream>
 
-#define DOF 6
+#define DOF 1
 #define SIZE 2000
 #define DIMS (DOF + 2)
-
-// Note that the array has two additional column elements:
-//     1. particle potential
-//     2. ID
 
 typedef Eigen::Matrix<double, // typename Scalar
    SIZE, // int RowsAtCompileTime,
@@ -53,6 +48,9 @@ void branch(H3plus& state);
 // Random walking of matrix of position created in populate
 void diffuse(H3plus& state, std::ostream& output);
 
+// Adding function to bin data into wavefunction
+void bin(H3plus& state, std::ostream& output);
+
 // output certain elements in array
 void arrayout(H3plus& state, int length);
 
@@ -66,7 +64,7 @@ int main(){
     H3plus state;
 
     state.Vref = 0;
-    state.dt = 0.001;
+    state.dt = 0.1;
     state.psipnum = 1000;
     state.Energy = 0;
     state.id = 0;
@@ -99,24 +97,8 @@ void populate(H3plus& state){
     std::default_random_engine generator;
     std::uniform_real_distribution<double> distribution(-1.0,1.0);
 
-    double radius = 1.8;
-
-    /*
     for (size_t i = 0; i < state.psipnum; i++){
-        for (size_t j = 0; j < state.pos.cols()-1; j++){
-            state.pos(i,j) = distribution(generator);
-        }
-    }
-    */
-
-    // Initializing position and ID, potential in find_weights beneath
-    for (size_t i = 0; i < state.psipnum; i++){
-        state.pos(i,0) = radius;
-        state.pos(i,1) = radius;
-        state.pos(i,2) = radius;
-        state.pos(i,3) = -radius;
-        state.pos(i,4) = -radius;
-        state.pos(i,5) = -radius;
+        state.pos(i,0) = 0;
         state.pos(i,DIMS-1) = state.id;
         state.id++;
     }
@@ -150,32 +132,11 @@ void find_weights(H3plus& state){
     // Finding the distance between electrons, then adding the distances
     // from the protons to the electrons.
     for (size_t i = 0; i < state.psipnum; i++){
-        pot = 0;
-        dist = sqrt(((state.pos(i,0) - state.pos(i,3)) * 
-                    (state.pos(i,0) - state.pos(i,3))) +
-                    ((state.pos(i,1) - state.pos(i,4)) * 
-                    (state.pos(i,1) - state.pos(i,4))) +
-                    ((state.pos(i,2) - state.pos(i,5)) * 
-                    (state.pos(i,2) - state.pos(i,5))));
-        for (size_t j = 0; j < state.pos.cols() - 2; j++){
-            pot -= 1.0 / std::abs(state.pos(i,j));
-        }
-        pot += 1.0 / dist;
+        pot = 0.5 * state.pos(i,0) * state.pos(i,0);
         state.pos(i,DIMS-2) = pot;
 
         pot_tot += pot;
 
-        // Comment these in for debugging the branching step
-        /*
-        if (i == 0){state.pos(i,DIMS-2) = 0;}
-        if (i == 1){state.pos(i,DIMS-2) = 3;}
-        if (i == 2){state.pos(i,DIMS-2) = 3;}
-        if (i == 3){state.pos(i,DIMS-2) = 2;}
-        if (i == 4){state.pos(i,DIMS-2) = 0;}
-        if (i == 5){state.pos(i,DIMS-2) = 0;}
-        if (i == 6){state.pos(i,DIMS-2) = 0;}
-        */
-        //std::cout << state.pos(i,DIMS-2) << '\n';
     }
 
     // defining the new reference potential to psipnum down.
@@ -287,7 +248,7 @@ void diffuse(H3plus& state, std::ostream& output){
 
     // For now, I am going to set a definite number of timesteps
     // This will be replaced by a while loop in the future.
-    for (size_t t = 0; t < 10000; t++){
+    for (size_t t = 0; t < 100; t++){
     //while (diff > 0.01){
         Vsave = state.Vref;
         for (size_t i = 0; i < state.psipnum; i++){
@@ -298,10 +259,36 @@ void diffuse(H3plus& state, std::ostream& output){
         branch(state);
         diff = sqrt((Vsave - state.Vref)*(Vsave - state.Vref));
         std::cout << state.Vref << '\t' << state.psipnum << '\n';
-        if (t % 1000 == 0){
+        bin(state, output);
+        /*
+        if (t % 1 == 0){
             output << state.pos << '\n' << '\n' << '\n';
         }
+        */
     }
+
+}
+
+// Adding function to bin data into wavefunction
+void bin(H3plus& state, std::ostream& output){
+
+    int binnum = 50;
+    std::vector <int> bins(binnum, 0);
+    double max = 2, min = -2;
+
+    for (size_t i = 0; i < state.psipnum; i++){
+        for (size_t j = 0; j < binnum; j++){
+            if (state.pos(i,0) >= ((max - min) / binnum) * j  - 2&&
+                state.pos(i,0) <= ((max - min) / binnum) * (j+1) - 2){
+                bins[j] += 1;
+            }
+        }
+    }
+
+    for (size_t i = 0; i < binnum; i++){
+        output << bins[i] << '\n';
+    }
+    output << '\n' << '\n';
 
 }
 
