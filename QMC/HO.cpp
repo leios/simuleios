@@ -22,6 +22,7 @@
 #define DOF 1
 #define SIZE 2000
 #define DIMS (DOF + 2)
+#define binnum 40
 
 typedef Eigen::Matrix<double, // typename Scalar
    SIZE, // int RowsAtCompileTime,
@@ -33,6 +34,7 @@ struct H3plus {
     MatrixPSIP pos;
     double Vref, dt, Energy;
     int psipnum, id;
+    std::vector<int> bins = std::vector<int>(binnum, 0);;
 };
 
 // Populate a distribution of particles for QMC
@@ -65,7 +67,7 @@ int main(){
 
     state.Vref = 0;
     state.dt = 0.1;
-    state.psipnum = 1000;
+    state.psipnum = 100;
     state.Energy = 0;
     state.id = 0;
 
@@ -245,7 +247,9 @@ void diffuse(H3plus& state, std::ostream& output){
     std::normal_distribution<double> gaussian(0,1);
 
     double diff = 1, Vsave = 0;
+    int wavenum = 1000;
 
+    for (size_t k = 0; k < wavenum; k++){
     // For now, I am going to set a definite number of timesteps
     // This will be replaced by a while loop in the future.
     for (size_t t = 0; t < 100; t++){
@@ -259,7 +263,6 @@ void diffuse(H3plus& state, std::ostream& output){
         branch(state);
         diff = sqrt((Vsave - state.Vref)*(Vsave - state.Vref));
         std::cout << state.Vref << '\t' << state.psipnum << '\n';
-        bin(state, output);
         /*
         if (t % 1 == 0){
             output << state.pos << '\n' << '\n' << '\n';
@@ -267,28 +270,30 @@ void diffuse(H3plus& state, std::ostream& output){
         */
     }
 
+    bin(state, output);
+    }
+
+    for (size_t i = 0; i < binnum; i++){
+        output << state.bins[i] << '\n';
+    }
+    output << '\n' << '\n';
+
+
 }
 
 // Adding function to bin data into wavefunction
 void bin(H3plus& state, std::ostream& output){
 
-    int binnum = 50;
-    std::vector <int> bins(binnum, 0);
-    double max = 2, min = -2;
+    double bound = 4, max = bound, min = -bound;
 
     for (size_t i = 0; i < state.psipnum; i++){
         for (size_t j = 0; j < binnum; j++){
-            if (state.pos(i,0) >= ((max - min) / binnum) * j  - 2&&
-                state.pos(i,0) <= ((max - min) / binnum) * (j+1) - 2){
-                bins[j] += 1;
+            if (state.pos(i,0) >= ((max - min) / binnum) * j  - bound&&
+                state.pos(i,0) < ((max - min) / binnum) * (j+1) - bound){
+                state.bins[j] += 1;
             }
         }
     }
-
-    for (size_t i = 0; i < binnum; i++){
-        output << bins[i] << '\n';
-    }
-    output << '\n' << '\n';
 
 }
 
