@@ -246,37 +246,42 @@ void diffuse(H3plus& state, std::ostream& output){
     std::default_random_engine gen;
     std::normal_distribution<double> gaussian(0,1);
 
-    double diff = 1, Vsave = 0;
+    double diff = 1, Vsave = 0, tmpbin, x;
     int wavenum = 1000;
 
     for (size_t k = 0; k < wavenum; k++){
-    // For now, I am going to set a definite number of timesteps
-    // This will be replaced by a while loop in the future.
-    for (size_t t = 0; t < 100; t++){
-    //while (diff > 0.01){
-        Vsave = state.Vref;
-        for (size_t i = 0; i < state.psipnum; i++){
-            for (size_t j = 0; j < state.pos.cols() - 1; j++){
-                state.pos(i, j) += sqrt(state.dt) * gaussian(gen);
+        // For now, I am going to set a definite number of timesteps
+        // This will be replaced by a while loop in the future.
+        for (size_t t = 0; t < 100; t++){
+        //while (diff > 0.01){
+            Vsave = state.Vref;
+            #pragma omp parallel for 
+            for (size_t i = 0; i < state.psipnum; i++){
+                for (size_t j = 0; j < state.pos.cols() - 1; j++){
+                    state.pos(i, j) += sqrt(state.dt) * gaussian(gen);
+                }
             }
+            branch(state);
+            diff = sqrt((Vsave - state.Vref)*(Vsave - state.Vref));
+            std::cout << state.Vref << '\t' << state.psipnum << '\n';
         }
-        branch(state);
-        diff = sqrt((Vsave - state.Vref)*(Vsave - state.Vref));
-        std::cout << state.Vref << '\t' << state.psipnum << '\n';
-        /*
-        if (t % 1 == 0){
-            output << state.pos << '\n' << '\n' << '\n';
-        }
-        */
-    }
 
-    bin(state, output);
+        bin(state, output);
     }
 
     for (size_t i = 0; i < binnum; i++){
-        output << state.bins[i] << '\n';
+        tmpbin = state.bins[i] * 0.0001;
+        output << tmpbin << '\n';
     }
+
     output << '\n' << '\n';
+
+    for (size_t i = 0; i < binnum; i++){
+        x = ((double)i / (double)binnum)*8.0 - 4.0;
+        std::cout << x << '\n';
+        tmpbin = exp(- x*x / 2);
+        output << tmpbin << '\n';
+    }
 
 
 }
