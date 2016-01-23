@@ -28,10 +28,14 @@
 constexpr size_t DOF = 6;
 constexpr size_t MAX_SIZE = 2000;
 constexpr size_t INITIAL_SIZE = 1000;
-constexpr double TIMESTEP = 0.001;
+constexpr double TIMESTEP = 0.1;
 constexpr double RADIUS = 1.8;
 
 using coord = std::array<double, DOF>;
+
+struct proton_pos{
+    double pos[3][3] = {{0}};
+};
 
 struct particle {
     coord coords;
@@ -48,6 +52,7 @@ struct particle {
     // be ignored as per the algorithm described in the Kosztin paper
     particle(int id, const particle& p)
       : coords(p.coords), id(id),  m_n(1), potential(p.potential) {}
+
 };
 
 struct h3plus {
@@ -60,6 +65,9 @@ struct h3plus {
     h3plus(size_t reserved_size) {
         particles.reserve(reserved_size);
     }
+
+    proton_pos proton;
+
 };
 
 // Populate a distribution of particles for QMC
@@ -108,6 +116,9 @@ h3plus generate_initial(size_t initial_size, double dt) {
     state.v_ref = 0;
     state.energy = 0;
     state.global_id = 0;
+    for (size_t i = 0; i < 3; i++){
+        state.proton.pos[i][i] = 0.1;
+    }
 
     // Random generation
     /*
@@ -142,20 +153,42 @@ void find_weights(h3plus& state){
     // Note that this is specific to the Anderson paper
     // Finding the distance between electrons, then adding the distances
     // from the protons to the electrons.
-    double potential_sum = 0.0;
+    double potential_sum = 0.0, dist2;
 
     for (auto& particle : state.particles) {
-        double dist = sqrt((particle.coords[0] - particle.coords[3]) *
+        double dist1 = sqrt((particle.coords[0] - particle.coords[3]) *
                            (particle.coords[0] - particle.coords[3]) +
                            (particle.coords[1] - particle.coords[4]) *
                            (particle.coords[1] - particle.coords[4]) +
                            (particle.coords[2] - particle.coords[5]) *
                            (particle.coords[2] - particle.coords[5]));
 
-        double potential = 1.0 / dist;
+        double potential = 1.0 / dist1;
+
+        for (size_t i = 0; i < 3; i++){
+            dist1 = sqrt((particle.coords[0] - state.proton.pos[i][0]) *
+                         (particle.coords[0] - state.proton.pos[i][0]) +
+                         (particle.coords[1] - state.proton.pos[i][1]) *
+                         (particle.coords[1] - state.proton.pos[i][1]) +
+                         (particle.coords[2] - state.proton.pos[i][2]) *
+                         (particle.coords[2] - state.proton.pos[i][2]));
+
+            dist2 = sqrt((particle.coords[3] - state.proton.pos[i][0]) *
+                         (particle.coords[3] - state.proton.pos[i][0]) +
+                         (particle.coords[4] - state.proton.pos[i][1]) *
+                         (particle.coords[4] - state.proton.pos[i][1]) +
+                         (particle.coords[5] - state.proton.pos[i][2]) *
+                         (particle.coords[5] - state.proton.pos[i][2]));
+
+            potential -= ((1/dist1) + (1/dist2));
+
+        }
+        /*
         for (const auto& coord : particle.coords) {
+            
             potential -= 1.0 / std::abs(coord);
         }
+        */
         particle.potential = potential;
         potential_sum += potential;
     }
@@ -244,7 +277,7 @@ void diffuse(h3plus& state, std::ostream& output){
 
     // double diff = 1.0;
     // while (diff > 0.01) {
-    for (size_t t = 0; t < 10000; t++){
+    for (size_t t = 0; t < 1000; t++){
         double v_last = state.v_ref;
 
         random_walk(state);
@@ -255,7 +288,7 @@ void diffuse(h3plus& state, std::ostream& output){
         std::cout << std::fixed
                   << state.v_ref << '\t'
                   << state.particles.size() << '\n';
-        if (t % 1000 == 0) {
+        if (t % 10 == 0) {
             print_visualization_data(output, state);
         }
     }
