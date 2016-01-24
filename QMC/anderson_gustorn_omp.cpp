@@ -29,7 +29,7 @@ constexpr size_t DOF = 6;
 constexpr size_t MAX_SIZE = 2000;
 constexpr size_t INITIAL_SIZE = 1000;
 constexpr double TIMESTEP = 0.1;
-constexpr double RADIUS = 1.8;
+constexpr double RADIUS = 2.0;
 
 using coord = std::array<double, DOF>;
 
@@ -117,7 +117,7 @@ h3plus generate_initial(size_t initial_size, double dt) {
     state.energy = 0;
     state.global_id = 0;
     for (size_t i = 0; i < 3; i++){
-        state.proton.pos[i][i] = 0.1;
+        state.proton.pos[i][i] = 1.0;
     }
 
     // Random generation
@@ -183,12 +183,6 @@ void find_weights(h3plus& state){
             potential -= ((1/dist1) + (1/dist2));
 
         }
-        /*
-        for (const auto& coord : particle.coords) {
-            
-            potential -= 1.0 / std::abs(coord);
-        }
-        */
         particle.potential = potential;
         potential_sum += potential;
     }
@@ -286,11 +280,13 @@ void diffuse(h3plus& state, std::ostream& output){
 
         // Debug information for the current timestep
         std::cout << std::fixed
-                  << state.v_ref << '\t'
-                  << state.particles.size() << '\n';
-        if (t % 10 == 0) {
+                  << state.energy << '\t'
+                  << state.particles.size() << '\t'
+                  << state.dt << '\n';
+        if (t % 100 == 0) {
             print_visualization_data(output, state);
         }
+        state.dt = TIMESTEP * exp(-(t / 200.0)) + 0.001;
     }
 }
 
