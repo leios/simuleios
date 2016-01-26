@@ -3,4 +3,17 @@ described by:
     http://www.huy-nguyen.com/wp-content/uploads/QMC-papers/Anderson-JChemPhys-1975.pdf
     http://www.thphys.uni-heidelberg.de/~wetzel/qmc2006/KOSZ96.pdf
 
-Feel free to look at these for reference
+To compile this code, the easiest / best command is:
+    g++ -std=c++11 -fopenmp -O2 -march=native Anderson.cpp
+
+The file executes a 6-d random walk of "psips" in order to recreate the 
+probability density of particles in a quantum state.
+
+The data is output into two files: out.dat and energy.dat. These files hold
+"psip" information and energy information, respectively. These have been plot
+with gnuplot by simply selecting the apropriate rows or using the Anderson.gp
+file as such:
+
+    gnuplot Anserson.gp -
+
+Feel free to look at any of these for reference!
