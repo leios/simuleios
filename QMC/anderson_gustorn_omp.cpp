@@ -57,7 +57,7 @@ struct particle {
 
 struct h3plus {
     std::vector<particle> particles;
-    double v_ref, dt, energy;
+    double v_ref, dt, energy, t;
     int global_id;
 
     // This wouldn't be strictly necessary,
@@ -83,9 +83,10 @@ void random_walk(h3plus& state);
 void branch(h3plus& state);
 
 // Random walking of matrix of position created in populate
-void diffuse(h3plus& state, std::ostream& output);
+void diffuse(h3plus& state, std::ostream& output, std::ostream& output2);
 
-void print_visualization_data(std::ostream& output, const h3plus& state);
+void print_visualization_data(std::ostream& output, const h3plus& state,
+                              std::ostream& output2);
 
 template <typename T>
 double random_double(T distribution);
@@ -95,12 +96,13 @@ double random_double(T distribution);
 *-----------------------------------------------------------------------------*/
 
 int main(){
-    std::ofstream output("out.dat", std::ostream::out);
+    std::ofstream output("out.dat", std::ostream::out), 
+                  output2("energy.dat", std::ostream::out);
 
     auto state = generate_initial(INITIAL_SIZE, TIMESTEP);
     //std::cout << state.v_ref << '\t' << state.particles.size() << '\n';
 
-    diffuse(state, output);
+    diffuse(state, output, output2);
 }
 
 /*----------------------------------------------------------------------------//
@@ -113,6 +115,7 @@ int main(){
 h3plus generate_initial(size_t initial_size, double dt) {
     h3plus state(MAX_SIZE);
     state.dt = dt;
+    state.t = 0;
     state.v_ref = 0;
     state.energy = 0;
     state.global_id = 0;
@@ -264,18 +267,19 @@ void branch(h3plus& state){
 // Step 1: Move particles via 6D random walk
 // Step 2: Destroy and create particles as need based on Anderson
 // Step 3: check energy, end if needed.
-void diffuse(h3plus& state, std::ostream& output){
+void diffuse(h3plus& state, std::ostream& output, std::ostream& output2){
 
     // For now, I am going to set a definite number of timesteps
     // This will be replaced by a while loop in the future.
 
     // double diff = 1.0;
     // while (diff > 0.01) {
-    for (size_t t = 0; t < 1000; t++){
+    for (size_t t = 0; t < 200; t++){
         double v_last = state.v_ref;
 
         random_walk(state);
         branch(state);
+        state.t += state.dt;
         // diff = sqrt((v_last - state.v_ref) * (v_last - state.v_ref));
 
         // Debug information for the current timestep
@@ -283,14 +287,15 @@ void diffuse(h3plus& state, std::ostream& output){
                   << state.energy << '\t'
                   << state.particles.size() << '\t'
                   << state.dt << '\n';
-        if (t % 100 == 0) {
-            print_visualization_data(output, state);
+        if (t % 1 == 0) {
+            print_visualization_data(output, state, output2);
         }
         state.dt = TIMESTEP * exp(-(t / 200.0)) + 0.001;
     }
 }
 
-void print_visualization_data(std::ostream& output, const h3plus& state) {
+void print_visualization_data(std::ostream& output, const h3plus& state,
+                              std::ostream& output2){
     for (const auto& particle : state.particles) {
         for (const auto& coord : particle.coords) {
             output << std::fixed << coord << "\t";
@@ -298,6 +303,7 @@ void print_visualization_data(std::ostream& output, const h3plus& state) {
         output << particle.m_n << "\t";
         output << particle.id << "\n";
     }
+    output2 << state.energy << '\t' << state.t << '\n';
     output << '\n' << '\n';
 }
 

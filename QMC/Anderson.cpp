@@ -2,89 +2,107 @@
 *
 *              Anderson.cpp -- Diffusion Monte Carlo for Schroedy
 *
+* Attribution: This file was primarily written by Gustorn. Thanks!
+*
 * Purpose: Implement the quantum Monte Carlo (diffusion) by Anderson:
 *             http://www.huy-nguyen.com/wp-content/uploads/QMC-papers/Anderson-JChemPhys-1975.pdf
 *          For H3+, with 3 protons and 2 electrons
 *
 *    Note: This algorithm may be improved by later work
 *          A "psip" is an imaginary configuration of electrons in space.
-*          Requires c++11 for random and Eigen for matrix
-*          Protons assume to be at origin
 *          A lot of this algorithm is more easily understood here:
 *              http://www.thphys.uni-heidelberg.de/~wetzel/qmc2006/KOSZ96.pdf
 *
 *-----------------------------------------------------------------------------*/
 
-#include <iostream>
-#include <random>
-#include <Eigen/Core>
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <vector>
 #include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <omp.h>
+#include <random>
 
-#define DOF 6
-#define SIZE 2000
-#define DIMS (DOF + 2)
+constexpr size_t DOF = 6;
+constexpr size_t MAX_SIZE = 2000;
+constexpr size_t INITIAL_SIZE = 1000;
+constexpr double TIMESTEP = 0.1;
+constexpr double RADIUS = 2.0;
 
-// Note that the array has two additional column elements:
-//     1. particle potential
-//     2. ID
+using coord = std::array<double, DOF>;
 
-typedef Eigen::Matrix<double, // typename Scalar
-   SIZE, // int RowsAtCompileTime,
-   DIMS, // int ColsAtCompileTime,
-   0> // int Options = 0,
-   MatrixPSIP;
+struct proton_pos{
+    double pos[3][3] = {{0}};
+};
 
-struct H3plus { 
-    MatrixPSIP pos;
-    double Vref, dt, Energy;
-    int psipnum, id;
+struct particle {
+    coord coords;
+    int id;
+    int m_n;
+    double potential;
+
+    // This is the constructor used for the initial state creation
+    particle(int id, const coord& coords)
+      : coords(coords), id(id),  m_n(-1), potential(0.0) {}
+
+    // Used in branching to create a replica of an other particle.
+    // Sets m_n to 1 so even if this was to be processed, it will
+    // be ignored as per the algorithm described in the Kosztin paper
+    particle(int id, const particle& p)
+      : coords(p.coords), id(id),  m_n(1), potential(p.potential) {}
+
+};
+
+struct h3plus {
+    std::vector<particle> particles;
+    double v_ref, dt, energy, t;
+    int global_id;
+
+    // This wouldn't be strictly necessary,
+    // but pre-allocating should speed up the program a bit
+    h3plus(size_t reserved_size) {
+        particles.reserve(reserved_size);
+    }
+
+    proton_pos proton;
+
 };
 
 // Populate a distribution of particles for QMC
-void populate(H3plus& state);
+h3plus generate_initial(size_t initial_size, double dt);
 
-// Calculates energy of a configuration and stores it into the final element of 
-// the MatrixPSIP
-void find_weights(H3plus& state);
+// Calculates energy of a configuration and stores it as the particle potential
+void find_weights(h3plus& state);
+
+// Random walk
+void random_walk(h3plus& state);
 
 // Branching scheme
-void branch(H3plus& state);
+void branch(h3plus& state);
 
 // Random walking of matrix of position created in populate
-void diffuse(H3plus& state, std::ostream& output);
+void diffuse(h3plus& state, std::ostream& output, std::ostream& output2);
 
-// output certain elements in array
-void arrayout(H3plus& state, int length);
+void print_visualization_data(std::ostream& output, const h3plus& state,
+                              std::ostream& output2);
+
+template <typename T>
+double random_double(T distribution);
 
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
 
 int main(){
+    std::ofstream output("out.dat", std::ostream::out), 
+                  output2("energy.dat", std::ostream::out);
 
-    std::ofstream output("out.dat", std::ostream::out);
-    H3plus state;
+    auto state = generate_initial(INITIAL_SIZE, TIMESTEP);
+    //std::cout << state.v_ref << '\t' << state.particles.size() << '\n';
 
-    state.Vref = 0;
-    state.dt = 0.001;
-    state.psipnum = 1000;
-    state.Energy = 0;
-    state.id = 0;
-
-    populate(state);
-
-    std::cout << state.Vref << '\t' << state.psipnum << '\n';
-
-    /*
-    for (size_t i = 0; i < state.psipnum; i++){
-        std::cout << " final element is: " << state.pos(i,DIMS-2) << '\n';
-    }
-    */
-
-    diffuse(state, output);
-
-    //output << state.pos << '\n';
-
+    diffuse(state, output, output2);
 }
 
 /*----------------------------------------------------------------------------//
@@ -93,225 +111,211 @@ int main(){
 
 // Populate a distribution of particles for QMC
 // Unlike Anderson, we are initilizing each psip randomly from a distribution.
-// This might scre things up, because
-void populate(H3plus& state){
+// This might screw things up, because
+h3plus generate_initial(size_t initial_size, double dt) {
+    h3plus state(MAX_SIZE);
+    state.dt = dt;
+    state.t = 0;
+    state.v_ref = 0;
+    state.energy = 0;
+    state.global_id = 0;
+    for (size_t i = 0; i < 3; i++){
+        state.proton.pos[i][i] = 1.0;
+    }
 
-    std::default_random_engine generator;
-    std::uniform_real_distribution<double> distribution(-1.0,1.0);
-
-    double radius = 1.8;
-
+    // Random generation
     /*
-    for (size_t i = 0; i < state.psipnum; i++){
-        for (size_t j = 0; j < state.pos.cols()-1; j++){
-            state.pos(i,j) = distribution(generator);
+    std::uniform_real_distribution<double> uniform(-1.0,1.0);
+    for (size_t i = 0; i < initial_size; ++i){
+        coord coords;
+        for (auto& coord : coords) {
+            coord = random_double(uniform);
         }
+        state.particles.emplace_back(state.global_id++, std::move(coords));
     }
     */
 
-    // Initializing position and ID, potential in find_weights beneath
-    for (size_t i = 0; i < state.psipnum; i++){
-        state.pos(i,0) = radius;
-        state.pos(i,1) = radius;
-        state.pos(i,2) = radius;
-        state.pos(i,3) = -radius;
-        state.pos(i,4) = -radius;
-        state.pos(i,5) = -radius;
-        state.pos(i,DIMS-1) = state.id;
-        state.id++;
+    // Static generation
+    for (size_t i = 0; i < initial_size; ++i) {
+        coord coords = {RADIUS, RADIUS, RADIUS, -RADIUS, -RADIUS, -RADIUS};
+        state.particles.emplace_back(state.global_id++, std::move(coords));
     }
 
     find_weights(state);
-
-    /*
-    for (size_t i = 0; i < state.psipnum; i++){
-        std::cout << state.pos(i,DIMS-2) << '\n';
-    }
-    */
-
+    return state;
 }
 
-// Calculates energy of a configuration and stores it into the final element of 
+// Calculates energy of a configuration and stores it into the final element of
 // the MatrixPSIP
 // Note: When calculating the potential, I am not sure whether we need to use
 //       absolute value of distance or the distance, itself.
-// Note: Inefficient. Can calculate energy on the fly with every generation of 
+// Note: Inefficient. Can calculate energy on the fly with every generation of
 //       psip. Think about it.
-// Note: Vref will be a dummy variable for now.
-void find_weights(H3plus& state){
-
-    double dist, pot, pot_tot = 0;
-
-    std::default_random_engine gen;
-    std::uniform_real_distribution<double> distribution(0,1);
-
-
+// Note: v_ref will be a dummy variable for now.
+void find_weights(h3plus& state){
     // Note that this is specific to the Anderson paper
     // Finding the distance between electrons, then adding the distances
     // from the protons to the electrons.
-    for (size_t i = 0; i < state.psipnum; i++){
-        pot = 0;
-        dist = sqrt(((state.pos(i,0) - state.pos(i,3)) * 
-                    (state.pos(i,0) - state.pos(i,3))) +
-                    ((state.pos(i,1) - state.pos(i,4)) * 
-                    (state.pos(i,1) - state.pos(i,4))) +
-                    ((state.pos(i,2) - state.pos(i,5)) * 
-                    (state.pos(i,2) - state.pos(i,5))));
-        for (size_t j = 0; j < state.pos.cols() - 2; j++){
-            pot -= 1.0 / std::abs(state.pos(i,j));
+    double potential_sum = 0.0, dist2;
+
+    for (auto& particle : state.particles) {
+        double dist1 = sqrt((particle.coords[0] - particle.coords[3]) *
+                           (particle.coords[0] - particle.coords[3]) +
+                           (particle.coords[1] - particle.coords[4]) *
+                           (particle.coords[1] - particle.coords[4]) +
+                           (particle.coords[2] - particle.coords[5]) *
+                           (particle.coords[2] - particle.coords[5]));
+
+        double potential = 1.0 / dist1;
+
+        for (size_t i = 0; i < 3; i++){
+            dist1 = sqrt((particle.coords[0] - state.proton.pos[i][0]) *
+                         (particle.coords[0] - state.proton.pos[i][0]) +
+                         (particle.coords[1] - state.proton.pos[i][1]) *
+                         (particle.coords[1] - state.proton.pos[i][1]) +
+                         (particle.coords[2] - state.proton.pos[i][2]) *
+                         (particle.coords[2] - state.proton.pos[i][2]));
+
+            dist2 = sqrt((particle.coords[3] - state.proton.pos[i][0]) *
+                         (particle.coords[3] - state.proton.pos[i][0]) +
+                         (particle.coords[4] - state.proton.pos[i][1]) *
+                         (particle.coords[4] - state.proton.pos[i][1]) +
+                         (particle.coords[5] - state.proton.pos[i][2]) *
+                         (particle.coords[5] - state.proton.pos[i][2]));
+
+            potential -= ((1/dist1) + (1/dist2));
+
         }
-        pot += 1.0 / dist;
-        state.pos(i,DIMS-2) = pot;
-
-        pot_tot += pot;
-
-        // Comment these in for debugging the branching step
-        /*
-        if (i == 0){state.pos(i,DIMS-2) = 0;}
-        if (i == 1){state.pos(i,DIMS-2) = 3;}
-        if (i == 2){state.pos(i,DIMS-2) = 3;}
-        if (i == 3){state.pos(i,DIMS-2) = 2;}
-        if (i == 4){state.pos(i,DIMS-2) = 0;}
-        if (i == 5){state.pos(i,DIMS-2) = 0;}
-        if (i == 6){state.pos(i,DIMS-2) = 0;}
-        */
-        //std::cout << state.pos(i,DIMS-2) << '\n';
+        particle.potential = potential;
+        potential_sum += potential;
     }
 
-    // defining the new reference potential to psipnum down.
-    state.Energy = pot_tot / state.psipnum;
-    state.Vref = state.Energy
-                 - ((state.psipnum - 1000) / (1000 * state.dt));
+    size_t num_particles = state.particles.size();
+    std::uniform_real_distribution<double> uniform(0.0, 1.0);
 
-    for (size_t i = 0; i < state.psipnum; i++){
-        state.pos(i,DIMS-2) = (int)(1-(state.pos(i,DIMS-2) - state.Vref) 
-                                    * state.dt
-                              + distribution(gen));
-        if (state.pos(i,DIMS-2) > 3){
-            state.pos(i,DIMS-2) = 3;
+    // This needs type promotion to either double or int so it doesn't
+    // underflow. Since it's going to be used as a double, might as well
+    // do that directly.
+    double particles_diff = static_cast<double>(num_particles) - INITIAL_SIZE;
+
+    // defining the new reference potential
+    state.energy = potential_sum / num_particles;
+    state.v_ref = state.energy - particles_diff / (INITIAL_SIZE * state.dt);
+
+    #pragma omp parallel for
+    for (size_t i = 0; i < num_particles; ++i) {
+        auto& particle = state.particles[i];
+        double w = 1.0 - (particle.potential - state.v_ref) * state.dt;
+        particle.m_n = std::min((int)(w + random_double(uniform)), 3);
+    }
+}
+
+// 6D random walk
+void random_walk(h3plus& state) {
+    std::normal_distribution<double> gaussian(0.0, 1.0);
+    size_t particles_size = state.particles.size();
+
+    #pragma omp parallel for
+    for (size_t i = 0; i < particles_size; ++i) {
+        auto& particle = state.particles[i];
+        for (auto& coord : particle.coords) {
+            coord += sqrt(state.dt) * random_double(gaussian);
         }
-
     }
 }
 
 // Branching scheme
-void branch(H3plus& state){
-
+void branch(h3plus& state){
     find_weights(state);
 
-    /*
-    for (size_t i = 0; i < state.psipnum; i++){
-        std::cout << state.pos(i,DIMS-2) << '\n';
-    }
-    */
+    // I only cache this so I can fit the 80 character limit
+    auto& particles = state.particles;
 
-    int variable, offset = 0, psip_old = state.psipnum, births = 0, tmpi = 0;
+    // First, remove particles where M_n is zero, as per the Kosztin paper.
+    // It's better to do it first to avoid unnecessary bookkeeping later
+    auto remove = std::remove_if(std::begin(particles), std::end(particles),
+                                 [](const particle& p) { return p.m_n == 0; });
+    particles.erase(remove, std::end(particles));
 
-    for (size_t i = 0; i < psip_old + births; i++){
-
-        //std::cout << i << '\n';
-
-        variable = state.pos(i, DIMS-2);
-
-        switch (variable){
-            // Destruction
-            case 0: state.psipnum--;
-                    break;
-
-            // Creation of 1
-            case 2: state.psipnum++;
-                    births++;
-                    for (size_t j = 0; j < state.pos.cols() - 2; j++){
-                        state.pos(psip_old+births-1,j) = state.pos(i,j);
-                    }
-                    //std::cout << "writing: " << i << " to " 
-                    //          << psip_old+births-1 << '\n';
-                    state.pos(psip_old+births-1,DIMS-2) = 1;
-                    state.pos(psip_old+births-1,DIMS-1) = state.id;
-                    state.id++;
-                    break;
-
-            // Creation of 2
-            case 3: state.psipnum += 2;
-                    births += 2;
-                    for (size_t k = 0; k < 2; k++){
-                        for (size_t j = 0; j < state.pos.cols() - 2; j++){
-                            state.pos(psip_old-k+births-1, j) = state.pos(i, j);
-                            //std::cout << state.pos(psip_old-k+births-1, j) 
-                            //          << '\n';
-                        }
-                        state.pos(psip_old-k+births-1,DIMS-2) = 1;
-                        state.pos(psip_old-k+births-1,DIMS-1) = state.id;
-                        state.id++;
-                        //std::cout << "writing: " << i << " to " 
-                        //          << psip_old-k+births-1 << '\n';
-                    }
-                    break;
-
-        }
-
-    }
-
-    //arrayout(state, state.psipnum);
-
-    // Adjustment for offset
-    // Note: Account for the situation where offset is greater than arraysize
-    for (size_t i = 0; i < SIZE; i++){
-        if (state.pos(i,DIMS-2) != 0){
-            for (size_t j = 0; j < state.pos.cols(); j++){
-                state.pos(tmpi,j) = state.pos(i,j);
-            }
-            tmpi++;
-        }
-        if (i > state.psipnum){
-            for (size_t j = 0; j < state.pos.cols(); j++){
-                state.pos(i,j) = 0;
-            }
-
+    // Iterate over the current set of particles and add new ones as necessary.
+    // The added particles will be skipped in the current iteration (which is
+    // essentially the same behaviour as we had before)
+    // We have to use direct indexes because of iterator invalidation.
+    // Also note that current_size is cached outside of the loop, this is to
+    // avoid unnecessary work
+    size_t current_size = particles.size();
+    for (size_t i = 0; i < current_size; ++i) {
+        switch (particles[i].m_n) {
+            case 2:
+                particles.emplace_back(state.global_id++, particles[i]);
+                break;
+            case 3:
+                particles.emplace_back(state.global_id++, particles[i]);
+                particles.emplace_back(state.global_id++, particles[i]);
+                break;
         }
     }
 
+    // Just truncate if the vector would grow too large.
+    // This should - theoratically - not happen
+    if (particles.size() > MAX_SIZE) {
+        particles.erase(std::begin(particles) + MAX_SIZE, std::end(particles));
+    }
 }
 
 // Random walking of matrix of position created in populate
 // Step 1: Move particles via 6D random walk
 // Step 2: Destroy and create particles as need based on Anderson
 // Step 3: check energy, end if needed.
-void diffuse(H3plus& state, std::ostream& output){
-
-    // Let's initialize the randomness
-    std::default_random_engine gen;
-    std::normal_distribution<double> gaussian(0,1);
-
-    double diff = 1, Vsave = 0;
+void diffuse(h3plus& state, std::ostream& output, std::ostream& output2){
 
     // For now, I am going to set a definite number of timesteps
     // This will be replaced by a while loop in the future.
-    for (size_t t = 0; t < 10000; t++){
-    //while (diff > 0.01){
-        Vsave = state.Vref;
-        for (size_t i = 0; i < state.psipnum; i++){
-            for (size_t j = 0; j < state.pos.cols() - 1; j++){
-                state.pos(i, j) += sqrt(state.dt) * gaussian(gen);
-            }
-        }
-        branch(state);
-        diff = sqrt((Vsave - state.Vref)*(Vsave - state.Vref));
-        std::cout << state.Vref << '\t' << state.psipnum << '\n';
-        if (t % 1000 == 0){
-            output << state.pos << '\n' << '\n' << '\n';
-        }
-    }
 
+    // double diff = 1.0;
+    // while (diff > 0.01) {
+    for (size_t t = 0; t < 200; t++){
+        double v_last = state.v_ref;
+
+        random_walk(state);
+        branch(state);
+        state.t += state.dt;
+        // diff = sqrt((v_last - state.v_ref) * (v_last - state.v_ref));
+
+        // Debug information for the current timestep
+        std::cout << std::fixed
+                  << state.energy << '\t'
+                  << state.particles.size() << '\t'
+                  << state.dt << '\n';
+        if (t % 1 == 0) {
+            print_visualization_data(output, state, output2);
+        }
+        state.dt = TIMESTEP * exp(-(t / 200.0)) + 0.001;
+    }
 }
 
-// output certain elements in array
-void arrayout(H3plus& state, int length){
-
-    for (size_t i = 0; i < length; i++){
-        for (size_t j  = 0; j < 2; j++){
-            std::cout << state.pos(i,DIMS - 1 - j) << '\t';
+void print_visualization_data(std::ostream& output, const h3plus& state,
+                              std::ostream& output2){
+    for (const auto& particle : state.particles) {
+        for (const auto& coord : particle.coords) {
+            output << std::fixed << coord << "\t";
         }
-        std::cout << '\n';
-    } 
+        output << particle.m_n << "\t";
+        output << particle.id << "\n";
+    }
+    output2 << state.energy << '\t' << state.t << '\n';
+    output << '\n' << '\n';
+}
+
+static inline std::mt19937& random_engine() {
+    static std::random_device rd;
+    // Use the Mersenne twister, the default random engine is not guaranteed
+    // to be high quality. Use engine(rd()) if you want to test different cases
+    static thread_local std::mt19937 engine; // engine(rd());
+    return engine;
+}
+
+template <typename T>
+double random_double(T distribution) {
+    return distribution(random_engine());
 }
