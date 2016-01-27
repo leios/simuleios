@@ -1,0 +1,6 @@
+This project is written in julia, http://julialang.org/, feel free to check it
+out!
+
+This will be implementing a split-step Fourier method to calculate the ground 
+state in a Bose-Einstein Condensate (BEC). We may go a step further and also 
+work with vortices, if we are cool enough.
