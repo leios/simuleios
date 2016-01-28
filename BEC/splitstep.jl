@@ -10,8 +10,8 @@
 
 # This initializes the potential well and also the gaussian init wavefunction
 function initialize(res)
-    gaus = [Float64(0) for i = 1:res]
-    pot = [Float64(0) for i = 1:res]
+    gaus = zeros(res)
+    pot = zeros(res)
     for dx = 1:res
         x = dx * (5/res) - 2.5
         gaus[dx] = exp(-x * x)
@@ -25,17 +25,53 @@ end
 function energy(wave, pot, dt)
     #ficticious g for now
     g = 1
-    PE = exp( -(pot + g * wave .* wave) * dt)
-    # KE relies on k, not yet determined
-    KE = exp( -dt)
+    PE = zeros(size(wave,1))
+    KE = zeros(size(wave,1))
+    dk = 2pi / 100
+
+    for i = 1:size(wave,1)
+
+        k = dk * (i - (size(wave,1) / 2))
+
+        PE[i] = exp( -(pot[i] + g * wave[i]*wave[i]) * dt)
+
+        # KE relies on k, not yet determined
+        KE[i] = exp( -(k*k) * dt)
+    end
     return PE, KE
 end
 
 # The whole shebang
 function splitstep(res)
+
+    output = open("out.dat", "w")
     wave, pot = initialize(res)
-    PE, KE = energy(wave, pot, 0.001)
+
+    #norm_const = 1/sqrt(res)
+    for j = 1:100
+        PE, KE = energy(wave, pot, 0.001)
+ 
+        for i = 1:res
+            wave[i] *= PE[i]
+        end
+ 
+        wave = fft(wave)
+
+        for i = 1:res
+            wave[i] *= KE[i]
+        end
+
+        wave = abs(ifft(wave))
+
+        for i = 1:res
+            println(output, wave[i])
+        end
+
+        print(output, '\n', '\n')
+
+        #wave *= norm_const
+    end
 end
 
 # Main
-splitstep(1000)
+splitstep(100)
