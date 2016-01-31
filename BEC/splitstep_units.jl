@@ -1,4 +1,4 @@
-#=-------------splitstep.jl----------------------------------------------------#
+#=-------------splitstep_units.jl----------------------------------------------#
 #
 #              split step method for macroscopic wave function generation
 #
@@ -6,10 +6,18 @@
 #          Eventually we may incorporate real-time evolution, but we need to 
 #          first generate the grounds state and go from there.
 #
-#   Notes: Units of hbar = c  = 1
+#   Notes: We are working with Rubidium 87 for this simulation, and attempting 
+#          to use appropriate units
 #-----------------------------------------------------------------------------=#
 
-global xmax = 5
+global hbar = 1.055E-34
+global scatl = 4.67E-9
+global boson_num = 1E5
+global mass = 1.4431607E-25
+global coupling = 4 * pi * hbar * hbar * scatl * boson_num / mass
+global radius = sqrt(hbar / (2 * mass))
+global R = 15^(0.2) * (boson_num * scatl * sqrt(mass / hbar))^0.2
+global xmax = 6 * R * radius * 0.00000000005
 
 # This initializes the potential well and also the gaussian init wavefunction
 function initialize(res)
@@ -17,8 +25,8 @@ function initialize(res)
     pot = zeros(res)
     for dx = 1:res
         x = dx * (xmax/res) - xmax / 2
-        gaus[dx] = exp(-x * x )
-        pot[dx] = x * x
+        gaus[dx] = exp(-x * x / (R * radius))
+        pot[dx] = radius * x * x
         #println(gaus[dx], '\t', pot[dx], '\t', x)
     end
     return gaus, pot
@@ -37,10 +45,10 @@ function energy(wave, pot, dt, res)
 
         k = dk * (i - (size(wave,1) / 2))
 
-        PE[i] = exp( (pot[i] + wave[i]*wave[i]) *dt)
+        PE[i] = exp( -(pot[i] + coupling * wave[i]*wave[i]) * dt/(hbar))
 
         # KE relies on k, not yet determined
-        KE[i] = exp( (k*k) * dt)
+        KE[i] = exp( -hbar * hbar * (k*k)/(2*mass) * dt)
     end
     return PE, KE
 end
@@ -52,7 +60,7 @@ function splitstep(res)
     output = open("out.dat", "w")
     wave, pot = initialize(res)
 
-    for j = 1:100
+    for j = 1:10000
 
         PE, KE = energy(wave, pot, 0.1, res)
  
@@ -77,13 +85,13 @@ function splitstep(res)
 
         wave *= 1/norm_const
 
-        #if j % 100 == 0
+        if j % 1000 == 0
             for i = 1:res
                 println(output, wave[i])
             end
 
             print(output, '\n', '\n')
-        #end
+        end
 
     end
 end
@@ -91,3 +99,5 @@ end
 # Main
 
 splitstep(100)
+println(hbar, '\t', scatl, '\t', boson_num, '\t', mass, '\t', coupling, '\t',
+        radius, '\t', R, '\t', xmax)
