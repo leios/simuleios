@@ -14,20 +14,21 @@ global hbar = 1.055E-34
 global scatl = 4.67E-9
 global boson_num = 1E5
 global mass = 1.4431607E-25
-global coupling = 6.67E-40
+global coupling = 4 * pi * hbar * hbar * scatl * boson_num / mass
 global radius = sqrt(hbar / (2 * mass))
 global R = 15^(0.2) * (boson_num * scatl * sqrt(mass / hbar))^0.2
 global xmax = 6 * R * radius * 0.000000000005
 
 # This initializes the potential well and also the gaussian init wavefunction
-function initialize(res)
-    gaus = zeros(res)
+function initialize(res, dt)
+    gaus = complex(zeros(res))
     pot = zeros(res)
-    for dx = 1:res
-        x = dx * (xmax/res) - xmax / 2
-        gaus[dx] = exp(-x * x / (R * radius))
-        pot[dx] = radius * x * x
-        #println(gaus[dx], '\t', pot[dx], '\t', x)
+    for ix = 1:res
+        x = complex(ix * (xmax/res) - xmax / 2)
+        gaus[ix] = exp(-0.5 * mass * x * x * dt/ (2 * hbar)) + 0im
+        pot[ix] = radius * x * x
+        #println(gaus[ix], '\t', pot[ix], '\t', x)
+        #println(gaus[ix])
     end
     return gaus, pot
 end
@@ -45,7 +46,7 @@ function energy(wave, pot, dt, res)
 
         k = dk * (i - (size(wave,1) / 2))
 
-        PE[i] = exp( -(pot[i] + coupling * wave[i]*wave[i]) * dt/(hbar))
+        PE[i] = exp( -(pot[i] + coupling * abs2(wave[i])) * dt/(hbar))
 
         # KE relies on k, not yet determined
         KE[i] = exp( -hbar * hbar * (k*k)/(2*mass) * dt)
@@ -58,11 +59,13 @@ end
 function splitstep(res)
 
     output = open("out.dat", "w")
-    wave, pot = initialize(res)
+    wave, pot = initialize(res, 0.1)
 
-    for j = 1:1000000
+    #println(wave)
 
-        PE, KE = energy(wave, pot, 0.0001, res)
+    for j = 1:10000
+
+        PE, KE = energy(wave, pot, 0.1, res)
  
         for i = 1:res
             wave[i] *= PE[i]
@@ -74,20 +77,20 @@ function splitstep(res)
             wave[i] *= KE[i]
         end
 
-        wave = abs(ifft(wave))
+        wave = ifft(wave)
 
         norm_const = 0.0
         for i = 1:res
-            norm_const += wave[i]
+            norm_const += abs2(wave[i])
         end
 
-        println(norm_const)
+        #println(norm_const)
 
         wave *= 1/norm_const
 
-        if j % 100000 == 0
+        if j % 1000 == 0
             for i = 1:res
-                println(output, wave[i])
+                println(output, real(wave[i]))
             end
 
             print(output, '\n', '\n')
