@@ -14,10 +14,10 @@ global hbar = 1.055E-34
 global scatl = 4.67E-9
 global boson_num = 1E5
 global mass = 1.4431607E-25
-global coupling = 4 * pi * hbar * hbar * scatl * boson_num / mass
+global coupling = 6.67E-40
 global radius = sqrt(hbar / (2 * mass))
 global R = 15^(0.2) * (boson_num * scatl * sqrt(mass / hbar))^0.2
-global xmax = 6 * R * radius * 0.00000000005
+global xmax = 6 * R * radius * 0.000000000005
 
 # This initializes the potential well and also the gaussian init wavefunction
 function initialize(res)
@@ -39,7 +39,7 @@ function energy(wave, pot, dt, res)
     #ficticious g for now
     PE = zeros(size(wave,1))
     KE = zeros(size(wave,1))
-    dk = 2pi / res
+    dk = 2pi / xmax
 
     for i = 1:size(wave,1)
 
@@ -60,9 +60,9 @@ function splitstep(res)
     output = open("out.dat", "w")
     wave, pot = initialize(res)
 
-    for j = 1:10000
+    for j = 1:1000000
 
-        PE, KE = energy(wave, pot, 0.1, res)
+        PE, KE = energy(wave, pot, 0.0001, res)
  
         for i = 1:res
             wave[i] *= PE[i]
@@ -85,7 +85,7 @@ function splitstep(res)
 
         wave *= 1/norm_const
 
-        if j % 1000 == 0
+        if j % 100000 == 0
             for i = 1:res
                 println(output, wave[i])
             end
@@ -98,6 +98,6 @@ end
 
 # Main
 
-splitstep(100)
+splitstep(512)
 println(hbar, '\t', scatl, '\t', boson_num, '\t', mass, '\t', coupling, '\t',
         radius, '\t', R, '\t', xmax)
