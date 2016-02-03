@@ -17,10 +17,9 @@ global scatl = 4.67E-9
 global boson_num = 1E5
 global mass = 1.4431607E-25
 global coupling = 4 * pi * hbar * hbar * scatl * boson_num / mass
-global radius = sqrt(hbar / (2 * mass))
-global R = 15^(0.2) * (boson_num * scatl * sqrt(mass / hbar))^0.2
-global xmax = 1E-5
-#global xmax = 6 * R * radius #* 0.000000000005
+#global radius = sqrt(hbar / (2 * mass))
+global radius = 10E-5
+global xmax = 1E-3
 
 # This initializes the potential well and also the gaussian init wavefunction
 function initialize(res, dt)
@@ -29,18 +28,20 @@ function initialize(res, dt)
     for ix = 1:res
         x = ix * (xmax/res) - xmax / 2
         gaus[ix] = exp(-0.5 * mass * x * x/ (2 * hbar)) + 0im
-        pot[ix] = radius * x * x
+        pot[ix] = 1E-15 * x * x
         #println(gaus[ix], '\t', pot[ix], '\t', x)
         #println(gaus[ix])
     end
 
     sum = 0
     for ix = 1:res
-        sum += gaus[ix]
+        sum += gaus[ix] * gaus[ix] #* (1/1000) * xmax * 2
     end
 
+    println("sum = ", sum)
+
     for ix = 1:res
-        gaus[ix] = gaus[ix] / sum
+        gaus[ix] = gaus[ix] / sqrt(sum)
     end
 
     return gaus, pot
@@ -76,10 +77,10 @@ function splitstep(res)
 
     #println(wave)
 
-    for j = 1:100000
+    for j = 1:100
 
         # output data
-        if j % 1000 == 0 || j == 1
+        if j % 1 == 0 || j == 1
             for i = 1:res
                 println(output, i * (xmax/res) - xmax / 2, '\t', real(wave[i]))
             end
@@ -88,7 +89,7 @@ function splitstep(res)
         end
 
         # find energies for splitstep
-        PE, KE = energy(wave, pot, 0.1, res)
+        PE, KE = energy(wave, pot, 0.0001, res)
  
         # PE
         for i = 1:res
@@ -109,12 +110,12 @@ function splitstep(res)
         # renormalization
         norm_const = 0.0
         for i = 1:res
-            norm_const += sqrt(abs2(wave[i]))
+            norm_const += abs2(wave[i]) #* (1/res) * xmax / 2
         end
 
-        #println(norm_const)
+        println(norm_const)
 
-        wave *= 1/norm_const
+        wave *= 1/sqrt(norm_const)
 
     end
 end
@@ -123,4 +124,4 @@ end
 
 splitstep(512)
 println(hbar, '\t', scatl, '\t', boson_num, '\t', mass, '\t', coupling, '\t',
-        radius, '\t', R, '\t', xmax)
+        radius, '\t', xmax)
