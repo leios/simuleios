@@ -8,6 +8,8 @@
 #
 #   Notes: We are working with Rubidium 87 for this simulation, and attempting 
 #          to use appropriate units
+#
+#   ERROR: Normalization is incorrect
 #-----------------------------------------------------------------------------=#
 
 global hbar = 1.055E-34
@@ -17,19 +19,30 @@ global mass = 1.4431607E-25
 global coupling = 4 * pi * hbar * hbar * scatl * boson_num / mass
 global radius = sqrt(hbar / (2 * mass))
 global R = 15^(0.2) * (boson_num * scatl * sqrt(mass / hbar))^0.2
-global xmax = 6 * R * radius * 0.000000000005
+global xmax = 1E-5
+#global xmax = 6 * R * radius #* 0.000000000005
 
 # This initializes the potential well and also the gaussian init wavefunction
 function initialize(res, dt)
     gaus = complex(zeros(res))
     pot = zeros(res)
     for ix = 1:res
-        x = complex(ix * (xmax/res) - xmax / 2)
-        gaus[ix] = exp(-0.5 * mass * x * x * dt/ (2 * hbar)) + 0im
+        x = ix * (xmax/res) - xmax / 2
+        gaus[ix] = exp(-0.5 * mass * x * x/ (2 * hbar)) + 0im
         pot[ix] = radius * x * x
         #println(gaus[ix], '\t', pot[ix], '\t', x)
         #println(gaus[ix])
     end
+
+    sum = 0
+    for ix = 1:res
+        sum += gaus[ix]
+    end
+
+    for ix = 1:res
+        gaus[ix] = gaus[ix] / sum
+    end
+
     return gaus, pot
 end
 
@@ -63,38 +76,45 @@ function splitstep(res)
 
     #println(wave)
 
-    for j = 1:10000
+    for j = 1:100000
 
+        # output data
+        if j % 1000 == 0 || j == 1
+            for i = 1:res
+                println(output, i * (xmax/res) - xmax / 2, '\t', real(wave[i]))
+            end
+
+            print(output, '\n', '\n')
+        end
+
+        # find energies for splitstep
         PE, KE = energy(wave, pot, 0.1, res)
  
+        # PE
         for i = 1:res
             wave[i] *= PE[i]
         end
  
+        # FFT
         wave = fft(wave)
 
+        # KE
         for i = 1:res
             wave[i] *= KE[i]
         end
 
+        # iFFT
         wave = ifft(wave)
 
+        # renormalization
         norm_const = 0.0
         for i = 1:res
-            norm_const += abs2(wave[i])
+            norm_const += sqrt(abs2(wave[i]))
         end
 
         #println(norm_const)
 
         wave *= 1/norm_const
-
-        if j % 1000 == 0
-            for i = 1:res
-                println(output, real(wave[i]))
-            end
-
-            print(output, '\n', '\n')
-        end
 
     end
 end
