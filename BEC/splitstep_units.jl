@@ -14,12 +14,12 @@
 
 global hbar = 1.055E-34
 global scatl = 4.67E-9
-global boson_num = 1E5
+global boson_num = 1E6
 global mass = 1.4431607E-25
 global coupling = 4 * pi * hbar * hbar * scatl * boson_num / mass
 #global radius = sqrt(hbar / (2 * mass))
 global radius = 10E-5
-global xmax = 1E-3
+global xmax = 1E-4
 
 # This initializes the potential well and also the gaussian init wavefunction
 function initialize(res, dt)
@@ -27,8 +27,8 @@ function initialize(res, dt)
     pot = zeros(res)
     for ix = 1:res
         x = ix * (xmax/res) - xmax / 2
-        gaus[ix] = exp(-0.5 * mass * x * x/ (2 * hbar)) + 0im
-        pot[ix] = 1E-15 * x * x
+        gaus[ix] = exp(-x * x/ (1E-10)) + 0im
+        pot[ix] = x * x
         #println(gaus[ix], '\t', pot[ix], '\t', x)
         #println(gaus[ix])
     end
@@ -60,7 +60,8 @@ function energy(wave, pot, dt, res)
 
         k = dk * (i - (size(wave,1) / 2))
 
-        PE[i] = exp( -(pot[i] + coupling * abs2(wave[i])) * dt/(hbar))
+        PE[i] = exp( - 0.5 * mass * (pot[i] + coupling * abs2(wave[i])) * dt /
+                    (2 * hbar))
 
         # KE relies on k, not yet determined
         KE[i] = exp( -hbar * hbar * (k*k)/(2*mass) * dt)
@@ -77,15 +78,16 @@ function splitstep(res)
 
     #println(wave)
 
-    for j = 1:100
+    for j = 1:1000
 
         # output data
-        if j % 1 == 0 || j == 1
+        if j % 100 == 0 || j == 1
             for i = 1:res
                 println(output, i * (xmax/res) - xmax / 2, '\t', real(wave[i]))
             end
 
             print(output, '\n', '\n')
+            println(j)
         end
 
         # find energies for splitstep
@@ -113,7 +115,7 @@ function splitstep(res)
             norm_const += abs2(wave[i]) #* (1/res) * xmax / 2
         end
 
-        println(norm_const)
+        #println(norm_const)
 
         wave *= 1/sqrt(norm_const)
 
