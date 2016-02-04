@@ -9,53 +9,56 @@
 #   Notes: Units of hbar = c  = 1
 #-----------------------------------------------------------------------------=#
 
-global xmax = 5
+global xmax = 20
+global res = 2^8
+global g = 500
 
 # This initializes the potential well and also the gaussian init wavefunction
-function initialize(res)
+function initialize()
     gaus = zeros(res)
     pot = zeros(res)
-    for dx = 1:res
-        x = dx * (xmax/res) - xmax / 2
-        gaus[dx] = exp(-x * x )
-        pot[dx] = x * x
-        #println(gaus[dx], '\t', pot[dx], '\t', x)
+    for ix = 1:res
+        x = ix * (xmax/res) - xmax / 2
+        gaus[ix] = exp(-x * x )
+        pot[ix] = 0.5 * x * x
+        #println(gaus[ix], '\t', pot[ix], '\t', x)
     end
     return gaus, pot
 end
 
 # This will return the kinetic and potential energies at every timestep
 # Note unphysical units will be fixed in the future.
-function energy(wave, pot, dt, res)
+function energy(wave, pot, dt)
 
-    #ficticious g for now
-    PE = zeros(size(wave,1))
-    KE = zeros(size(wave,1))
-    dk = 2pi / res
+    KE = complex(zeros(size(wave,1)))
+    PE = complex(zeros(size(wave,1)))
+
+    dk = 2pi / xmax
 
     for i = 1:size(wave,1)
-
-        k = dk * (i - (size(wave,1) / 2))
-
-        PE[i] = exp( (pot[i] + wave[i]*wave[i]) *dt)
-
-        # KE relies on k, not yet determined
-        KE[i] = exp( (k*k) * dt)
+        if i <= size(wave,1) / 2
+            k = dk * (i)
+        else
+            k = dk * (i - (size(wave,1) / 2))
+        end
+        KE[i] = exp( -0.5 * (k*k) * dt)
+        PE[i] = exp( -0.5 * (pot[i] + g*wave[i]*wave[i]) *dt)
     end
     return PE, KE
 end
 
 # The whole shebang
 # Psi * Uv -> fft -> Psi * Uk -> ifft -> renormalization -> cycle
-function splitstep(res)
+function splitstep(stepnum, dt)
 
     output = open("out.dat", "w")
-    wave, pot = initialize(res)
+    wave, pot = initialize()
 
-    for j = 1:100
+    for j = 1:stepnum
 
-        PE, KE = energy(wave, pot, 0.1, res)
- 
+        PE, KE = energy(wave, pot, dt)
+        norm_const = 0
+
         for i = 1:res
             wave[i] *= PE[i]
         end
@@ -66,28 +69,30 @@ function splitstep(res)
             wave[i] *= KE[i]
         end
 
-        wave = abs(ifft(wave))
+        wave = ifft(wave)
 
-        norm_const = 0.0
+        norm_const = 0
         for i = 1:res
-            norm_const += wave[i]
+            norm_const += abs2(wave[i])
         end
 
         println(norm_const)
 
-        wave *= 1/norm_const
+        for i = 1:res
+            wave[i] *= 1/norm_const
+        end
 
-        #if j % 100 == 0
+        if j % 1000 == 0 || j == 0
             for i = 1:res
                 println(output, wave[i])
             end
 
             print(output, '\n', '\n')
-        #end
+        end
 
     end
 end
 
 # Main
 
-splitstep(100)
+splitstep(10000, 0.001)
