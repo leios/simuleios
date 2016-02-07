@@ -9,7 +9,7 @@
 #   Notes: Units of hbar = c  = 1
 #-----------------------------------------------------------------------------=#
 
-global xmax = 20
+global xmax = 40
 global res = 2^8
 global g = 500
 
@@ -20,7 +20,7 @@ function initialize()
     for ix = 1:res
         x = ix * (xmax/res) - xmax / 2
         gaus[ix] = exp(-x * x )
-        pot[ix] = 0.5 * x * x
+        pot[ix] = 0.25 * x * x
         #println(gaus[ix], '\t', pot[ix], '\t', x)
     end
     return gaus, pot
@@ -42,7 +42,7 @@ function energy(wave, pot, dt)
             k = dk * (i - (size(wave,1) / 2))
         end
         KE[i] = exp( -0.5 * (k*k) * dt)
-        PE[i] = exp( -0.5 * (pot[i] + g*wave[i]*wave[i]) *dt)
+        PE[i] = exp( -0.5 * (pot[i] + g*abs2(wave[i])) *dt)
     end
     return PE, KE
 end
@@ -53,6 +53,7 @@ function splitstep(stepnum, dt)
 
     output = open("out.dat", "w")
     wave, pot = initialize()
+    density = zeros(size(wave,1))
 
     for j = 1:stepnum
 
@@ -73,7 +74,7 @@ function splitstep(stepnum, dt)
 
         norm_const = 0
         for i = 1:res
-            norm_const += abs2(wave[i])
+            norm_const += abs2(wave[i]) * xmax / res
         end
 
         println(norm_const)
@@ -82,9 +83,13 @@ function splitstep(stepnum, dt)
             wave[i] *= 1/norm_const
         end
 
-        if j % 1000 == 0 || j == 0
+        for i = 1:res
+            density[i] = abs(conj(wave[i]) * wave[i])
+        end
+
+        if j % 30000 == 0 || j == 0
             for i = 1:res
-                println(output, wave[i])
+                println(output, density[i])
             end
 
             print(output, '\n', '\n')
@@ -95,4 +100,4 @@ end
 
 # Main
 
-splitstep(10000, 0.001)
+splitstep(300000, 0.001)
