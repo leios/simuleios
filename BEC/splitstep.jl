@@ -7,6 +7,8 @@
 #          first generate the grounds state and go from there.
 #
 #   Notes: Units of hbar = c  = 1
+#          Initial gaussian guess for wavefunction not normalized because
+#              abs2(wave) is described by normalization condition
 #-----------------------------------------------------------------------------=#
 
 global xmax = 40
@@ -14,15 +16,34 @@ global res = 2^8
 global g = 500
 
 # This initializes the potential well and also the gaussian init wavefunction
+# All the normalization for the initial gaussian guess is commented out
 function initialize()
     gaus = zeros(res)
     pot = zeros(res)
+    #gausfile = open("check_gaus.dat", "w")
+
     for ix = 1:res
         x = ix * (xmax/res) - xmax / 2
         gaus[ix] = exp(-x * x )
-        pot[ix] = 0.25 * x * x
-        #println(gaus[ix], '\t', pot[ix], '\t', x)
+        pot[ix] = x * x
+        #println(gausfile, gaus[ix])
     end
+
+    # Normalization
+    #=
+    println(gausfile, '\n')
+
+    norm_const = 0
+    for i = 1:res
+        norm_const += sqrt(abs2(gaus[i])) * xmax / res
+    end
+
+    for i = 1:res
+        gaus[i] *= 1/norm_const
+        println(gausfile, gaus[i])
+    end
+    =#
+
     return gaus, pot
 end
 
@@ -63,7 +84,7 @@ function splitstep(stepnum, dt)
         for i = 1:res
             wave[i] *= PE[i]
         end
- 
+
         wave = fft(wave)
 
         for i = 1:res
@@ -84,10 +105,11 @@ function splitstep(stepnum, dt)
         end
 
         for i = 1:res
-            density[i] = abs(conj(wave[i]) * wave[i])
+            #density[i] = abs(conj(wave[i]) * wave[i])
+            density[i] = abs2(wave[i])
         end
 
-        if j % 30000 == 0 || j == 0
+        if j % 1000 == 0 || j == 1
             for i = 1:res
                 println(output, density[i])
             end
@@ -100,4 +122,4 @@ end
 
 # Main
 
-splitstep(300000, 0.001)
+splitstep(10000, 0.0001)
