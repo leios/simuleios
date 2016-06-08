@@ -29,21 +29,6 @@ function initialize()
         #println(gausfile, gaus[ix])
     end
 
-    # Normalization
-    #=
-    println(gausfile, '\n')
-
-    norm_const = 0
-    for i = 1:res
-        norm_const += sqrt(abs2(gaus[i])) * xmax / res
-    end
-
-    for i = 1:res
-        gaus[i] *= 1/norm_const
-        println(gausfile, gaus[i])
-    end
-    =#
-
     return gaus, pot
 end
 
@@ -56,6 +41,7 @@ function energy(wave, pot, dt)
 
     dk = 2pi / xmax
 
+    # note that phase space ordering is piecemeal / different than real.
     for i = 1:size(wave,1)
         if i <= size(wave,1) / 2
             k = dk * (i)
@@ -72,12 +58,15 @@ end
 # Psi * Uv -> fft -> Psi * Uk -> ifft -> renormalization -> cycle
 function splitstep(stepnum, dt)
 
+    # initialization
     output = open("out.dat", "w")
     wave, pot = initialize()
     density = zeros(size(wave,1))
 
+    # looping through space (both normal and phase)
     for j = 1:stepnum
 
+        # finding PE and KE terms 
         PE, KE = energy(wave, pot, dt)
         norm_const = 0
 
@@ -93,22 +82,24 @@ function splitstep(stepnum, dt)
 
         wave = ifft(wave)
 
+        # normalizing is necessary to keep wavefunction
         norm_const = 0
         for i = 1:res
             norm_const += abs2(wave[i]) * xmax / res
         end
 
-        println(norm_const)
+        #println(norm_const)
 
         for i = 1:res
             wave[i] *= 1/norm_const
         end
 
+        # density is Psi^2
         for i = 1:res
-            #density[i] = abs(conj(wave[i]) * wave[i])
             density[i] = abs2(wave[i])
         end
 
+        # Output
         if j % 1000 == 0 || j == 1
             for i = 1:res
                 println(output, density[i])
