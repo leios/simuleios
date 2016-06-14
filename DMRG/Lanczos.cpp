@@ -4,6 +4,7 @@
 *
 *   Notes: Compile with (for Arch systems):
 *              g++ -I /usr/include/eigen3/ Lanczos.cpp
+*          0's along the prime diagonal. I don't know what this means.
 *
 *-----------------------------------------------------------------------------*/
  
@@ -11,11 +12,18 @@
 #include <Eigen/Core>
 #include <random>
 #include <vector>
+#include <math.h>
 
 using namespace Eigen;
 
 // Function for the lanczos algorithm, returns Tri-diagonal matrix
 MatrixXd lanczos(MatrixXd d_matrix);
+
+// Function for QR decomposition
+MatrixXd qrdecomp(MatrixXd Tridiag);
+
+// Function to return sign of value (signum function)
+int sign(double value);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -38,14 +46,16 @@ int main(){
         }
     }
 
-    MatrixXd Q = lanczos(d_matrix);
+    MatrixXd Tridiag = lanczos(d_matrix);
 
-    for (size_t i = 0; i < Q.rows(); ++i){
-        for (size_t j = 0; j < Q.cols(); ++j){
-            std::cout << Q(i, j) << '\t';
+    for (size_t i = 0; i < Tridiag.rows(); ++i){
+        for (size_t j = 0; j < Tridiag.cols(); ++j){
+            std::cout << Tridiag(i, j) << '\t';
         }
         std::cout << '\n';
     }
+
+    MatrixXd Q = qrdecomp(Tridiag);
 
 }
 
@@ -133,3 +143,107 @@ MatrixXd lanczos(MatrixXd d_matrix){
 
     return T;
 }
+
+// Function for QR decomposition
+// Because we only need Q for the power method, I will retun only Q
+MatrixXd qrdecomp(MatrixXd Tridiag){
+    // Q is and orthonormal vector => Q'Q = 1
+    MatrixXd Q = MatrixXd::Identity(Tridiag.rows(), Tridiag.cols());
+
+    // R is the upper triangular matrix
+    MatrixXd R = Tridiag;
+
+    std::cout << R << '\n';
+
+    // Scale R 
+    double max_val = R.maxCoeff(), sum = 0.0, sigma, tau;
+    bool sing;
+    int row_num = Tridiag.rows();
+    
+    // Defining vectors for algorithm
+    MatrixXd cdiag(row_num, 1), diag(row_num,1);
+    std::cout << max_val << '\n';
+
+    for (size_t i = 0; i < row_num; ++i){
+
+        //std::cout << i << '\n';
+        if (max_val == 0.0){
+            sing = true;
+            cdiag(i) = diag(i) = 0.0;
+        }
+        else{
+            // I may have mixed up the indices...
+            for (size_t j = i; j < row_num; ++j){
+                //std::cout << "j = " << j  << '\n';
+                R(i,j) = R(i,j) / max_val;
+                sum += R(i,j) * R(i,j);
+            }
+            sigma = sqrt(sum) * (double)sign(R(i,i));
+            R(i,i) += sigma;
+            cdiag(i) = sigma * R(i,i);
+            diag(i) = -max_val * R(i,i); 
+            for (size_t j = i; j < row_num; ++j){
+                //std::cout << "j2 = " << j  << '\n';
+                sum = 0.0;
+                for (size_t k = i; k < row_num; k++){
+                    sum += R(i, k) * R(i, k);
+                }
+                tau = sum / cdiag(i);
+                for (size_t k = i; k < row_num; k++){
+                    //std::cout << "k = " << k << '\n';
+                    R(i, j) -= tau * R(i,k);
+                    
+                }
+            }
+        }
+    }
+
+    std::cout << "finished scaling R" << '\n';
+    // the "-1" needs verification
+    diag(row_num-1) = R(row_num-1, row_num-1);
+    if (diag(row_num-1) == 0.0){
+        sing = true;
+    }
+
+    std::cout << "checked diagonals" << '\n';
+
+    // Set up Q explicitly
+    for (int i = 0; i < row_num; ++i){
+        if (cdiag(i) != 0.0){
+            for (int j = 0; j < row_num; ++j){
+                sum = 0.0;
+                for (int k = i; k < row_num; ++k){
+                    sum += R(i, k) * Q(i,j);
+                }
+                sum /= cdiag(i);
+                for (int k = i; k < row_num; ++k){
+                    Q(i,j) -= sum * R(i,k);
+                }
+            }
+        }
+    }
+
+    // Remove lower left from R
+    for (int i = 0; i < row_num; ++i){
+        R(i,i) = diag(i);
+        for (int k = 0; k < i; ++k){
+            R(i,k) = 0.0;
+        }
+    }
+
+    return Q;
+}
+
+// Function to return sign of value (signum function)
+int sign(double value){
+    if (value < 0.0){
+        return -1;
+    }
+    else if (value > 0){
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
