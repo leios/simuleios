@@ -57,6 +57,8 @@ int main(){
 
     MatrixXd Q = qrdecomp(Tridiag);
 
+    std::cout << Q << '\n';
+
 }
 
 /*----------------------------------------------------------------------------//
@@ -155,14 +157,22 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
 
     std::cout << R << '\n';
 
-    // Scale R 
-    double max_val = R.maxCoeff(), sum = 0.0, sigma, tau;
-    bool sing;
     int row_num = Tridiag.rows();
+
+    // Scale R 
+    double max_val = 0, sum = 0.0, sigma, tau;;
+    for (int i = 0; i < row_num; ++i){
+        for (int j = i; j < row_num; ++j){
+            if (R(i, j) > max_val){
+                max_val = R(i,j);
+            }
+        }
+    }
+    bool sing;
     
     // Defining vectors for algorithm
     MatrixXd cdiag(row_num, 1), diag(row_num,1);
-    std::cout << max_val << '\n';
+    std::cout << "max_val is: " << max_val << '\n';
 
     for (size_t i = 0; i < row_num; ++i){
 
@@ -178,17 +188,19 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
                 R(i,j) = R(i,j) / max_val;
                 sum += R(i,j) * R(i,j);
             }
+            std::cout << "R check " << i << ": " << '\n' << R << '\n';
             sigma = sqrt(sum) * (double)sign(R(i,i));
             R(i,i) += sigma;
             cdiag(i) = sigma * R(i,i);
             diag(i) = -max_val * R(i,i); 
-            for (size_t j = i; j < row_num; ++j){
+            for (size_t j = i+1; j < row_num; ++j){
                 //std::cout << "j2 = " << j  << '\n';
                 sum = 0.0;
                 for (size_t k = i; k < row_num; k++){
-                    sum += R(i, k) * R(i, k);
+                    sum += R(i, j) * R(k, j);
                 }
                 tau = sum / cdiag(i);
+                std::cout << "tau is: " << tau << '\n';
                 for (size_t k = i; k < row_num; k++){
                     //std::cout << "k = " << k << '\n';
                     R(i, j) -= tau * R(i,k);
@@ -199,6 +211,8 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
     }
 
     std::cout << "finished scaling R" << '\n';
+    std::cout << "sing is: " << sing << '\n';
+    std::cout << "R is: " << '\n' << R << '\n';
     // the "-1" needs verification
     diag(row_num-1) = R(row_num-1, row_num-1);
     if (diag(row_num-1) == 0.0){
