@@ -18,6 +18,10 @@ import numpy as np
 # Written by Kramsfasel
 def parse_data(num_part=0):
     array = []
+
+    # Set of connections for lines later on
+    connectome = []
+    connectome.append([0,120,121])
     offset = 0
     linesInDataSet = 0
     print("importing data from file")
@@ -39,14 +43,20 @@ def parse_data(num_part=0):
                     num_part=linesInDataSet
 
     (max_vel, min_vel) = place_spheres(array, num_part, linesInDataSet)
+    add_lines(connectome)
+
+    print(bpy.context.scene.objects[str(1)].location)
+    print(bpy.context.scene.objects[str(2)].location)
         
     numberOfFrames = int (linesInDataSet / num_part) 
 
     print ("found " + str(numberOfFrames) + " and " + str(num_part) + " particles in first frame")   
 
     for linesInDataSet in range(2, numberOfFrames+1):
-        if (linesInDataSet%100==0):print ("at frame " + str(linesInDataSet)+ " of " + str(numberOfFrames))
+        if (linesInDataSet%100==0):
+            print ("at frame "+str(linesInDataSet)+" of "+str(numberOfFrames))
         move_spheres(array, num_part, linesInDataSet, max_vel, min_vel)
+        move_lines(connectome, linesInDataSet)
     return numberOfFrames
 
 # Creates sphere material
@@ -100,12 +110,11 @@ def place_duplicates(x, y, z, id, ob = None):
     #sce.update()
 
 # function to place spheres in blender
+# colors based on the sphere's velocity
 def place_spheres(array, num_part, i):
     diam = 0.1
 
-    #print(array)
- 
-    # determine the final velocities
+    # determine the final velocities for coloring
     vel_max = 0
     vel_min = 1000
     for i in range (num_part):
@@ -130,23 +139,34 @@ def place_spheres(array, num_part, i):
 
 # Function to moves spheres that are already there.
 def move_spheres(array, num_part, frame, max_vel, min_vel):
-        bpy.context.scene.frame_set(frame)
-        offset = int(frame * num_part - num_part)
-        current_frame = bpy.context.scene.frame_current
-        for i in range(offset,num_part+offset):
-                vel = np.sqrt((array[i][3] * array[i][3]) 
-                      + (array[i][4] * array[i][4])
-                      + (array[i][5] * array[i][5]))
-                diff_vel = max_vel - min_vel
-                ratio = (vel - min_vel) / diff_vel
-                mat = bpy.data.materials[str(array[i][7])]
-                mat.diffuse_color = ( ratio,0,1-ratio)
-                mat.keyframe_insert(data_path="diffuse_color", frame=frame, 
-                                    index=-1)
-                bpy.context.scene.objects[str(array[i][7])].location =  \
-                    (array[i][0],array[i][1],array[i][2])
-                bpy.context.scene.objects[str(array[i][7])].keyframe_insert(
-                    data_path='location', frame=(current_frame))
+    bpy.context.scene.frame_set(frame)
+    offset = int(frame * num_part - num_part)
+    current_frame = bpy.context.scene.frame_current
+    for i in range(offset,num_part+offset):
+        vel = np.sqrt((array[i][3] * array[i][3]) 
+              + (array[i][4] * array[i][4])
+              + (array[i][5] * array[i][5]))
+        diff_vel = max_vel - min_vel
+        ratio = (vel - min_vel) / diff_vel
+        mat = bpy.data.materials[str(array[i][7])]
+        mat.diffuse_color = ( ratio,0,1-ratio)
+        mat.keyframe_insert(data_path="diffuse_color", frame=frame, index=-1)
+        bpy.context.scene.objects[str(array[i][7])].location =  \
+            (array[i][0],array[i][1],array[i][2])
+        bpy.context.scene.objects[str(array[i][7])].keyframe_insert(
+            data_path='location', frame=(current_frame))
+
+# This function assumes that the balls have already been moved for this timestep
+def move_lines(connectome, frame):
+    for i in connectome:
+        curve = bpy.data.curves["bc"+str(i[0])].splines[0]
+        curve.bezier_points[0].co = \
+            bpy.context.scene.objects[str(i[1])].location
+        curve.bezier_points[0].keyframe_insert(data_path="co", frame=frame, index=-1)
+        curve.bezier_points[1].co = \
+            bpy.context.scene.objects[str(i[2])].location
+
+        curve.bezier_points[1].keyframe_insert(data_path="co", frame=frame, index=-1)
 
 # Creates the cage material
 def create_cage (passedName):
@@ -185,7 +205,7 @@ def cage_set(Box_length, sign):
 # Removes objects in scene
 def remove_obj( scene ):
     for ob in scene.objects: 
-        if ob.name !='Camera':
+        if ob.name !='Camera' and ob.name != 'Lamp':
             scene.objects.unlink( ob )
 
 #defining our scene
@@ -208,9 +228,9 @@ def def_scene(box_length, bgcolor):
     r_camz = 0
     '''
 
-    x_cam = 1.1 
-    y_cam = 1.625
-    z_cam = 0.723
+    x_cam = 0.55
+    y_cam = 0.8125
+    z_cam = 0.3615
     r_camx = 70
     r_camy = 0
     r_camz = 145
@@ -231,8 +251,9 @@ def def_scene(box_length, bgcolor):
     #bpy.data.cameras['Camera'].ortho_scale = 21.0
 
     # Scene resolution
-    scene.render.resolution_x = 1366*2
-    scene.render.resolution_y = 768*2
+    #scene.render.resolution_x = 1366*2
+    scene.render.resolution_x = 1024
+    scene.render.resolution_y = 768
 
     # Remove lighting (for now)
     remove_obj( scene )
@@ -241,6 +262,31 @@ def def_scene(box_length, bgcolor):
     bpy.data.worlds['World'].horizon_color = (0,0,0)
 
     return scene
+
+# Adds lines to specific data points for eigenvector testing
+# Because this is example specific, I will not return anything.
+def add_lines(connectome):
+    for i in connectome:
+        print(bpy.context.scene.objects[str(i[1])].location)
+        print(bpy.context.scene.objects[str(i[2])].location)
+
+        bpy.ops.curve.primitive_bezier_curve_add()
+        bpy.context.object.data.splines.active.id_data.name = "bc" + str(i[0])
+        #bpy.data.curves["BezierCurve"] = "bc" + str(i[0])
+        bpy.data.curves["bc" + str(i[0])].bevel_depth = 0.03
+        bpy.data.curves["bc" + str(i[0])].bevel_resolution = 4
+        bpy.data.curves["bc" + str(i[0])].fill_mode = 'FULL'
+        bpy.data.curves["bc" + str(i[0])].splines[0].bezier_points[0].co = \
+            bpy.context.scene.objects[str(i[1])].location
+        bpy.data.curves["bc" + str(i[0])].splines[0].bezier_points[0].handle_left_type = 'VECTOR'
+        bpy.data.curves["bc" + str(i[0])].splines[0].bezier_points[1].co = \
+            bpy.context.scene.objects[str(i[2])].location
+        bpy.data.curves["bc" + str(i[0])].splines[0].bezier_points[1].handle_left_type = 'VECTOR'
+        color = (1, 1, 1)
+        mat = create_new_material("bc" + str(i[0]), color)
+        bpy.data.curves["bc" + str(i[0])].materials.append(mat)
+        bpy.data.curves["bc" + str(i[0])].splines[0].resolution_u = 1
+    
 
 # Renders movie
 def render_movie(scene):
