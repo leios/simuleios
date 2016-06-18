@@ -40,7 +40,7 @@ int main(){
     std::uniform_real_distribution<double> dist(0,1);
 
     for (size_t i = 0; i < d_matrix.rows(); ++i){
-        for (size_t j = 0; j < i; ++j){
+        for (size_t j = 0; j <= i; ++j){
             d_matrix(i,j) = dist(gen);
             d_matrix(j,i) = d_matrix(i,j);
         }
@@ -162,17 +162,23 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
     // Scale R 
     double max_val = 0, sum = 0.0, sigma, tau;;
     for (int i = 0; i < row_num; ++i){
+        max_val = 0;
         for (int j = i; j < row_num; ++j){
             if (R(i, j) > max_val){
                 max_val = R(i,j);
             }
+        }
+
+        std::cout << "max_val is: " << max_val << '\n';
+
+        for (int j = i; j < row_num; ++j){
+            R(i, j) /= max_val;
         }
     }
     bool sing;
     
     // Defining vectors for algorithm
     MatrixXd cdiag(row_num, 1), diag(row_num,1);
-    std::cout << "max_val is: " << max_val << '\n';
 
     for (size_t i = 0; i < row_num; ++i){
 
@@ -185,7 +191,7 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
             // I may have mixed up the indices...
             for (size_t j = i; j < row_num; ++j){
                 //std::cout << "j = " << j  << '\n';
-                R(i,j) = R(i,j) / max_val;
+                //R(i,j) = R(i,j) / max_val;
                 sum += R(i,j) * R(i,j);
             }
             std::cout << "R check " << i << ": " << '\n' << R << '\n';
@@ -244,6 +250,8 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
             R(i,k) = 0.0;
         }
     }
+
+    std::cout << "R is: " << '\n' << R << '\n';
 
     return Q;
 }
