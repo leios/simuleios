@@ -48,12 +48,16 @@ int main(){
 
     MatrixXd Tridiag = lanczos(d_matrix);
 
+    std::cout << '\n' << "Tridiagonal matrix is: \n";
+
     for (size_t i = 0; i < Tridiag.rows(); ++i){
         for (size_t j = 0; j < Tridiag.cols(); ++j){
             std::cout << Tridiag(i, j) << '\t';
         }
         std::cout << '\n';
     }
+
+    std::cout << '\n';
 
     MatrixXd Q = qrdecomp(Tridiag);
 
@@ -134,6 +138,7 @@ MatrixXd lanczos(MatrixXd d_matrix){
     MatrixXd T(j_tot,j_tot);
     T = krylov.transpose() * d_matrix * krylov;
 
+/*
     // Setting values to 0 if they are close...
     for (size_t i = 0; i < T.rows(); ++i){
         for (size_t j = 0; j < T.cols(); ++j){
@@ -142,6 +147,7 @@ MatrixXd lanczos(MatrixXd d_matrix){
             }
         }
     }
+*/
 
     return T;
 }
@@ -159,57 +165,72 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
 
     int row_num = Tridiag.rows();
 
+    std::cout << "row_num is: " << row_num << '\n';
+
     // Scale R 
-    double max_val = 0, sum = 0.0, sigma, tau;;
+    double max_val[row_num], sum = 0.0, sigma, tau;;
     for (int i = 0; i < row_num; ++i){
-        max_val = 0;
-        for (int j = i; j < row_num; ++j){
-            if (R(i, j) > max_val){
-                max_val = R(i,j);
+        max_val[i] = R(i, i);
+        std::cout << i << '\n';
+        for (int j = i + 1; j < row_num; ++j){
+            if (R(i, j) > max_val[i]){
+                max_val[i] = R(i,j);
             }
         }
 
-        std::cout << "max_val is: " << max_val << '\n';
+        std::cout << "max_val is: " << max_val[i] << '\n';
 
         for (int j = i; j < row_num; ++j){
-            R(i, j) /= max_val;
+            R(i, j) /= max_val[i];
         }
     }
     bool sing;
-    
+
+    // Remove lower left from R
+    for (int i = 0; i < row_num; ++i){
+        for (int k = 0; k < i; ++k){
+            R(i,k) = 0.0;
+        }
+    }
+
     // Defining vectors for algorithm
     MatrixXd cdiag(row_num, 1), diag(row_num,1);
 
-    for (size_t i = 0; i < row_num; ++i){
+    for (size_t i = 0; i < row_num - 1; ++i){
+        sum = 0.0;
 
         //std::cout << i << '\n';
-        if (max_val == 0.0){
+        if (max_val[i] == 0.0){
             sing = true;
             cdiag(i) = diag(i) = 0.0;
+            std::cout << "MATRIX IS SINGULAR!!!" << '\n';
         }
         else{
             // I may have mixed up the indices...
+            std::cout << "THIS ROW IS: " << '\n';
             for (size_t j = i; j < row_num; ++j){
                 //std::cout << "j = " << j  << '\n';
-                //R(i,j) = R(i,j) / max_val;
+                //R(i,j) = R(i,j) / max_val[i];
+                std::cout << R(i,j) << '\t';
                 sum += R(i,j) * R(i,j);
             }
+            std::cout << '\n' << sum << '\n';;
             std::cout << "R check " << i << ": " << '\n' << R << '\n';
             sigma = sqrt(sum) * (double)sign(R(i,i));
             R(i,i) += sigma;
             cdiag(i) = sigma * R(i,i);
-            diag(i) = -max_val * R(i,i); 
+            diag(i) = -max_val[i] * sigma; 
             for (size_t j = i+1; j < row_num; ++j){
                 //std::cout << "j2 = " << j  << '\n';
                 sum = 0.0;
                 for (size_t k = i; k < row_num; k++){
-                    sum += R(i, j) * R(k, j);
+                    sum += R(i, k) * R(j, k);
                 }
                 tau = sum / cdiag(i);
                 std::cout << "tau is: " << tau << '\n';
                 for (size_t k = i; k < row_num; k++){
                     //std::cout << "k = " << k << '\n';
-                    R(i, j) -= tau * R(i,k);
+                    R(j, k) -= tau * R(i,k);
                     
                 }
             }
@@ -228,20 +249,26 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
     std::cout << "checked diagonals" << '\n';
 
     // Set up Q explicitly
-    for (int i = 0; i < row_num; ++i){
+    for (int i = 0; i < row_num-1; ++i){
         if (cdiag(i) != 0.0){
             for (int j = 0; j < row_num; ++j){
                 sum = 0.0;
                 for (int k = i; k < row_num; ++k){
-                    sum += R(i, k) * Q(i,j);
+                    sum += R(i, k) * Q(j,k);
                 }
                 sum /= cdiag(i);
                 for (int k = i; k < row_num; ++k){
-                    Q(i,j) -= sum * R(i,k);
+                    Q(j,i) -= sum * R(i,k);
                 }
             }
         }
     }
+
+    std::cout << '\n';
+
+    // Checking Q^T * Q
+    std::cout << "Q^T * Q is: " << '\n';
+    std::cout << Q * Q.transpose() << '\n';
 
     // Remove lower left from R
     for (int i = 0; i < row_num; ++i){
