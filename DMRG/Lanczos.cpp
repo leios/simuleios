@@ -157,6 +157,7 @@ MatrixXd lanczos(MatrixXd d_matrix){
 MatrixXd qrdecomp(MatrixXd Tridiag){
     // Q is and orthonormal vector => Q'Q = 1
     MatrixXd Q = MatrixXd::Identity(Tridiag.rows(), Tridiag.cols());
+    MatrixXd Id = MatrixXd::Identity(Tridiag.rows(), Tridiag.cols());
 
     // R is the upper triangular matrix
     MatrixXd R = Tridiag;
@@ -168,36 +169,25 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
     std::cout << "row_num is: " << row_num << '\n';
 
     // Scale R 
-    double max_val[row_num], sum = 0.0, sigma, tau;;
-    for (int i = 0; i < row_num; ++i){
-        max_val[i] = R(i, i);
-        std::cout << i << '\n';
-        for (int j = i + 1; j < row_num; ++j){
-            if (R(i, j) > max_val[i]){
-                max_val[i] = R(i,j);
-            }
-        }
+    double max_val[row_num], sum = 0.0, sigma, tau, fak;
 
-        std::cout << "max_val is: " << max_val[i] << '\n';
-
-        for (int j = i; j < row_num; ++j){
-            R(i, j) /= max_val[i];
-        }
-    }
     bool sing;
-
-    // Remove lower left from R
-    for (int i = 0; i < row_num; ++i){
-        for (int k = 0; k < i; ++k){
-            R(i,k) = 0.0;
-        }
-    }
 
     // Defining vectors for algorithm
     MatrixXd cdiag(row_num, 1), diag(row_num,1);
 
-    for (size_t i = 0; i < row_num - 1; ++i){
+    for (size_t i = 0; i < row_num; ++i){
+
         sum = 0.0;
+
+        // find max value along column
+        max_val[i] = R(i,i);
+        for (int j = i; j < row_num; ++j){
+            if (R(j, i) > max_val[i]){
+                max_val[i] = R(j, i);
+            }
+
+        }
 
         //std::cout << i << '\n';
         if (max_val[i] == 0.0){
@@ -206,81 +196,70 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
             std::cout << "MATRIX IS SINGULAR!!!" << '\n';
         }
         else{
+
             // I may have mixed up the indices...
-            std::cout << "THIS ROW IS: " << '\n';
+            std::cout << "THIS COL IS: " << '\n';
             for (size_t j = i; j < row_num; ++j){
                 //std::cout << "j = " << j  << '\n';
-                //R(i,j) = R(i,j) / max_val[i];
-                std::cout << R(i,j) << '\t';
-                sum += R(i,j) * R(i,j);
+                R(j,i) = R(j,i) / max_val[i];
+                std::cout << R(j,i) << '\t';
+                sum += R(j,i) * R(j,i);
             }
-            std::cout << '\n' << sum << '\n';;
-            std::cout << "R check " << i << ": " << '\n' << R << '\n';
-            sigma = sqrt(sum) * (double)sign(R(i,i));
-            R(i,i) += sigma;
-            cdiag(i) = sigma * R(i,i);
-            diag(i) = -max_val[i] * sigma; 
-            for (size_t j = i+1; j < row_num; ++j){
-                //std::cout << "j2 = " << j  << '\n';
-                sum = 0.0;
-                for (size_t k = i; k < row_num; k++){
-                    sum += R(i, k) * R(j, k);
-                }
-                tau = sum / cdiag(i);
-                std::cout << "tau is: " << tau << '\n';
-                for (size_t k = i; k < row_num; k++){
-                    //std::cout << "k = " << k << '\n';
-                    R(j, k) -= tau * R(i,k);
-                    
-                }
+            if (R(i,i) >= 0){
+                diag(i) = -sum;
             }
+            else{
+                diag(i) = sum;
+            }
+            fak = sqrt(sum * (sum + abs(R(i,i))));
+            R(i,i) = R(i,i) - diag(i);
+            for (size_t j = i; j < row_num; ++j){
+                R(j,i) = R(j,i) / fak;
+            }
+
+            // Creating blocks to work with
+            MatrixXd block1 = R.block(i, i+1, row_num-i, row_num - (i+1));
+            MatrixXd block2 = R.block(i, i, row_num-i,1);
+
+            std::cout << block1 << '\n' << '\n' << block2;
+
+            block1 = block1 - block2 * (block2.transpose() * block1);
         }
     }
 
-    std::cout << "finished scaling R" << '\n';
-    std::cout << "sing is: " << sing << '\n';
-    std::cout << "R is: " << '\n' << R << '\n';
-    // the "-1" needs verification
-    diag(row_num-1) = R(row_num-1, row_num-1);
-    if (diag(row_num-1) == 0.0){
-        sing = true;
-    }
+    MatrixXd z(row_num, 1);
 
-    std::cout << "checked diagonals" << '\n';
+    // Explicitly defining Q
+    // Create column block for multiplication
+    for (size_t i = 0; i < row_num; ++i){
+        MatrixXd Idblock = Id.block(i, 0, row_num, 1);
+        for (int j = row_num; j > 0; --j){
+            z = Idblock;
 
-    // Set up Q explicitly
-    for (int i = 0; i < row_num-1; ++i){
-        if (cdiag(i) != 0.0){
-            for (int j = 0; j < row_num; ++j){
-                sum = 0.0;
-                for (int k = i; k < row_num; ++k){
-                    sum += R(i, k) * Q(j,k);
-                }
-                sum /= cdiag(i);
-                for (int k = i; k < row_num; ++k){
-                    Q(j,i) -= sum * R(i,k);
-                }
+            // Creating blocks for multiplication
+            MatrixXd zblock = z.block(j, 0, row_num - j, 1);
+            MatrixXd Rblock = R.block(j, j, row_num - j, 1);
+
+            // Performing multiplication
+            zblock = zblock - Rblock * (Rblock.transpose() * zblock);
+
+            // Set xblock up for next iteration of k
+            for (int k = j; k < row_num; ++k){
+                z(k) += zblock(k); 
             }
         }
+        Q.col(i) = z;
     }
-
-    std::cout << '\n';
-
-    // Checking Q^T * Q
-    std::cout << "Q^T * Q is: " << '\n';
-    std::cout << Q * Q.transpose() << '\n';
 
     // Remove lower left from R
     for (int i = 0; i < row_num; ++i){
         R(i,i) = diag(i);
-        for (int k = 0; k < i; ++k){
-            R(i,k) = 0.0;
+        for (int j = 0; j < i; ++j){
+            R(i,j) = 0;
         }
     }
 
-    std::cout << "R is: " << '\n' << R << '\n';
-
-    return Q;
+    return Q.transpose();
 }
 
 // Function to return sign of value (signum function)
