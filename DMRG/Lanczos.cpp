@@ -156,7 +156,7 @@ MatrixXd lanczos(MatrixXd d_matrix){
 // Because we only need Q for the power method, I will retun only Q
 MatrixXd qrdecomp(MatrixXd Tridiag){
     // Q is and orthonormal vector => Q'Q = 1
-    MatrixXd Q = MatrixXd::Identity(Tridiag.rows(), Tridiag.cols());
+    MatrixXd Q(Tridiag.rows(), Tridiag.cols());
     MatrixXd Id = MatrixXd::Identity(Tridiag.rows(), Tridiag.cols());
 
     // R is the upper triangular matrix
@@ -165,46 +165,49 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
     std::cout << R << '\n';
 
     int row_num = Tridiag.rows();
+    int countx = 0, county = 0;
 
     std::cout << "row_num is: " << row_num << '\n';
 
     // Scale R 
-    double max_val[row_num], sum = 0.0, sigma, tau, fak;
+    double sum = 0.0, sigma, tau, fak, max_val = 0;
+
+    for (int i = 0; i < row_num; ++i){
+        for (int j = 0; j < row_num; ++j){
+            if (R(i,j) > max_val){
+                max_val = R(i,j);
+            }
+        }
+    }
+
+    for (int i = 0; i < row_num; ++i){
+        for (int j = 0; j < row_num; ++j){
+            R(i,j) /= max_val;
+        }
+    }
 
     bool sing;
 
     // Defining vectors for algorithm
-    MatrixXd cdiag(row_num, 1), diag(row_num,1);
+    MatrixXd diag(row_num,1);
 
     for (size_t i = 0; i < row_num; ++i){
 
+        // determining l_2 norm
         sum = 0.0;
-
-        // find max value along column
-        max_val[i] = R(i,i);
-        for (int j = i; j < row_num; ++j){
-            if (R(j, i) > max_val[i]){
-                max_val[i] = R(j, i);
-            }
-
+        for (size_t j = i; j < row_num; ++j){
+            sum += R(j,i) * R(j,i);
         }
+        sum = sqrt(sum);
 
         //std::cout << i << '\n';
-        if (max_val[i] == 0.0){
+        if (sum == 0.0){
             sing = true;
-            cdiag(i) = diag(i) = 0.0;
+            diag(i) = 0.0;
             std::cout << "MATRIX IS SINGULAR!!!" << '\n';
         }
         else{
 
-            // I may have mixed up the indices...
-            std::cout << "THIS COL IS: " << '\n';
-            for (size_t j = i; j < row_num; ++j){
-                //std::cout << "j = " << j  << '\n';
-                R(j,i) = R(j,i) / max_val[i];
-                std::cout << R(j,i) << '\t';
-                sum += R(j,i) * R(j,i);
-            }
             if (R(i,i) >= 0){
                 diag(i) = -sum;
             }
@@ -212,30 +215,54 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
                 diag(i) = sum;
             }
             fak = sqrt(sum * (sum + abs(R(i,i))));
+            std::cout << "fak is: " << fak << '\n';
             R(i,i) = R(i,i) - diag(i);
             for (size_t j = i; j < row_num; ++j){
                 R(j,i) = R(j,i) / fak;
             }
 
             // Creating blocks to work with
-            MatrixXd block1 = R.block(i, i+1, row_num-i, row_num - (i+1));
+            MatrixXd block1 = R.block(i, i+1, row_num-i, row_num - i - 1);
             MatrixXd block2 = R.block(i, i, row_num-i,1);
 
-            std::cout << block1 << '\n' << '\n' << block2;
+            std::cout << "R is: " << '\n' << R << '\n';
+
+            std::cout << "checking blocks:" << '\n';
+
+            std::cout << block1 << '\n' << '\n' << block2 << '\n';
 
             block1 = block1 - block2 * (block2.transpose() * block1);
+
+            // setting values back to what they need to be
+            countx = 0;
+            for (int j = i+1; j < row_num; ++j){
+                county = 0;
+                for (int k = i; k < row_num; ++k){
+                    R(k,j) = block1(county, countx);
+                    std::cout << k << '\t' << j << '\t' << countx << '\t' 
+                              << county << '\t' << R(k,j) << '\n';
+                    ++county;
+                }
+                ++countx;
+            }
         }
     }
+
+    std::cout << "R is: " << '\n';
+    std::cout << R << '\n';
 
     MatrixXd z(row_num, 1);
 
     // Explicitly defining Q
     // Create column block for multiplication
     for (size_t i = 0; i < row_num; ++i){
-        MatrixXd Idblock = Id.block(i, 0, row_num, 1);
-        for (int j = row_num; j > 0; --j){
+        MatrixXd Idblock = Id.block(0, i, row_num, 1);
+        std::cout << "i is: " << i << '\n';
+        std::cout << "IDblock is: " << '\n' << Idblock << '\n';
+        for (int j = row_num-1; j >= 0; --j){
             z = Idblock;
 
+            std::cout << "j is: " << j << '\n';
             // Creating blocks for multiplication
             MatrixXd zblock = z.block(j, 0, row_num - j, 1);
             MatrixXd Rblock = R.block(j, j, row_num - j, 1);
@@ -244,11 +271,17 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
             zblock = zblock - Rblock * (Rblock.transpose() * zblock);
 
             // Set xblock up for next iteration of k
+            int count = 0;
             for (int k = j; k < row_num; ++k){
-                z(k) += zblock(k); 
+                z(k) = zblock(count); 
+                ++count;
             }
         }
+
+        std::cout << "got to here" << '\n';
         Q.col(i) = z;
+
+        std::cout << Q << '\n';
     }
 
     // Remove lower left from R
@@ -258,6 +291,10 @@ MatrixXd qrdecomp(MatrixXd Tridiag){
             R(i,j) = 0;
         }
     }
+
+    std::cout << "R is: " << '\n' << R << '\n';
+
+    std::cout << "Q^T * Q is: " << '\n' << Q * Q.transpose() << '\n' << '\n';
 
     return Q.transpose();
 }
