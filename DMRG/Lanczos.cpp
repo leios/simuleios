@@ -37,6 +37,7 @@ void eigentest(MatrixXd &d_matrix, MatrixXd &Q);
 *-----------------------------------------------------------------------------*/
 
 int main(){
+/*
     int size = 200;
     MatrixXd d_matrix(size,size);
 
@@ -53,7 +54,7 @@ int main(){
         }
     }
 
-    MatrixXd Tridiag = lanczos(d_matrix);
+    Tridiag = lanczos(d_matrix);
 
     std::cout << '\n' << "Tridiagonal matrix is: \n";
 
@@ -65,9 +66,17 @@ int main(){
     }
 
     std::cout << '\n';
+*/
+
+    MatrixXd Tridiag(4,4); 
+    Tridiag <<  2, 1, 3, 5,
+                -1, 0, 7, 1,
+                0,-1,-1,3,
+                -3,7,4,3;
 
     MatrixXd Q = qrdecomp(Tridiag);
 
+/*
     MatrixXd Qtemp = Q;
 
     std::cout << Q << '\n';
@@ -78,6 +87,7 @@ int main(){
     Qtemp = Qtemp - Q;
     std::cout << "After the Power Method: " << Qtemp.squaredNorm() << '\n';
     eigentest(Tridiag, Q);
+*/
 
 }
 
@@ -161,8 +171,9 @@ MatrixXd lanczos(MatrixXd &d_matrix){
 // Because we only need Q for the power method, I will retun only Q
 MatrixXd qrdecomp(MatrixXd &Tridiag){
     // Q is and orthonormal vector => Q'Q = 1
-    MatrixXd Q(Tridiag.rows(), Tridiag.cols());
     MatrixXd Id = MatrixXd::Identity(Tridiag.rows(), Tridiag.cols());
+    MatrixXd Q = Id;
+    MatrixXd P(Tridiag.rows(), Tridiag.cols());
 
     // R is the upper triangular matrix
     MatrixXd R = Tridiag;
@@ -173,135 +184,76 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
     // Scale R 
     double sum = 0.0, sigma, tau, fak, max_val = 0;
 
-/*
-    for (int i = 0; i < row_num; ++i){
-        for (int j = 0; j < row_num; ++j){
-            if (R(i,j) > max_val){
-                max_val = R(i,j);
-            }
-        }
-    }
-
-    for (int i = 0; i < row_num; ++i){
-        for (int j = 0; j < row_num; ++j){
-            R(i,j) /= max_val;
-        }
-    }
-*/
-
     bool sing;
 
     // Defining vectors for algorithm
     MatrixXd diag(row_num,1);
 
-    for (size_t i = 0; i < row_num; ++i){
+    std::cout << R << '\n';
 
-        // determining l_2 norm
-        sum = 0.0;
+    for (int i = 0; i < row_num-1; ++i){
+        diag = MatrixXd::Zero(row_num, 1);
+
+        sum = 0;
         for (size_t j = i; j < row_num; ++j){
             sum += R(j,i) * R(j,i);
             std::cout << R(j,i) << '\n';
         }
         sum = sqrt(sum);
 
-        std::cout << "sum is: " << sum << '\n';
-
-        if (sum == 0.0){
-            sing = true;
-            diag(i) = 0.0;
-            std::cout << "MATRIX IS SINGULAR!!!" << '\n';
+        if (R(i,i) > 0){
+            sigma = -sum;
         }
         else{
+            sigma = sum;
+        }
 
-            if (R(i,i) >= 0){
-                diag(i) = -sum;
+        std::cout << "sigma is: " << sigma << '\n';
+
+        sum = 0;
+        //diag = R.block(i,i, row_num - i, 1);
+        std::cout << "diag is: " << '\n';
+        for (int j = i; j < row_num; ++j){
+            //std::cout << i << '\t' << j << '\n';
+            if (j == i){
+                diag(j) = R(j,i) + sigma;
             }
             else{
-                diag(i) = sum;
+                diag(j) = R(j, i);
             }
-            fak = sqrt(sum * (sum + abs(R(i,i))));
-            R(i,i) = R(i,i) - diag(i);
-            for (size_t j = i; j < row_num; ++j){
-                R(j,i) = R(j,i) / fak;
-            }
-
-            // Creating blocks to work with
-            MatrixXd block1 = R.block(i, i+1, row_num-i, row_num -i-1);
-            MatrixXd block2 = R.block(i, i, row_num-i,1);
-
-            block1 = block1 - block2 * (block2.transpose() * block1);
-
-            std::cout << R << '\n' <<  '\n' << block1 << '\n';
-            // setting values back to what they need to be
-            countx = 0;
-            for (int j = i+1; j < row_num; ++j){
-                for (int k = i; k < row_num; ++k){
-                    R(k,j) = block1(k-i, j-i-1);
-                }
-            }
+            std::cout << diag(j) << '\n';
+            sum = sum + diag(j) * diag(j);
         }
-    }
+        sum = sqrt(sum);
 
+        std::cout << "sum is: " << sum << '\n';
 
-    MatrixXd z(row_num, 1);
+        if (sum > 0.000000000000001){
 
-    // Explicitly defining Q
-    // Create column block for multiplication
-    for (size_t i = 0; i < row_num; ++i){
-        MatrixXd Idblock = Id.block(0, i, row_num, 1);
-        for (int j = row_num-1; j >= 0; --j){
-            z = Idblock;
-
-            // Creating blocks for multiplication
-            MatrixXd zblock = z.block(j, 0, row_num - j, 1);
-            MatrixXd Rblock = R.block(j, j, row_num - j, 1);
-
-            // Performing multiplication
-            zblock = zblock - Rblock * (Rblock.transpose() * zblock);
-
-            // Set xblock up for next iteration of k
-            for (int k = j; k < row_num; ++k){
-                z(k) = zblock(k-j); 
+            for (int j = i; j < row_num; ++j){
+                diag(j) = diag(j) / sum;
             }
+    
+            std::cout << "normalized diag is: " << '\n' << diag << '\n';
+            
+            P = Id - (diag * diag.transpose()) * 2.0;
+    
+            R = P * R;
+            Q = Q * P;
         }
 
-        Q.col(i) = z;
+        std::cout << "R is: " << R << '\n';
 
-        //std::cout << Q << '\n';
     }
+    std::cout << "R is: " << R << '\n';
+    std::cout << "Q is: " << Q << '\n';
 
-    // Remove lower left from R
-    for (int i = 0; i < row_num; ++i){
-        R(i,i) = diag(i);
-        for (int j = 0; j < i; ++j){
-            R(i,j) = 0;
-        }
-    }
+    std::cout << "QR is: " << '\n' << Q*R << '\n';
 
-    //std::cout << "R is: " << '\n' << R << '\n';
-
-    MatrixXd temp = Q.transpose() * Q;
-
-/*
-    std::cout << "Truncated Q^T * Q is:" << '\n';
-    for (int i = 0; i < temp.rows(); ++i){
-        for (int j = 0; j < temp.cols(); ++j){
-            if (temp(i,j) < 0.00000000001){
-                std::cout << 0 << '\t';
-            }
-            else{
-                std::cout << temp(i,j) <<'\t';
-            }
-        }
-        std::cout << '\n';
-    }
-    std::cout << '\n';
-*/
-
-    //std::cout << "Q^T * Q is: " << '\n' << Q * Q.transpose() << '\n' << '\n';
-    //std::cout << "QR - A is: " << '\n' << Q*R - Tridiag << '\n';
-    //std::cout << "Q^T * A - R: " << '\n'
-    //          << Q.transpose() * Tridiag - R << '\n' << '\n';
+    std::cout << "Q^T * Q is: " << '\n' << Q.transpose() * Q << '\n' << '\n';
+    std::cout << "QR - A is: " << '\n' << Q*R - Tridiag << '\n';
+    std::cout << "Q^T * A - R: " << '\n'
+              << Q.transpose() * Tridiag - R << '\n' << '\n';
 
     return Q.transpose();
 }
