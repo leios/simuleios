@@ -10,6 +10,7 @@
  
 #include <iostream>
 #include <Eigen/Core>
+#include <Eigen/QR>
 #include <random>
 #include <vector>
 #include <math.h>
@@ -172,6 +173,7 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
     // Scale R 
     double sum = 0.0, sigma, tau, fak, max_val = 0;
 
+/*
     for (int i = 0; i < row_num; ++i){
         for (int j = 0; j < row_num; ++j){
             if (R(i,j) > max_val){
@@ -185,6 +187,7 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
             R(i,j) /= max_val;
         }
     }
+*/
 
     bool sing;
 
@@ -197,8 +200,11 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
         sum = 0.0;
         for (size_t j = i; j < row_num; ++j){
             sum += R(j,i) * R(j,i);
+            std::cout << R(j,i) << '\n';
         }
         sum = sqrt(sum);
+
+        std::cout << "sum is: " << sum << '\n';
 
         if (sum == 0.0){
             sing = true;
@@ -220,21 +226,18 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
             }
 
             // Creating blocks to work with
-            MatrixXd block1 = R.block(i, i+1, row_num-i, row_num - i - 1);
+            MatrixXd block1 = R.block(i, i+1, row_num-i, row_num -i-1);
             MatrixXd block2 = R.block(i, i, row_num-i,1);
-
 
             block1 = block1 - block2 * (block2.transpose() * block1);
 
+            std::cout << R << '\n' <<  '\n' << block1 << '\n';
             // setting values back to what they need to be
             countx = 0;
             for (int j = i+1; j < row_num; ++j){
-                county = 0;
                 for (int k = i; k < row_num; ++k){
-                    R(k,j) = block1(county, countx);
-                    ++county;
+                    R(k,j) = block1(k-i, j-i-1);
                 }
-                ++countx;
             }
         }
     }
@@ -257,10 +260,8 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
             zblock = zblock - Rblock * (Rblock.transpose() * zblock);
 
             // Set xblock up for next iteration of k
-            int count = 0;
             for (int k = j; k < row_num; ++k){
-                z(k) = zblock(count); 
-                ++count;
+                z(k) = zblock(k-j); 
             }
         }
 
@@ -298,6 +299,9 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
 */
 
     //std::cout << "Q^T * Q is: " << '\n' << Q * Q.transpose() << '\n' << '\n';
+    //std::cout << "QR - A is: " << '\n' << Q*R - Tridiag << '\n';
+    //std::cout << "Q^T * A - R: " << '\n'
+    //          << Q.transpose() * Tridiag - R << '\n' << '\n';
 
     return Q.transpose();
 }
@@ -352,6 +356,7 @@ void eigentest(MatrixXd &Tridiag, MatrixXd &Q){
         std::cout << "eigenvalue is: " << eigenvalues[i] << '\n';
 
         eigenvector = ((Tridiag * Q.col(i)) / eigenvalues[i]) - Q.col(i);
+        std::cout << eigenvector << '\n' << '\n';
         std::cout << "This should be 0: " << '\t' 
                   << eigenvector.squaredNorm() << '\n';
         
