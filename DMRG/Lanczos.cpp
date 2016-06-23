@@ -18,7 +18,7 @@
 using namespace Eigen;
 
 // Function for the lanczos algorithm, returns Tri-diagonal matrix
-MatrixXd lanczos(MatrixXd &d_matrix);
+MatrixXd lanczos(MatrixXd &d_matrix, int row_num);
 
 // Function for QR decomposition
 MatrixXd qrdecomp(MatrixXd &Tridiag);
@@ -54,7 +54,7 @@ int main(){
         }
     }
 
-    Tridiag = lanczos(d_matrix);
+    Tridiag = lanczos(d_matrix, 5);
 
     std::cout << '\n' << "Tridiagonal matrix is: \n";
 
@@ -74,11 +74,13 @@ int main(){
                 0,-1,-1,3,
                 -3,7,4,3;
 
+    Tridiag = lanczos(Tridiag, 3);
+
     MatrixXd Q = qrdecomp(Tridiag);
 
-/*
     MatrixXd Qtemp = Q;
 
+    std::cout << "Q is: " << '\n';
     std::cout << Q << '\n';
 
     std::cout << "Finding eigenvalues: " << '\n';
@@ -87,7 +89,6 @@ int main(){
     Qtemp = Qtemp - Q;
     std::cout << "After the Power Method: " << Qtemp.squaredNorm() << '\n';
     eigentest(Tridiag, Q);
-*/
 
 }
 
@@ -96,7 +97,7 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // Function for the lanczos algorithm, returns Tri-diagonal matrix
-MatrixXd lanczos(MatrixXd &d_matrix){
+MatrixXd lanczos(MatrixXd &d_matrix, int row_num){
 
     // Creating random device
     static std::random_device rd;
@@ -106,7 +107,7 @@ MatrixXd lanczos(MatrixXd &d_matrix){
 
     // Defining values
     double threshold = 0.01;
-    int j = 0, j_tot = 5;
+    int j = 0;
     int size = d_matrix.rows();
 
     // Setting beta arbitrarily large for now 
@@ -121,7 +122,7 @@ MatrixXd lanczos(MatrixXd &d_matrix){
     // krylov is the krylovian subspace... Note, there might be a dynamic way to
     // do this. Something like:
     //std::vector <MatrixXd> krylov;
-    MatrixXd krylov(d_matrix.rows(), j_tot);
+    MatrixXd krylov(d_matrix.rows(), row_num);
 
     for (size_t i = 0; i < size; ++i){
         rayleigh(i) = dist(gen);
@@ -130,7 +131,7 @@ MatrixXd lanczos(MatrixXd &d_matrix){
     //std::cout << rayleigh << '\n';
 
     //while (beta > threshold){
-    for (size_t i = 0; i < j_tot; ++i){
+    for (size_t i = 0; i < row_num; ++i){
         beta = rayleigh.norm();
         //std::cout << "beta is: \n" << beta << '\n';
 
@@ -161,7 +162,7 @@ MatrixXd lanczos(MatrixXd &d_matrix){
     std::cout << "The identity matrix from the krylov subspace is: \n" 
               << krylov_id << '\n';
 
-    MatrixXd T(j_tot,j_tot);
+    MatrixXd T(row_num,row_num);
     T = krylov.transpose() * d_matrix * krylov;
 
     return T;
@@ -189,7 +190,7 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
     // Defining vectors for algorithm
     MatrixXd diag(row_num,1);
 
-    std::cout << R << '\n';
+    //std::cout << R << '\n';
 
     for (int i = 0; i < row_num-1; ++i){
         diag = MatrixXd::Zero(row_num, 1);
@@ -197,7 +198,7 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
         sum = 0;
         for (size_t j = i; j < row_num; ++j){
             sum += R(j,i) * R(j,i);
-            std::cout << R(j,i) << '\n';
+            //std::cout << R(j,i) << '\n';
         }
         sum = sqrt(sum);
 
@@ -208,11 +209,11 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
             sigma = sum;
         }
 
-        std::cout << "sigma is: " << sigma << '\n';
+        //std::cout << "sigma is: " << sigma << '\n';
 
         sum = 0;
         //diag = R.block(i,i, row_num - i, 1);
-        std::cout << "diag is: " << '\n';
+        //std::cout << "diag is: " << '\n';
         for (int j = i; j < row_num; ++j){
             //std::cout << i << '\t' << j << '\n';
             if (j == i){
@@ -221,12 +222,12 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
             else{
                 diag(j) = R(j, i);
             }
-            std::cout << diag(j) << '\n';
+            //std::cout << diag(j) << '\n';
             sum = sum + diag(j) * diag(j);
         }
         sum = sqrt(sum);
 
-        std::cout << "sum is: " << sum << '\n';
+        //std::cout << "sum is: " << sum << '\n';
 
         if (sum > 0.000000000000001){
 
@@ -234,7 +235,7 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
                 diag(j) = diag(j) / sum;
             }
     
-            std::cout << "normalized diag is: " << '\n' << diag << '\n';
+            //std::cout << "normalized diag is: " << '\n' << diag << '\n';
             
             P = Id - (diag * diag.transpose()) * 2.0;
     
@@ -242,24 +243,27 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
             Q = Q * P;
         }
 
-        std::cout << "R is: " << R << '\n';
+        //std::cout << "R is: " << R << '\n';
 
     }
-    std::cout << "R is: " << R << '\n';
-    std::cout << "Q is: " << Q << '\n';
+    //std::cout << "R is: " << R << '\n';
+    //std::cout << "Q is: " << Q << '\n';
 
-    std::cout << "QR is: " << '\n' << Q*R << '\n';
+    //std::cout << "QR is: " << '\n' << Q*R << '\n';
 
     std::cout << "Q^T * Q is: " << '\n' << Q.transpose() * Q << '\n' << '\n';
     std::cout << "QR - A is: " << '\n' << Q*R - Tridiag << '\n';
-    std::cout << "Q^T * A - R: " << '\n'
-              << Q.transpose() * Tridiag - R << '\n' << '\n';
+    //std::cout << "Q^T * A - R: " << '\n'
+    //          << Q.transpose() * Tridiag - R << '\n' << '\n';
 
-    return Q.transpose();
+    return Q;
 }
 
 // Function to perform the Power Method
 void p_method(MatrixXd &Tridiag, MatrixXd &Q){
+
+    std::cout << "Q is: " << '\n' << Q << '\n';
+    std::cout << "Tridiag is : " << '\n' << Tridiag << '\n';
 
     // Find all eigenvectors
     MatrixXd eigenvectors(Tridiag.rows(), Tridiag.cols());
@@ -298,7 +302,7 @@ void eigentest(MatrixXd &Tridiag, MatrixXd &Q){
     // Note, that this should be a representation of eigenvalues
 
     std::vector<double> eigenvalues(Tridiag.rows());
-    MatrixXd eigenvector(Tridiag.rows(),1);
+    MatrixXd checkvector(Tridiag.rows(),1);
     double QQ, QAQ;
 
     for (size_t i = 0; i < Tridiag.rows(); ++i){
@@ -307,10 +311,10 @@ void eigentest(MatrixXd &Tridiag, MatrixXd &Q){
         eigenvalues[i] =  QAQ / QQ;
         std::cout << "eigenvalue is: " << eigenvalues[i] << '\n';
 
-        eigenvector = ((Tridiag * Q.col(i)) / eigenvalues[i]) - Q.col(i);
-        std::cout << eigenvector << '\n' << '\n';
+        checkvector = ((Tridiag * Q.col(i)) / eigenvalues[i]) - Q.col(i);
+        std::cout << checkvector << '\n' << '\n';
         std::cout << "This should be 0: " << '\t' 
-                  << eigenvector.squaredNorm() << '\n';
+                  << checkvector.squaredNorm() << '\n';
         
     }
 
