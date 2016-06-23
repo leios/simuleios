@@ -37,7 +37,7 @@ void eigentest(MatrixXd &d_matrix, MatrixXd &Q);
 *-----------------------------------------------------------------------------*/
 
 int main(){
-/*
+
     int size = 200;
     MatrixXd d_matrix(size,size);
 
@@ -54,40 +54,42 @@ int main(){
         }
     }
 
-    Tridiag = lanczos(d_matrix, 5);
+    MatrixXd Tridiag = lanczos(d_matrix, 20);
 
-    std::cout << '\n' << "Tridiagonal matrix is: \n";
+    //std::cout << '\n' << "Tridiagonal matrix is: \n" << Tridiag << '\n';
 
-    for (size_t i = 0; i < Tridiag.rows(); ++i){
-        for (size_t j = 0; j < Tridiag.cols(); ++j){
-            std::cout << Tridiag(i, j) << '\t';
-        }
-        std::cout << '\n';
-    }
+    /*
+    // Testing for eigenvalue determination
+    MatrixXd Tridiag(3,3);
+    Tridiag << 1, 2, 0,
+               2, 1, 0,
+               0, 0, -3;
 
-    std::cout << '\n';
-*/
+    MatrixXd Tridiag(5,5);
+    Tridiag << 5, 0, 0, 0, 0,
+               0, 4, 0, 0, 0,
+               0, 0, 3, 0, 0,
+               0, 0, 0, 2, 0,
+               0, 0, 0, 0, 7;
+    Tridiag = lanczos(Tridiag, 5);
+    */
 
-    MatrixXd Tridiag(4,4); 
-    Tridiag <<  2, 1, 3, 5,
-                -1, 0, 7, 1,
-                0,-1,-1,3,
-                -3,7,4,3;
-
-    Tridiag = lanczos(Tridiag, 3);
+    //std::cout << "Tridiag is: " << '\n' << Tridiag << '\n';
 
     MatrixXd Q = qrdecomp(Tridiag);
 
     MatrixXd Qtemp = Q;
 
-    std::cout << "Q is: " << '\n';
-    std::cout << Q << '\n';
+    //std::cout << "Q is: " << '\n';
+    //std::cout << Q << '\n';
 
     std::cout << "Finding eigenvalues: " << '\n';
     p_method(Tridiag, Q);
 
+    //std::cout << "Q is: " << '\n' << Q << '\n';
+
     Qtemp = Qtemp - Q;
-    std::cout << "After the Power Method: " << Qtemp.squaredNorm() << '\n';
+    //std::cout << "After the Power Method: " << Qtemp.squaredNorm() << '\n';
     eigentest(Tridiag, Q);
 
 }
@@ -158,9 +160,11 @@ MatrixXd lanczos(MatrixXd &d_matrix, int row_num){
         // std::cout << j << '\n';
     }
 
+    /*
     MatrixXd krylov_id = krylov.transpose() * krylov;
     std::cout << "The identity matrix from the krylov subspace is: \n" 
               << krylov_id << '\n';
+    */
 
     MatrixXd T(row_num,row_num);
     T = krylov.transpose() * d_matrix * krylov;
@@ -251,8 +255,8 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
 
     //std::cout << "QR is: " << '\n' << Q*R << '\n';
 
-    std::cout << "Q^T * Q is: " << '\n' << Q.transpose() * Q << '\n' << '\n';
-    std::cout << "QR - A is: " << '\n' << Q*R - Tridiag << '\n';
+    //std::cout << "Q^T * Q is: " << '\n' << Q.transpose() * Q << '\n' << '\n';
+    //std::cout << "QR - A is: " << '\n' << Q*R - Tridiag << '\n';
     //std::cout << "Q^T * A - R: " << '\n'
     //          << Q.transpose() * Tridiag - R << '\n' << '\n';
 
@@ -262,8 +266,8 @@ MatrixXd qrdecomp(MatrixXd &Tridiag){
 // Function to perform the Power Method
 void p_method(MatrixXd &Tridiag, MatrixXd &Q){
 
-    std::cout << "Q is: " << '\n' << Q << '\n';
-    std::cout << "Tridiag is : " << '\n' << Tridiag << '\n';
+    //std::cout << "Q is: " << '\n' << Q << '\n';
+    //std::cout << "Tridiag is : " << '\n' << Tridiag << '\n';
 
     // Find all eigenvectors
     MatrixXd eigenvectors(Tridiag.rows(), Tridiag.cols());
@@ -278,7 +282,7 @@ void p_method(MatrixXd &Tridiag, MatrixXd &Q){
     }
 
     Qtemp = Qtemp - Q;
-    std::cout << "This should not be 0: " << Qtemp.squaredNorm() << '\n';
+    //std::cout << "This should not be 0: " << Qtemp.squaredNorm() << '\n';
 
 }
 
@@ -312,7 +316,7 @@ void eigentest(MatrixXd &Tridiag, MatrixXd &Q){
         std::cout << "eigenvalue is: " << eigenvalues[i] << '\n';
 
         checkvector = ((Tridiag * Q.col(i)) / eigenvalues[i]) - Q.col(i);
-        std::cout << checkvector << '\n' << '\n';
+        //std::cout << checkvector << '\n' << '\n';
         std::cout << "This should be 0: " << '\t' 
                   << checkvector.squaredNorm() << '\n';
         
