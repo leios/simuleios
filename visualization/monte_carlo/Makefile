@@ -8,6 +8,7 @@ BINS = monte_carlo_vis
 $(BINS): $(BINS).cpp
 	$(CXX) $(CXXFLAGS) $(CAIROFLAGS) -o $(BINS) $(BINS).cpp
 	./monte_carlo_vis
+	convert -delay 5 -loop 0 frames/*.png frames/animation.gif
 
 clean:
 	rm -Rf $(BINS)
