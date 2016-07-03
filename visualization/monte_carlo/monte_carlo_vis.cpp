@@ -78,6 +78,9 @@ void print_area(frame &anim, double area, color clr);
 // Function to write the percent error on the upper left
 void print_pe(frame &anim, double pe, color clr);
 
+// Function to write the count on upper right
+void print_count(frame &anim, int count);
+
 // Function to draw a batman symbol
 void animate_batman(frame &anim, double time, double scale, pos ori);
 
@@ -408,7 +411,8 @@ void monte_carlo(frame &anim, double threshold, double box_length){
                 //std::cout << points[j].x << '\t' << points[j].y << '\n';
             }
             print_area(anim, temp_area, area_clr);
-            print_pe(anim,pe, pe_clr);
+            print_pe(anim, abs(pe), pe_clr);
+            print_count(anim, count);
             if (vec_count < 1024){
                 vec_count *= 2;
             }
@@ -500,6 +504,29 @@ void print_pe(frame &anim, double pe, color clr){
     cairo_stroke(anim.frame_ctx[anim.curr_frame]);
 
 }
+
+// Function to write the count on upper right
+void print_count(frame &anim, int count){
+    std::string count_txt, number;
+ 
+    std::stringstream ss;
+    ss << std::setw(6) << count;
+    number = ss.str();
+
+    count_txt = "Count: " + number;
+
+    cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], 1, 1, 1);
+
+    cairo_text_extents_t textbox;
+    cairo_text_extents(anim.frame_ctx[anim.curr_frame], 
+                       count_txt.c_str(), &textbox);
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], anim.res_x / 2, 20);
+    cairo_show_text(anim.frame_ctx[anim.curr_frame], count_txt.c_str());
+
+    cairo_stroke(anim.frame_ctx[anim.curr_frame]);
+
+}
+
 
 
 // Function to draw a batman symbol
