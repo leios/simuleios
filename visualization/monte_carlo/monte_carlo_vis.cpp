@@ -15,8 +15,9 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <random>
 
-#define num_frames 20
+#define num_frames 300
 
 // Struct to hold positions
 struct pos{
@@ -65,6 +66,24 @@ void animate_circle(frame &anim, double time, double radius, pos ori);
 // or outside the provided shapes, and also write the area to screen every frame
 void draw_point(frame &anim, pos ori, color clr);
 
+// Function to perform monte Carlo integration
+void monte_carlo(frame &anim, double threshold, double box_length);
+
+// Function to check whether point is in circle or not
+bool in_circle(frame &anim, pos loc, double radius);
+
+// Function to write area found on the lower right
+void print_area(frame &anim, double area, color clr);
+
+// Function to write the percent error on the upper left
+void print_pe(frame &anim, double pe, color clr);
+
+// Function to draw a batman symbol
+void animate_batman(frame &anim, double time, double scale, pos ori);
+
+// Function to check if we are in batman function for monte_carlo
+bool is_batman(pos dot, pos ori);
+
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
@@ -76,20 +95,20 @@ int main(){
 
     anim.curr_frame = 1;
 
-    animate_square(anim, 1.0, 140, anim.origin);
+    animate_square(anim, 1.0, 250, anim.origin);
 
-    animate_circle(anim, 1.0, 140 / 2, anim.origin);
+    animate_circle(anim, 1.0, 250 / 2, anim.origin);
 
-    color clr;
-    clr.r = 1; clr.b = 0; clr.g = 0;
-    draw_point(anim, anim.origin, clr);
+    //animate_batman(anim, 1.0, 1, anim.origin);
+
+    monte_carlo(anim, 0.001, 250);
 
     anim.draw_frames();    
 } 
 
 // Function to initialize the frame struct
 void frame::init(int r, int g, int b){
-    int line_width = 5;
+    int line_width = 3;
     for (size_t i = 0; i < num_frames; ++i){
         frame_surface[i] = 
             cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
@@ -99,6 +118,7 @@ void frame::init(int r, int g, int b){
         cairo_fill(frame_ctx[i]);
         cairo_set_line_cap(frame_ctx[i], CAIRO_LINE_CAP_ROUND);
         cairo_set_line_width(frame_ctx[i], line_width);
+        cairo_set_font_size(frame_ctx[i], 20.0);
     }
     bg_surface = 
         cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
@@ -227,7 +247,6 @@ void animate_square(frame &anim, double time, double box_length, pos ori){
     anim.curr_frame += draw_frames;
 
     std::cout << anim.curr_frame << '\n';
-    anim.bg_ctx = anim.frame_ctx[anim.curr_frame];
 }
 
 // Function to draw an animated circle
@@ -263,8 +282,260 @@ void draw_point(frame &anim, pos ori, color clr){
     cairo_set_line_cap(anim.frame_ctx[anim.curr_frame], CAIRO_LINE_CAP_ROUND);
     cairo_line_to(anim.frame_ctx[anim.curr_frame], ori.x, ori.y);
 
+    cairo_set_line_width(anim.frame_ctx[anim.curr_frame], 1);
+
     cairo_stroke(anim.frame_ctx[anim.curr_frame]);
 
-    anim.curr_frame += 1;
+    //anim.curr_frame += 1;
 
+}
+
+// Function to perform the monte carlo integration
+void monte_carlo(frame &anim, double threshold, double box_length){
+
+    // Creating random numbers with mt19937
+    static std::random_device rd;
+    int seed = rd();
+    static std::mt19937 gen(seed);
+
+    // integer to hold the max number our vectors should count to
+    int vec_count = 1, prev_print_count = 0;
+
+    // Creating vector to hold points for visualization later
+    std::vector<pos> points(1024);
+    std::vector<color> pt_clrs(1024), area_clrs(1024), pe_clrs(1024);
+
+    color pt_clr, area_clr, pe_clr;
+
+    double count_in = 0; 
+
+    std::vector<double> area(1024), pe_vec(1024);
+    double true_area = M_PI * 0.25 * box_length * box_length;
+    double temp_area;
+
+    // distribution for box
+    std::uniform_real_distribution<double> box_dist(-0.5,0.5);
+
+    // distribution for oval?
+    //std::uniform_real_distribution<double> oval_dist;
+
+    // defining location of dot
+    pos loc;
+
+    // pe is the percent error -- setting arbitrarily high for now...
+    double pe = 10;
+
+    std::cout << "performing monte_carlo..." << '\n';
+
+    // number of generations to wor with
+    int iterations = 200;
+    int final_count = 1;
+
+    for (int i = 0; i < iterations; ++i){
+        if (final_count < 1024){
+            final_count *= 2;
+        }
+        else{
+            final_count += 1024;
+        }
+    }
+
+    //while (abs(pe) > threshold){
+    for (int count = 1; count < final_count; ++count){
+
+        loc.x = box_dist(gen) * box_length + anim.origin.x;
+        loc.y = box_dist(gen) * box_length + anim.origin.y;
+
+        if (in_circle(anim, loc, box_length/2)){
+            count_in += 1;
+            pt_clr.b = 1.0;
+            pt_clr.g = 0.0;
+            pt_clr.r = 0.0;
+        }
+        else{
+            pt_clr.b = 0.0;
+            pt_clr.g = 0.0;
+            pt_clr.r = 1.0;
+        }
+
+        //points.push_back(loc);
+        points[count - prev_print_count - 1] = loc;
+        //std::cout << count - prev_print_count << '\t' 
+        //          << points[count - prev_print_count - 1].x << '\t' 
+        //          << points[count - prev_print_count - 1].y << '\n';
+ 
+        //pt_clrs.push_back(pt_clr);
+        pt_clrs[count - prev_print_count - 1] = pt_clr;
+
+        temp_area = (((double)count_in/(double)count)*box_length*box_length);
+        //area.push_back(temp_area);
+
+        pe = (temp_area - true_area) / true_area;
+        //pe_vec.push_back(abs(pe));
+
+        if (abs(pe) < threshold){
+            area_clr.r = 0;
+            area_clr.g = 1;
+            area_clr.b = 0;
+            pe_clr.r = 0;
+            pe_clr.g = 1;
+            pe_clr.b = 0;
+        }
+        if (abs(pe) >= threshold){
+            area_clr.r = 1;
+            area_clr.g = 0;
+            area_clr.b = 0;
+            pe_clr.r = 1;
+            pe_clr.g = 0;
+            pe_clr.b = 0;
+
+        }
+
+        //area_clrs.push_back(area_clr);
+        //pe_clrs.push_back(pe_clr);
+
+/*
+        draw_point(anim, loc, pt_clr);
+        if (anim.curr_frame + 1 < num_frames){
+            anim.curr_frame++;
+        }
+*/
+
+        if (count - prev_print_count == vec_count){
+            //std::cout << "printing..." << '\n';
+            for (int j = 0; j < vec_count; ++j){
+                draw_point(anim, points[j], pt_clrs[j]);
+                //std::cout << points[j].x << '\t' << points[j].y << '\n';
+            }
+            print_area(anim, temp_area, area_clr);
+            print_pe(anim,pe, pe_clr);
+            if (vec_count < 1024){
+                vec_count *= 2;
+            }
+            if (anim.curr_frame + 1 < num_frames){
+                anim.curr_frame++;
+            }
+            prev_print_count = count;
+        }
+
+        //std::cout << count << '\t' << vec_count << '\t' 
+        //          << prev_print_count << '\t' << temp_area 
+        //          << '\t' << pe << '\n';
+
+        std::cout << count << '\n';
+
+    }
+
+    std::cout << anim.curr_frame << '\n';
+
+}
+
+// Function to check whether point is in circle or not
+bool in_circle(frame &anim, pos loc, double radius){
+
+    double x = loc.x - anim.origin.x;
+    double y = loc.y - anim.origin.y;
+
+    if (x*x + y*y < radius * radius){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
+
+// Function to write area found on the lower right
+void print_area(frame &anim, double area, color clr){
+
+    // Drawing black box underneath "Area"
+    cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], 0, 0, 0);
+    cairo_rectangle(anim.frame_ctx[anim.curr_frame], 0, 0, anim.res_x, 20);
+    cairo_fill(anim.frame_ctx[anim.curr_frame]);
+    std::string area_txt, number;
+ 
+    std::stringstream ss;
+    ss << std::setw(3) << area;
+    number = ss.str();
+
+    area_txt = "Area: " + number;
+    //std::cout << area_txt << '\n';
+
+    cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], clr.r,clr.g,clr.b);
+
+    cairo_text_extents_t textbox;
+    cairo_text_extents(anim.frame_ctx[anim.curr_frame], 
+                       area_txt.c_str(), &textbox);
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 20, 20);
+    cairo_show_text(anim.frame_ctx[anim.curr_frame], area_txt.c_str());
+
+    cairo_stroke(anim.frame_ctx[anim.curr_frame]);
+
+}
+
+// Function to write the percent error on the upper left
+void print_pe(frame &anim, double pe, color clr){
+
+    // Drawing black box underneath "Percent Error"
+    cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], 0, 0, 0);
+    cairo_rectangle(anim.frame_ctx[anim.curr_frame], 0, 
+                    anim.res_y - 20, anim.res_x, 20);
+    cairo_fill(anim.frame_ctx[anim.curr_frame]);
+    std::string pe_txt, number;
+ 
+    std::stringstream ss;
+    ss << std::setw(3) << pe;
+    number = ss.str();
+
+    pe_txt = "Percent Error: " + number;
+    //std::cout << pe_txt << '\n';
+
+    cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], clr.r,clr.g,clr.b);
+
+    cairo_text_extents_t textbox;
+    cairo_text_extents(anim.frame_ctx[anim.curr_frame], 
+                       pe_txt.c_str(), &textbox);
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 20, anim.res_y);
+    cairo_show_text(anim.frame_ctx[anim.curr_frame], pe_txt.c_str());
+
+    cairo_stroke(anim.frame_ctx[anim.curr_frame]);
+
+}
+
+
+// Function to draw a batman symbol
+void animate_batman(frame &anim, double time, double scale, pos ori){
+
+    int res = 1000;
+    std::vector<pos> wing_l(res), wing_r(res);
+
+    double pos_y1, pos_x1, pos_x2;
+
+    // First, let's draw the batman function. It seems to be split into 6-ish
+
+    // Creating side wings
+    for (int i = 0; i < res; ++i){
+        pos_y1 = -2.461955419944869
+                 +(double)i*(2.461955419944869*2)/(double)res;
+        pos_x1 = 7 * sqrt(1-((pos_y1 * pos_y1)/9.0));
+        pos_x2 = -7 * sqrt(1-((pos_y1 * pos_y1)/9.0)); 
+
+        std::cout << pos_y1 << '\t' << pos_x1 << '\t' << pos_x2 << '\n';
+
+        wing_l[i].y = ori.y + pos_y1;
+        wing_l[i].x = ori.x +100; // + pos_x2;
+        wing_r[i].y = ori.y + pos_y1;
+        wing_r[i].x = ori.x + pos_x2;
+    }
+
+
+    cairo_move_to(anim.frame_ctx[0], wing_l[0].x, wing_l[0].y);
+    // Drawing wings
+    for (int i = 1; i < res; ++i){
+        cairo_rel_line_to(anim.frame_ctx[0], wing_l[i].x - wing_l[i-1].x,
+                         wing_l[i].y - wing_l[i-1].y);
+
+    }
+
+    cairo_set_source_rgb(anim.frame_ctx[0], 1, 1, 1);
+    cairo_stroke(anim.frame_ctx[0]);
 }
