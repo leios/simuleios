@@ -17,7 +17,8 @@
 #include <sstream>
 #include <random>
 
-#define num_frames 300
+//#define num_frames 300
+#define num_frames 1
 
 // Struct to hold positions
 struct pos{
@@ -98,13 +99,13 @@ int main(){
 
     anim.curr_frame = 1;
 
-    animate_square(anim, 1.0, 250, anim.origin);
+    //animate_square(anim, 1.0, 250, anim.origin);
 
-    animate_circle(anim, 1.0, 250 / 2, anim.origin);
+    //animate_circle(anim, 1.0, 250 / 2, anim.origin);
 
-    //animate_batman(anim, 1.0, 1, anim.origin);
+    animate_batman(anim, 1.0, 1, anim.origin);
 
-    monte_carlo(anim, 0.001, 250);
+    //monte_carlo(anim, 0.001, 250);
 
     anim.draw_frames();    
 } 
@@ -544,24 +545,32 @@ void animate_batman(frame &anim, double time, double scale, pos ori){
         pos_y1 = -2.461955419944869
                  +(double)i*(2.461955419944869*2)/(double)res;
         pos_x1 = 7 * sqrt(1-((pos_y1 * pos_y1)/9.0));
-        pos_x2 = -7 * sqrt(1-((pos_y1 * pos_y1)/9.0)); 
 
         std::cout << pos_y1 << '\t' << pos_x1 << '\t' << pos_x2 << '\n';
 
-        wing_l[i].y = ori.y + pos_y1;
-        wing_l[i].x = ori.x +100; // + pos_x2;
-        wing_r[i].y = ori.y + pos_y1;
-        wing_r[i].x = ori.x + pos_x2;
+        wing_l[i].y = ori.y + (pos_y1) * 20;
+        wing_l[i].x = ori.x + (pos_x1) * 20;
+        wing_r[i].y = ori.y + (pos_y1) * 20;
+        wing_r[i].x = ori.x - (pos_x1) * 20;
     }
 
 
     cairo_move_to(anim.frame_ctx[0], wing_l[0].x, wing_l[0].y);
-    // Drawing wings
+    // Drawing left wing
     for (int i = 1; i < res; ++i){
         cairo_rel_line_to(anim.frame_ctx[0], wing_l[i].x - wing_l[i-1].x,
                          wing_l[i].y - wing_l[i-1].y);
 
     }
+
+    // Drawing right wing
+    cairo_move_to(anim.frame_ctx[0], wing_r[0].x, wing_r[0].y);
+    for (int i = 1; i < res; ++i){
+        cairo_rel_line_to(anim.frame_ctx[0], wing_r[i].x - wing_r[i-1].x,
+                         wing_r[i].y - wing_r[i-1].y);
+
+    }
+
 
     cairo_set_source_rgb(anim.frame_ctx[0], 1, 1, 1);
     cairo_stroke(anim.frame_ctx[0]);
