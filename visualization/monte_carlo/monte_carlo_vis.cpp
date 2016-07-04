@@ -18,7 +18,7 @@
 #include <random>
 
 //#define num_frames 300
-#define num_frames 1
+#define num_frames 20
 
 // Struct to hold positions
 struct pos{
@@ -83,7 +83,7 @@ void print_pe(frame &anim, double pe, color clr);
 void print_count(frame &anim, int count);
 
 // Function to draw a batman symbol
-void animate_batman(frame &anim, double time, double scale, pos ori);
+void draw_batman(frame &anim, double scale, pos ori);
 
 // Function to check if we are in batman function for monte_carlo
 bool is_batman(pos dot, pos ori);
@@ -103,7 +103,7 @@ int main(){
 
     //animate_circle(anim, 1.0, 250 / 2, anim.origin);
 
-    animate_batman(anim, 1.0, 1, anim.origin);
+    draw_batman(anim, anim.res_x * 0.05, anim.origin);
 
     //monte_carlo(anim, 0.001, 250);
 
@@ -531,47 +531,132 @@ void print_count(frame &anim, int count){
 
 
 // Function to draw a batman symbol
-void animate_batman(frame &anim, double time, double scale, pos ori){
+void draw_batman(frame &anim, double scale, pos ori){
 
     int res = 1000;
-    std::vector<pos> wing_l(res), wing_r(res);
+    std::vector<pos> wing_l(res), wing_r(res), wing_bot(res), 
+                     shoulder_l(res), shoulder_r(res), head(res);
 
-    double pos_y1, pos_x1, pos_x2;
+    double pos_y, pos_x;
 
     // First, let's draw the batman function. It seems to be split into 6-ish
 
     // Creating side wings
     for (int i = 0; i < res; ++i){
-        pos_y1 = -2.461955419944869
-                 +(double)i*(2.461955419944869*2)/(double)res;
-        pos_x1 = 7 * sqrt(1-((pos_y1 * pos_y1)/9.0));
+        pos_y = -2.461955419944869
+                +(double)i * (5.172479128660623)/(double)res;
+        pos_x = 7 * sqrt(1-((pos_y * pos_y)/9.0));
 
-        std::cout << pos_y1 << '\t' << pos_x1 << '\t' << pos_x2 << '\n';
+        std::cout << pos_y << '\t' << pos_x << '\n';
 
-        wing_l[i].y = ori.y + (pos_y1) * 20;
-        wing_l[i].x = ori.x + (pos_x1) * 20;
-        wing_r[i].y = ori.y + (pos_y1) * 20;
-        wing_r[i].x = ori.x - (pos_x1) * 20;
+        wing_l[i].y = ori.y - (pos_y) * scale;
+        wing_l[i].x = ori.x + (pos_x) * scale;
+        wing_r[i].y = ori.y - (pos_y) * scale;
+        wing_r[i].x = ori.x - (pos_x) * scale;
     }
 
 
-    cairo_move_to(anim.frame_ctx[0], wing_l[0].x, wing_l[0].y);
+    // drawing non-ambiguous x-dependent functions (everything else)
+    for (int i = 0; i < res; ++i){
+        pos_x = -4.0 + (double)i * 8.0 / (double)res;
+        pos_y = (abs(pos_x / 2) - 0.09137221374655434 * pos_x * pos_x - 3.0)
+                + sqrt(1 - (abs(abs(pos_x)-2)-1) * (abs(abs(pos_x)-2)-1));
+
+        std::cout << pos_x << '\t' << pos_y << '\n';
+        wing_bot[i].x = ori.x + (pos_x) * scale;
+        wing_bot[i].y = ori.y - (pos_y) * scale;
+
+        pos_x = 1 + (double)i * 2 / (double)res;
+        pos_y = (2.710523708715754 + (1.5 - 0.5 * pos_x)) 
+                - 1.355261854357877*sqrt(4.0-(abs(pos_x)-1)*(abs(pos_x)-1)); 
+
+        std::cout << pos_x << '\t' << pos_y << '\n';
+        shoulder_l[i].x = ori.x + scale * pos_x;
+        shoulder_l[i].y = ori.y - scale * pos_y;
+        shoulder_r[i].x = ori.x - scale * pos_x;
+        shoulder_r[i].y = ori.y - scale * pos_y;
+
+        pos_x = -1 + (double)i * 2 / (double)res;
+        if (pos_x < -0.75){
+            pos_y = 9.0 + 8 * pos_x;
+        }
+        if (pos_x >= -0.75 && pos_x < -0.5){
+            pos_y = -3 * pos_x + 0.75;
+        }
+        if (pos_x >= -.5 && pos_x < 0.5){
+            pos_y = 2.25;
+        }
+        if (pos_x >= 0.5 && pos_x < 0.75){
+            pos_y = 3 * pos_x + 0.75;
+        }
+        if (pos_x >= 0.75 && pos_x <= 1.0){
+            pos_y = 9.0 - 8 * pos_x;
+        }
+
+        std::cout << pos_x << '\t' << pos_y << '\n';
+        head[i].x = ori.x + scale * pos_x;
+        head[i].y = ori.y - scale * pos_y;
+    }
+
+    // Draw everything
+
     // Drawing left wing
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], wing_l[0].x, wing_l[0].y);
     for (int i = 1; i < res; ++i){
-        cairo_rel_line_to(anim.frame_ctx[0], wing_l[i].x - wing_l[i-1].x,
-                         wing_l[i].y - wing_l[i-1].y);
+        cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 
+                          wing_l[i].x - wing_l[i-1].x,
+                          wing_l[i].y - wing_l[i-1].y);
+        
+    }
+        
+    // Drawing left shoulder
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  shoulder_l[0].x, shoulder_l[0].y);
+    for (int i = 1; i < res; ++i){
+        cairo_rel_line_to(anim.frame_ctx[anim.curr_frame],
+                          shoulder_l[i].x - shoulder_l[i-1].x,
+                          shoulder_l[i].y - shoulder_l[i-1].y);
+        
+    }
+
+    // Drawing head
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], head[0].x, head[0].y);
+    for (int i = 1; i < res; ++i){
+        cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 
+                          head[i].x - head[i-1].x,
+                          head[i].y - head[i-1].y);
+        
+    }
+
+    // Drawing right shoulder
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  shoulder_r[0].x, shoulder_r[0].y);
+    for (int i = 1; i < res; ++i){
+        cairo_rel_line_to(anim.frame_ctx[anim.curr_frame],
+                          shoulder_r[i].x - shoulder_r[i-1].x,
+                          shoulder_r[i].y - shoulder_r[i-1].y);
+        
+    }
+
+    //drawing right wing 
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], wing_r[0].x, wing_r[0].y);
+    for (int i = 1; i < res; ++i){
+        cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 
+                          wing_r[i].x - wing_r[i-1].x,
+                          wing_r[i].y - wing_r[i-1].y);
 
     }
 
-    // Drawing right wing
-    cairo_move_to(anim.frame_ctx[0], wing_r[0].x, wing_r[0].y);
+
+    // Drawing bottom wing
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  wing_bot[0].x, wing_bot[0].y);
     for (int i = 1; i < res; ++i){
-        cairo_rel_line_to(anim.frame_ctx[0], wing_r[i].x - wing_r[i-1].x,
-                         wing_r[i].y - wing_r[i-1].y);
-
+        cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 
+                          wing_bot[i].x - wing_bot[i-1].x,
+                          wing_bot[i].y - wing_bot[i-1].y);
     }
-
-
-    cairo_set_source_rgb(anim.frame_ctx[0], 1, 1, 1);
-    cairo_stroke(anim.frame_ctx[0]);
+        
+    cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], 1, 1, 1);
+    cairo_stroke(anim.frame_ctx[anim.curr_frame]);
 }
