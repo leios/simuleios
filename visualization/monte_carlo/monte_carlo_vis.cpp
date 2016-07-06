@@ -17,8 +17,8 @@
 #include <sstream>
 #include <random>
 
-//#define num_frames 300
-#define num_frames 20
+#define num_frames 300
+//#define num_frames 20
 
 // Struct to hold positions
 struct pos{
@@ -57,6 +57,9 @@ struct frame{
 
 };
 
+// Function to perform monte Carlo integration
+void monte_carlo(frame &anim, double threshold, double box_length);
+
 // Function to draw an animated square
 void animate_square(frame &anim, double time, double box_length, pos ori);
 
@@ -67,11 +70,20 @@ void animate_circle(frame &anim, double time, double radius, pos ori);
 // or outside the provided shapes, and also write the area to screen every frame
 void draw_point(frame &anim, pos ori, color clr);
 
-// Function to perform monte Carlo integration
-void monte_carlo(frame &anim, double threshold, double box_length);
+// Function to draw a batman symbol
+void draw_batman(frame &anim, double scale, pos ori);
 
 // Function to check whether point is in circle or not
 bool in_circle(frame &anim, pos loc, double radius);
+
+// Function to determine whether a point is in the square
+bool in_square(pos loc, double box_length, pos ori);
+
+// Function to determine whether a point is in the oval
+bool in_oval(pos loc, pos oval_radius, pos ori);
+
+// Function to check if we are in batman function for monte_carlo
+bool is_batman(pos dot, pos ori, double scale);
 
 // Function to write area found on the lower right
 void print_area(frame &anim, double area, color clr);
@@ -82,11 +94,14 @@ void print_pe(frame &anim, double pe, color clr);
 // Function to write the count on upper right
 void print_count(frame &anim, int count);
 
-// Function to draw a batman symbol
-void draw_batman(frame &anim, double scale, pos ori);
+// Function to find the area of the interior circle
+double circle_area(double radius);
 
-// Function to check if we are in batman function for monte_carlo
-bool is_batman(pos dot, pos ori);
+// Function to find area of batman symbol
+double batman_area(double scale);
+
+// Function to find area of oval
+double oval_area(pos oval_radius);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -103,9 +118,9 @@ int main(){
 
     //animate_circle(anim, 1.0, 250 / 2, anim.origin);
 
-    draw_batman(anim, anim.res_x * 0.05, anim.origin);
+    //draw_batman(anim, anim.res_x * 0.05, anim.origin);
 
-    //monte_carlo(anim, 0.001, 250);
+    monte_carlo(anim, 0.01, 250);
 
     anim.draw_frames();    
 } 
@@ -281,7 +296,7 @@ void animate_circle(frame &anim, double time, double radius, pos ori){
 
 // Function to draw point, to be used with monte carlo
 void draw_point(frame &anim, pos ori, color clr){
-    cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], clr.r, clr.b, clr.g);
+    cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], clr.r, clr.g, clr.b);
     cairo_move_to(anim.frame_ctx[anim.curr_frame], ori.x, ori.y);
     cairo_set_line_cap(anim.frame_ctx[anim.curr_frame], CAIRO_LINE_CAP_ROUND);
     cairo_line_to(anim.frame_ctx[anim.curr_frame], ori.x, ori.y);
@@ -314,8 +329,15 @@ void monte_carlo(frame &anim, double threshold, double box_length){
     double count_in = 0; 
 
     std::vector<double> area(1024), pe_vec(1024);
-    double true_area = M_PI * 0.25 * box_length * box_length;
+    //double true_area = circle_area(0.5 * box_length);
+    double true_area = batman_area(anim.res_x * 0.04);
     double temp_area;
+    //double container_area = box_length * box_length;
+
+    pos oval_radius;
+    oval_radius.x = box_length / 2.0;
+    oval_radius.y = box_length / 4.0;
+    double container_area = oval_area(oval_radius);
 
     // distribution for box
     std::uniform_real_distribution<double> box_dist(-0.5,0.5);
@@ -349,11 +371,31 @@ void monte_carlo(frame &anim, double threshold, double box_length){
 
         loc.x = box_dist(gen) * box_length + anim.origin.x;
         loc.y = box_dist(gen) * box_length + anim.origin.y;
+        //while (!in_square(loc, box_length, anim.origin)){
+        while(!in_oval(loc, oval_radius, anim.origin)){
+            //std::cout << "regenerating point" << '\n';
+            loc.x = box_dist(gen) * box_length + anim.origin.x;
+            loc.y = box_dist(gen) * box_length + anim.origin.y;
+        }
 
+        if (is_batman(loc, anim.origin, anim.res_x * 0.04)){
+            count_in += 1;
+            pt_clr.b = 0.0;
+            pt_clr.g = 0.0;
+            pt_clr.r = 0.0;
+        }
+        else{
+            pt_clr.b = 0.0;
+            pt_clr.g = 1.0;
+            pt_clr.r = 1.0;
+        }
+        
+/*
+        // Color scheme for circle
         if (in_circle(anim, loc, box_length/2)){
             count_in += 1;
-            pt_clr.b = 1.0;
-            pt_clr.g = 0.0;
+            pt_clr.b = 0.0;
+            pt_clr.g = 1.0;
             pt_clr.r = 0.0;
         }
         else{
@@ -361,6 +403,7 @@ void monte_carlo(frame &anim, double threshold, double box_length){
             pt_clr.g = 0.0;
             pt_clr.r = 1.0;
         }
+*/
 
         //points.push_back(loc);
         points[count - prev_print_count - 1] = loc;
@@ -371,7 +414,7 @@ void monte_carlo(frame &anim, double threshold, double box_length){
         //pt_clrs.push_back(pt_clr);
         pt_clrs[count - prev_print_count - 1] = pt_clr;
 
-        temp_area = (((double)count_in/(double)count)*box_length*box_length);
+        temp_area = (((double)count_in/(double)count)*container_area);
         //area.push_back(temp_area);
 
         pe = (temp_area - true_area) / true_area;
@@ -427,11 +470,11 @@ void monte_carlo(frame &anim, double threshold, double box_length){
         //          << prev_print_count << '\t' << temp_area 
         //          << '\t' << pe << '\n';
 
-        std::cout << count << '\n';
+        //std::cout << count << '\n';
 
     }
 
-    std::cout << anim.curr_frame << '\n';
+    //std::cout << anim.curr_frame << '\n';
 
 }
 
@@ -528,8 +571,6 @@ void print_count(frame &anim, int count){
 
 }
 
-
-
 // Function to draw a batman symbol
 void draw_batman(frame &anim, double scale, pos ori){
 
@@ -558,6 +599,7 @@ void draw_batman(frame &anim, double scale, pos ori){
 
     // drawing non-ambiguous x-dependent functions (everything else)
     for (int i = 0; i < res; ++i){
+        // defining bottom wing
         pos_x = -4.0 + (double)i * 8.0 / (double)res;
         pos_y = (abs(pos_x / 2) - 0.09137221374655434 * pos_x * pos_x - 3.0)
                 + sqrt(1 - (abs(abs(pos_x)-2)-1) * (abs(abs(pos_x)-2)-1));
@@ -566,6 +608,7 @@ void draw_batman(frame &anim, double scale, pos ori){
         wing_bot[i].x = ori.x + (pos_x) * scale;
         wing_bot[i].y = ori.y - (pos_y) * scale;
 
+        // defining two shoulders
         pos_x = 1 + (double)i * 2 / (double)res;
         pos_y = (2.710523708715754 + (1.5 - 0.5 * pos_x)) 
                 - 1.355261854357877*sqrt(4.0-(abs(pos_x)-1)*(abs(pos_x)-1)); 
@@ -576,6 +619,7 @@ void draw_batman(frame &anim, double scale, pos ori){
         shoulder_r[i].x = ori.x - scale * pos_x;
         shoulder_r[i].y = ori.y - scale * pos_y;
 
+        // Defining head
         pos_x = -1 + (double)i * 2 / (double)res;
         if (pos_x < -0.75){
             pos_y = 9.0 + 8 * pos_x;
@@ -660,3 +704,211 @@ void draw_batman(frame &anim, double scale, pos ori){
     cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], 1, 1, 1);
     cairo_stroke(anim.frame_ctx[anim.curr_frame]);
 }
+
+// Function to check if we are in batman function for monte_carlo
+bool is_batman(pos dot, pos ori, double scale){
+
+    // Determine x and y locations
+    double pos_x = (dot.x - ori.x) / scale;
+    double pos_y = (dot.y - ori.y) / scale;
+    double temp_x, temp_y;
+
+    if (pos_y < 0){
+        //return false;
+        // Drawing left upper wing
+        if (pos_x <= -3){
+            temp_x = (-7 * sqrt(1-((pos_y * pos_y)/9.0)));
+            if (pos_x >= temp_x){
+                return true;
+            }
+            else{
+                return false;
+            }
+        }
+
+        // Drawing left shoulder
+        if (pos_x > -3 && pos_x <= -1){
+            temp_x = -pos_x;
+            temp_y = -(2.710523708715754 + (1.5 - 0.5 * temp_x)) 
+                     +1.355261854357877
+                     *sqrt(4.0-(abs(temp_x)-1)*(abs(temp_x)-1));
+            if (pos_y > temp_y){
+                return true;
+            }
+            else{
+                return false;
+            }
+        }
+
+        // Drawing exterior left ear
+        if (pos_x > -1 && pos_x <= -0.75){
+            temp_y = 9.0 + 8 * pos_x;
+            if (pos_y > -temp_y){
+                return true;
+            }
+            else{
+                return false;
+            }
+        }
+
+        // Drawing interior left ear
+        if (pos_x > -0.75 && pos_x <= -0.5){
+            temp_y = -3 * pos_x + 0.75;
+            if (pos_y > -temp_y){
+                return true;
+            }
+            else{
+                return false;
+            }
+
+        }
+
+        // Drawing top of head
+        if (pos_x > -.5 && pos_x <= 0.5){
+            temp_y = 2.25;
+            if (pos_y > -temp_y){
+                return true;
+            }
+            else{
+                return false;
+            }
+
+        }
+
+
+        // Drawing interior right ear
+        if (pos_x > 0.5 && pos_x <= 0.75){
+            temp_y = 3 * pos_x + 0.75;
+            if (pos_y > -temp_y){
+                return true;
+            }
+            else{
+                return false;
+            }
+
+        }
+
+        // Drawing exterior right ear
+        if (pos_x > 0.75 && pos_x <= 1){
+            temp_y = 9.0 - 8 * pos_x;
+            if (pos_y > -temp_y){
+                return true;
+            }
+            else{
+                return false;
+            }
+        }
+
+
+        // Drawing right shoulder
+        if (pos_x <= 3 && pos_x > 1){
+            temp_y = -(2.710523708715754 + (1.5 - 0.5 * pos_x)) 
+                     +1.355261854357877*sqrt(4.0-(abs(pos_x)-1)*(abs(pos_x)-1));
+            if (pos_y > temp_y){
+                return true;
+            }
+            else{
+                return false;
+            }
+        }
+
+        
+        // Drawing right upper wing
+        if (pos_x > 3){
+            temp_x = (7 * sqrt(1-((pos_y * pos_y)/9.0)));
+            if (pos_x <= temp_x){
+                return true;
+            }
+            else{
+                return false;
+            }
+
+        }
+    }
+    if (pos_y >= 0){
+         // Drawing bottom left wing
+         if (pos_x <= -4.0){
+             temp_x = (-7 * sqrt(1-((pos_y * pos_y)/9.0)));
+             if (pos_x >= temp_x){
+                 return true;
+             }
+             else{
+                 return false;
+             }
+         }
+         // Drawing bottom wing
+         if (pos_x > -4.0 && pos_x <= 4){
+             //return false;
+             temp_y = (abs(pos_x/2) - 0.09137221374655434 * pos_x * pos_x - 3.0)
+                      + sqrt(1 - (abs(abs(pos_x)-2)-1) * (abs(abs(pos_x)-2)-1));
+             temp_y *= -1;
+             if (pos_y < temp_y){
+                 return true;
+             }
+             else{
+                 return false;
+             }
+         }
+         // Drawing bottom right wing
+         if (pos_x >= 4.0){
+             //return true;
+             temp_x = (7 * sqrt(1-((pos_y * pos_y)/9.0)));
+             if (pos_x <= temp_x){
+                 return true;
+             }
+             else{
+                 return false;
+             }
+         }
+    }
+
+    return false;
+    
+}
+
+// Function to find the area of the interior circle
+double circle_area(double radius){
+    return M_PI * radius * radius;
+}
+
+// Function to find area of batman symbol
+double batman_area(double scale){
+    double temp_area = 48.42435978031880726601372354331097411834473539818399943;
+    //double temp_area = (955./48.)-(2./7.)*(-3.*sqrt(10.) 
+    //                                       + 2.*sqrt(33.) 
+    //                                       + 7.*M_PI +3.*M_PI*sqrt(10.)) 
+    //                   + 21.*(acos(3./7.) + acos(4./7.));
+    //std::cout << temp_area << '\t' << temp_area * scale * scale << '\t' 
+    //          << scale << '\t' << M_PI << '\n';
+    return temp_area * scale * scale;
+}
+
+// Function to find area of oval
+double oval_area(pos oval_radius){
+    return M_PI * oval_radius.x * oval_radius.y;
+}
+
+// Function to determine whether a point is in the square
+bool in_square(pos loc, double box_length, pos ori){
+    if (loc.x < ori.x + box_length / 2.0 && loc.x > ori.x - box_length / 2.0 &&
+        loc.y < ori.y + box_length / 2.0 && loc.y > ori.y - box_length / 2.0){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
+
+// Function to determine whether a point is in the oval
+bool in_oval(pos loc, pos oval_radius, pos ori){
+    double pos_x = loc.x - ori.x;
+    double pos_y = loc.y - ori.y;
+    if ((pos_x / oval_radius.x) * (pos_x / oval_radius.x) 
+        + (pos_y / oval_radius.y) * (pos_y / oval_radius.y) <= 1){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
+
