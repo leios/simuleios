@@ -8,11 +8,6 @@
 *-----------------------------------------------------------------------------*/
 
 #include<iostream>
-#include<vector>
-#include<bitset>
-#include<queue>
-#include<string>
-#include<unordered_map>
 #include "huffman.h"
 
 /*----------------------------------------------------------------------------//
@@ -125,7 +120,7 @@ std::unordered_map<char, std::string> create_bits(node* root){
     // Traverse the tree to create bits
     depth_first_search(root, current, bitstrings);
 
-    for (int i = 0; i < bitstrings.size(); ++i){
+    for (size_t i = 0; i < bitstrings.size(); ++i){
         bitmap[bitstrings[i].key] = bitstrings[i].code;
         //std::cout << bitstrings[i].key << '\t' << bitstrings[i].code << '\n';
     }
@@ -163,7 +158,7 @@ std::string encode(std::unordered_map<char, std::string> bitmap,
     std::cout << "phrase is: " << phrase << '\n';
     std::string encoded_phrase;
 
-    for (int i = 0; i < phrase.size(); ++i){
+    for (size_t i = 0; i < phrase.size(); ++i){
         encoded_phrase += bitmap[phrase[i]];
     }
 
@@ -180,7 +175,7 @@ huffman_tree two_pass_huffman(std::string phrase){
     // Create vector of weights and keys
     std::unordered_map<char, double> keyweights;
 
-    for (int i = 0; i < phrase.size(); ++i){
+    for (size_t i = 0; i < phrase.size(); ++i){
         if(keyweights[phrase[i]]){
             keyweights[phrase[i]] += 1;
         }
@@ -215,7 +210,7 @@ void decode(huffman_tree encoded_tree){
 
     // Now we iterate through the string
     std::string temp_string, decoded_phrase;
-    for (int i = 0; i < encoded_tree.encoded_phrase.size(); ++i){
+    for (size_t i = 0; i < encoded_tree.encoded_phrase.size(); ++i){
         temp_string += encoded_tree.encoded_phrase[i];
         if (decoding_map[temp_string]){
             decoded_phrase += decoding_map[temp_string];
