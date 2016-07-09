@@ -14,6 +14,7 @@
 * MAIN
 *-----------------------------------------------------------------------------*/
 
+/*
 int main(){
 
     // Create vector of weights and keys
@@ -36,6 +37,7 @@ int main(){
     decode(final_tree);
 
 }
+*/
 
 // creates nodes from vectors of characters and doubles
 node_queue create_nodes(std::vector<char> keys, std::vector<double> weights){

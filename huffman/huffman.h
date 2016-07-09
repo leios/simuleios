@@ -77,5 +77,4 @@ huffman_tree two_pass_huffman(std::string phrase);
 // Simple decoding scheme
 void decode(huffman_tree encoded_tree);
 
-
 #endif

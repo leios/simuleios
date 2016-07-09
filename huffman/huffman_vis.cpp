@@ -19,7 +19,7 @@
 #include "huffman.h"
 
 //#define num_frames 300
-#define num_frames 30
+#define num_frames 100
 
 // Struct to hold positions
 struct pos{
@@ -64,6 +64,12 @@ void grow_circle(frame &anim, double time, pos ori, double radius);
 void animate_line(frame &anim, int start_frame, double time, 
                   pos ori_1, double radius_1, pos ori_2, double radius_2);
 
+// Function to draw huffman tree
+void draw_tree(frame &anim, huffman_tree tree);
+
+// finding x pos for huffman tree drawing
+double find_x_pos(frame &anim, std::string bitstring, int max_bit);
+
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
@@ -74,6 +80,8 @@ int main(){
     anim.init(0,0,0);
 
     anim.curr_frame = 1;
+
+/*
 
     pos ori, ori_2, ori_3, ori_4;
     ori.x = 100;
@@ -94,8 +102,16 @@ int main(){
 
     animate_line(anim, anim.curr_frame - 0.5 * anim.fps, 0.5, ori_3, 10, ori_4, 10);
 
-
     anim.draw_frames();  
+*/
+
+    // encoding with 2-pass huffman
+    huffman_tree final_tree = two_pass_huffman("Jack and Jill went up the hill to fetch a pail of water. Jack fell down and broke his crown and Jill came Tumbling after! \nWoo!");
+    decode(final_tree);
+
+    draw_tree(anim, final_tree);
+
+    anim.draw_frames();
 
 } 
 
@@ -166,8 +182,8 @@ void grow_circle(frame &anim, double time, pos ori, double radius){
                 j++;
                 curr_radius = (double)j * (radius * 1.25) 
                               / (double)ceil(draw_frames * 0.5);
-                std::cout << "j is: " << j << '\t' << "curr_radius is: "
-                          << curr_radius << '\n';
+                //std::cout << "j is: " << j << '\t' << "curr_radius is: "
+                //          << curr_radius << '\n';
 
             }
             // Relaxation step
@@ -175,8 +191,8 @@ void grow_circle(frame &anim, double time, pos ori, double radius){
                 k++;
                 curr_radius = (radius * 1.25) + radius*((double)k * (1.0 - 1.25)
                               / (double)ceil(draw_frames * 0.5));
-                std::cout << "k is: " << k << '\t' << "curr_radius is: "
-                          << curr_radius << '\n';
+                //std::cout << "k is: " << k << '\t' << "curr_radius is: "
+                //          << curr_radius << '\n';
             }
             cairo_arc(anim.frame_ctx[i], ori.x, ori.y, 
                       curr_radius, 0, 2*M_PI);
@@ -216,7 +232,7 @@ void grow_circle(frame &anim, double time, pos ori, double radius){
     }
 */
 
-    std::cout << "finished loop" << '\n';
+    //std::cout << "finished loop" << '\n';
     anim.curr_frame += draw_frames;
     std::cout << anim.curr_frame << '\n';
 }
@@ -286,3 +302,61 @@ void animate_line(frame &anim, int start_frame, double time,
 
 }
 
+// Function to draw huffman tree
+void draw_tree(frame &anim, huffman_tree tree){
+
+    // Creating posisitons for external nodes
+    std::vector<pos> external_nodes;
+
+    size_t max_bit = 0;
+
+    for (auto key : tree.bitmap){
+        if (key.second.size() > max_bit){
+            max_bit = key.second.size();
+        }
+    }
+
+    std::cout << max_bit << '\n';
+    pos temp_pos;
+
+    // Determining x and y positions
+    // NOTE: The .9 and .05 are arbitrary and should be modified in final form
+    for (auto key : tree.bitmap){
+        temp_pos.y = ((double)key.second.size() / (double)max_bit) 
+                     * .9 * anim.res_y + anim.res_y * 0.05;
+        temp_pos.x = find_x_pos(anim, key.second, max_bit);
+        external_nodes.push_back(temp_pos);
+
+        std::cout << key.first << '\t' << temp_pos.x << '\t'
+                  << temp_pos.y << '\n';
+    }
+
+    std::cout << tree.bitmap.size() << '\t' << external_nodes.size() << '\n';
+
+    for (size_t i = 0; i < external_nodes.size(); ++i){
+        grow_circle(anim, 10 / (double)external_nodes.size(), 
+                    external_nodes[i], 10);
+    }
+
+}
+
+// finding x pos for huffman tree drawing
+double find_x_pos(frame &anim, std::string bitstring, int max_bit){
+
+    double x_pos = anim.res_x / 2.0;
+    for (size_t i = 0; i < bitstring.size(); ++i){
+        if (bitstring[i] == '0'){
+            //std::cout << "found a 0" << '\n';
+            x_pos += anim.res_x / pow(2,(double(i) + 2.0));
+        }
+       if (bitstring[i] == '1'){
+           //std::cout << "Found a 1" << '\n';
+           x_pos -= anim.res_x / pow(2,(double(i) + 2.0));
+       }
+
+       x_pos = ((x_pos - 0.5 * anim.res_x) * .95) + 0.5 * anim.res_x;
+    }
+
+    //x_pos = ((x_pos / (2.0*(double)max_bit))*.9*anim.res_x) + .55 * anim.res_x;
+    return x_pos;
+}
