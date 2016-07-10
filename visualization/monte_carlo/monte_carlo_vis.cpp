@@ -18,7 +18,7 @@
 #include <random>
 
 #define num_frames 300
-//#define num_frames 20
+//#define num_frames 2
 
 // Struct to hold positions
 struct pos{
@@ -116,7 +116,13 @@ int main(){
 
     //animate_square(anim, 1.0, 250, anim.origin);
 
+    //anim.curr_frame += 50;
+
     //animate_circle(anim, 1.0, 250 / 2, anim.origin);
+
+    //cairo_move_to(anim.frame_ctx[anim.curr_frame],200,150);
+    //cairo_rel_line_to(anim.frame_ctx[anim.curr_frame],250 / 2,0);
+    //cairo_stroke(anim.frame_ctx[anim.curr_frame]);
 
     //draw_batman(anim, anim.res_x * 0.05, anim.origin);
 
@@ -127,7 +133,7 @@ int main(){
 
 // Function to initialize the frame struct
 void frame::init(int r, int g, int b){
-    int line_width = 3;
+    int line_width = 1;
     for (size_t i = 0; i < num_frames; ++i){
         frame_surface[i] = 
             cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
@@ -139,6 +145,9 @@ void frame::init(int r, int g, int b){
         cairo_set_line_width(frame_ctx[i], line_width);
         cairo_set_font_size(frame_ctx[i], 20.0);
     }
+
+    cairo_rectangle(frame_ctx[0],0,0,res_x,res_y);
+    cairo_fill(frame_ctx[0]);
     bg_surface = 
         cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
     bg_ctx = cairo_create(bg_surface);
@@ -327,10 +336,11 @@ void monte_carlo(frame &anim, double threshold, double box_length){
     color pt_clr, area_clr, pe_clr;
 
     double count_in = 0; 
+    double ratio;
 
     std::vector<double> area(1024), pe_vec(1024);
     //double true_area = circle_area(0.5 * box_length);
-    double true_area = batman_area(anim.res_x * 0.04);
+    double true_area = batman_area(anim.res_x * 0.03);
     double temp_area;
     //double container_area = box_length * box_length;
 
@@ -378,7 +388,7 @@ void monte_carlo(frame &anim, double threshold, double box_length){
             loc.y = box_dist(gen) * box_length + anim.origin.y;
         }
 
-        if (is_batman(loc, anim.origin, anim.res_x * 0.04)){
+        if (is_batman(loc, anim.origin, anim.res_x * 0.03)){
             count_in += 1;
             pt_clr.b = 0.0;
             pt_clr.g = 0.0;
@@ -389,8 +399,8 @@ void monte_carlo(frame &anim, double threshold, double box_length){
             pt_clr.g = 1.0;
             pt_clr.r = 1.0;
         }
-        
 /*
+        
         // Color scheme for circle
         if (in_circle(anim, loc, box_length/2)){
             count_in += 1;
@@ -415,6 +425,7 @@ void monte_carlo(frame &anim, double threshold, double box_length){
         pt_clrs[count - prev_print_count - 1] = pt_clr;
 
         temp_area = (((double)count_in/(double)count)*container_area);
+        ratio = ((double)count_in/(double)count);
         //area.push_back(temp_area);
 
         pe = (temp_area - true_area) / true_area;
@@ -454,7 +465,7 @@ void monte_carlo(frame &anim, double threshold, double box_length){
                 draw_point(anim, points[j], pt_clrs[j]);
                 //std::cout << points[j].x << '\t' << points[j].y << '\n';
             }
-            print_area(anim, temp_area, area_clr);
+            print_area(anim, ratio, area_clr);
             print_pe(anim, abs(pe), pe_clr);
             print_count(anim, count);
             if (vec_count < 1024){
@@ -505,7 +516,7 @@ void print_area(frame &anim, double area, color clr){
     ss << std::setw(3) << area;
     number = ss.str();
 
-    area_txt = "Area: " + number;
+    area_txt = "Ratio: " + number;
     //std::cout << area_txt << '\n';
 
     cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], clr.r,clr.g,clr.b);
@@ -702,6 +713,57 @@ void draw_batman(frame &anim, double scale, pos ori){
     }
         
     cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame], 1, 1, 1);
+
+    // Now to draw specific lines to show who we split this guy up
+
+    // first, the line along the horizontal
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 0, 150);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], anim.res_x, 0);
+
+    // Now for the lower half
+    cairo_move_to(anim.frame_ctx[anim.curr_frame],
+                  -4.0 * scale + anim.res_x / 2.0, anim.res_y / 2.0);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 0, anim.res_y / 2.0);
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  4.0 * scale + anim.res_x / 2.0, anim.res_y / 2.0);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 0, anim.res_y / 2.0);
+
+    // Now for upper half
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  -3.0 * scale + anim.res_x / 2.0, anim.res_y / 2.0);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 0, -anim.res_y / 2.0);
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  -1.0 * scale + anim.res_x / 2.0, anim.res_y / 2.0);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 0, -anim.res_y / 2.0);
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  -0.75 * scale + anim.res_x / 2.0, anim.res_y / 2.0);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 0, -anim.res_y / 2.0);
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  -0.5 * scale + anim.res_x / 2.0, anim.res_y / 2.0);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 0, -anim.res_y / 2.0);
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  0.5 * scale + anim.res_x / 2.0, anim.res_y / 2.0);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 0, -anim.res_y / 2.0);
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  0.75 * scale + anim.res_x / 2.0, anim.res_y / 2.0);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 0, -anim.res_y / 2.0);
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  1.0 * scale + anim.res_x / 2.0, anim.res_y / 2.0);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 0, -anim.res_y / 2.0);
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                  3.0 * scale + anim.res_x / 2.0, anim.res_y / 2.0);
+    cairo_rel_line_to(anim.frame_ctx[anim.curr_frame], 0, -anim.res_y / 2.0);
+
+
     cairo_stroke(anim.frame_ctx[anim.curr_frame]);
 }
 
