@@ -122,6 +122,9 @@ int main(){
     huffman_tree final_tree = two_pass_huffman("Jack and Jill went up the hill to fetch a pail of water. Jack fell down and broke his crown and Jill came Tumbling after! \nWoo!");
     decode(final_tree);
 
+    std::cout << "final_tree root weight is: " 
+              << final_tree.root->weight << '\n';
+
     node_queue regenerated_nodes = regenerate_nodes(anim,final_tree.root,
                                                     final_tree.bitmap);
 
@@ -332,12 +335,15 @@ void draw_external(frame &anim, double time, huffman_tree tree){
     // Creating positions for external nodes
     std::vector<pos> external_nodes;
 
+    double lowest_location = log10(1.0 / tree.root->weight);
+
     pos temp_pos;
 
     // Determining x and y positions
     // NOTE: The .9 and .05 are arbitrary and should be modified in final form
     for (auto key : tree.bitmap){
-        temp_pos.y = (tree.weightmap[key.first] / tree.root->weight) 
+        temp_pos.y = (log10(tree.weightmap[key.first] / tree.root->weight) 
+                      / lowest_location) 
                      * .9 * anim.res_y + anim.res_y * 0.05;
         temp_pos.x = find_x_pos(anim, key.second);
         external_nodes.push_back(temp_pos);
@@ -380,6 +386,9 @@ void draw_internal(frame &anim, double time, node_queue regenerated_nodes,
                    double radius, huffman_tree final_tree){
 
     pos ori, ori_2;
+    double lowest_location = log10(1.0 / final_tree.root->weight);
+    double angle;
+    int num_lines = 30;
 
     node *node1, *node2, *node_parent;
     while (regenerated_nodes.size() > 1){
@@ -392,11 +401,14 @@ void draw_internal(frame &anim, double time, node_queue regenerated_nodes,
 
         node_parent->weight = node1->weight + node2->weight;
         node_parent->x = (node1->x + node2->x) * 0.5;
-        node_parent->y = (node_parent->weight / final_tree.root->weight) 
+        node_parent->y = (log10(node_parent->weight /final_tree.root->weight)
+                          / lowest_location) 
                          * .9 * anim.res_y + anim.res_y * 0.05;        
-        node1->y = (node1->weight / final_tree.root->weight) 
+        node1->y = (log10(node1->weight / final_tree.root->weight) 
+                    / lowest_location) 
                     * .9 * anim.res_y + anim.res_y * 0.05;  
-        node2->y = (node2->weight / final_tree.root->weight) 
+        node2->y = (log10(node2->weight / final_tree.root->weight) 
+                    /lowest_location)
                     * .9 * anim.res_y + anim.res_y * 0.05; 
         node_parent->left = node1;
         node_parent->right = node2;
@@ -405,11 +417,21 @@ void draw_internal(frame &anim, double time, node_queue regenerated_nodes,
         // Drawing first line
         ori.x = node1->x; ori.y = node1->y;
         ori_2.x = node_parent->x; ori_2.y = node_parent->y;
-        animate_line(anim,anim.curr_frame,time/100.0,ori,0,ori_2,0);
+        if (node1->key){
+            angle = atan2((ori_2.y - ori.y), (ori_2.x - ori.x));
+            ori.x = ori.x + radius * cos(angle);
+            ori.y = ori.y + radius * sin(angle);
+        }
+        animate_line(anim,anim.curr_frame,time/num_lines,ori,0,ori_2,0);
 
         ori.x = node2->x; ori.y = node2->y;
-        animate_line(anim,anim.curr_frame - ((time / 100.0) * anim.fps),
-                     time/100.0,ori,0,ori_2,0);
+        if (node2->key){
+            angle = atan2((ori_2.y - ori.y), (ori_2.x - ori.x));
+            ori.x = ori.x + radius * cos(angle);
+            ori.y = ori.y + radius * sin(angle);
+        }
+        animate_line(anim,anim.curr_frame-((time/num_lines) * anim.fps),
+                     time/num_lines,ori,0,ori_2,0);
 
         regenerated_nodes.push(node_parent);
 

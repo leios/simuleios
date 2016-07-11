@@ -16,6 +16,7 @@
 struct node{
     char key;
     double weight;
+    double x, y;
 
     node() = default;
     node(char k, double w){
@@ -48,6 +49,7 @@ struct huffman_tree{
     node *root;
     std::unordered_map<char, std::string> bitmap;
     std::string phrase, encoded_phrase;
+    std::unordered_map<char, double> weightmap;
 };
 
 using node_queue = std::priority_queue<node*,std::vector<node*>,node_comparer>;
@@ -70,7 +72,6 @@ std::string encode(std::unordered_map<char, std::string> bitmap,
 // Does a simple search
 void depth_first_search(node* root, huffman_cp &current,
                                       std::vector<huffman_cp> &bitstrings);
-
 // Does a simple 2-pass encoding scheme
 huffman_tree two_pass_huffman(std::string phrase);
 

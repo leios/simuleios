@@ -76,7 +76,6 @@ node_queue create_nodes(std::unordered_map<char, double> keyweights){
 
 }
 
-
 // Creates the simple binary tree
 node* huffman(node_queue &initial_nodes){
 
@@ -112,7 +111,6 @@ node* huffman(node_queue &initial_nodes){
 // creates bit code by recreating the huffman tree
 // sets length and code, itself
 // Note: To be continued
-//std::vector<huffman_cp> create_bits(node* root){
 std::unordered_map<char, std::string> create_bits(node* root){
 
     std::vector<huffman_cp> bitstrings;
@@ -134,6 +132,7 @@ std::unordered_map<char, std::string> create_bits(node* root){
 void depth_first_search(node* root, huffman_cp &current,
                                       std::vector<huffman_cp> &bitstrings){
 
+    // Are we on a leaf node?
     if (!root->right && !root->left){
         current.key = root->key;
         bitstrings.push_back(current);
@@ -151,6 +150,22 @@ void depth_first_search(node* root, huffman_cp &current,
     }
 
 }
+
+// Does a simple search to regenerated node_queue from root
+void depth_first_search(node* root, node_queue &regenerated_nodes){
+
+    // Filling the regenerated nodes 
+    regenerated_nodes.push(root);
+
+    if (root->right){
+        depth_first_search(root->right, regenerated_nodes);
+    }
+    if (root->left){
+        depth_first_search(root->left, regenerated_nodes);
+    }
+
+}
+
 
 // does the encoding -- Assuming that all characters in phrase are already
 // encoded in bitmap
@@ -174,19 +189,16 @@ huffman_tree two_pass_huffman(std::string phrase){
     huffman_tree final_tree;
     final_tree.phrase = phrase;
 
-    // Create vector of weights and keys
-    std::unordered_map<char, double> keyweights;
-
     for (size_t i = 0; i < phrase.size(); ++i){
-        if(keyweights[phrase[i]]){
-            keyweights[phrase[i]] += 1;
+        if(final_tree.weightmap[phrase[i]]){
+            final_tree.weightmap[phrase[i]] += 1;
         }
         else{
-            keyweights[phrase[i]] = 1;
+            final_tree.weightmap[phrase[i]] = 1;
         }
     }
 
-    node_queue initial_nodes = create_nodes(keyweights);
+    node_queue initial_nodes = create_nodes(final_tree.weightmap);
     final_tree.root = huffman(initial_nodes);
 
     final_tree.bitmap = create_bits(final_tree.root);
