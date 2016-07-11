@@ -19,7 +19,7 @@
 #include "huffman.h"
 
 //#define num_frames 300
-#define num_frames 100
+#define num_frames 200
 
 // Struct to hold positions
 struct pos{
@@ -65,10 +65,23 @@ void animate_line(frame &anim, int start_frame, double time,
                   pos ori_1, double radius_1, pos ori_2, double radius_2);
 
 // Function to draw huffman tree
-void draw_tree(frame &anim, huffman_tree tree);
+void draw_external(frame &anim, double time, huffman_tree tree);
 
 // finding x pos for huffman tree drawing
-double find_x_pos(frame &anim, std::string bitstring, int max_bit);
+double find_x_pos(frame &anim, std::string bitstring);
+
+// Function to draw internal_nodes
+void draw_internal(frame &anim, double time, node_queue regenerated_nodes, 
+                   double radius, huffman_tree final_tree);
+
+// Overloaded create_nodes function for root node
+// This time we are recreating the tree for later
+node_queue regenerate_nodes(frame &anim, node *root, 
+                            std::unordered_map<char, std::string> bitmap);
+
+// Does a simple search to regenerated node_queue from root
+void depth_first_search(frame &anim, node* root, node_queue &regenerated_nodes,
+                        std::unordered_map<char, std::string> bitmap);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -109,7 +122,18 @@ int main(){
     huffman_tree final_tree = two_pass_huffman("Jack and Jill went up the hill to fetch a pail of water. Jack fell down and broke his crown and Jill came Tumbling after! \nWoo!");
     decode(final_tree);
 
-    draw_tree(anim, final_tree);
+    node_queue regenerated_nodes = regenerate_nodes(anim,final_tree.root,
+                                                    final_tree.bitmap);
+
+/*
+    while (regenerated_nodes.size() > 1){
+       std::cout << regenerated_nodes.top()->weight << '\n';
+       regenerated_nodes.pop();
+    }
+*/
+
+    draw_external(anim, 10.0, final_tree);
+    draw_internal(anim, 10.0, regenerated_nodes, 10, final_tree);
 
     anim.draw_frames();
 
@@ -303,28 +327,19 @@ void animate_line(frame &anim, int start_frame, double time,
 }
 
 // Function to draw huffman tree
-void draw_tree(frame &anim, huffman_tree tree){
+void draw_external(frame &anim, double time, huffman_tree tree){
 
-    // Creating posisitons for external nodes
+    // Creating positions for external nodes
     std::vector<pos> external_nodes;
 
-    size_t max_bit = 0;
-
-    for (auto key : tree.bitmap){
-        if (key.second.size() > max_bit){
-            max_bit = key.second.size();
-        }
-    }
-
-    std::cout << max_bit << '\n';
     pos temp_pos;
 
     // Determining x and y positions
     // NOTE: The .9 and .05 are arbitrary and should be modified in final form
     for (auto key : tree.bitmap){
-        temp_pos.y = ((double)key.second.size() / (double)max_bit) 
+        temp_pos.y = (tree.weightmap[key.first] / tree.root->weight) 
                      * .9 * anim.res_y + anim.res_y * 0.05;
-        temp_pos.x = find_x_pos(anim, key.second, max_bit);
+        temp_pos.x = find_x_pos(anim, key.second);
         external_nodes.push_back(temp_pos);
 
         std::cout << key.first << '\t' << temp_pos.x << '\t'
@@ -334,14 +349,14 @@ void draw_tree(frame &anim, huffman_tree tree){
     std::cout << tree.bitmap.size() << '\t' << external_nodes.size() << '\n';
 
     for (size_t i = 0; i < external_nodes.size(); ++i){
-        grow_circle(anim, 10 / (double)external_nodes.size(), 
+        grow_circle(anim, time / (double)external_nodes.size(), 
                     external_nodes[i], 10);
     }
 
 }
 
 // finding x pos for huffman tree drawing
-double find_x_pos(frame &anim, std::string bitstring, int max_bit){
+double find_x_pos(frame &anim, std::string bitstring){
 
     double x_pos = anim.res_x / 2.0;
     for (size_t i = 0; i < bitstring.size(); ++i){
@@ -357,6 +372,82 @@ double find_x_pos(frame &anim, std::string bitstring, int max_bit){
        x_pos = ((x_pos - 0.5 * anim.res_x) * .95) + 0.5 * anim.res_x;
     }
 
-    //x_pos = ((x_pos / (2.0*(double)max_bit))*.9*anim.res_x) + .55 * anim.res_x;
     return x_pos;
 }
+
+// Function to draw internal_nodes
+void draw_internal(frame &anim, double time, node_queue regenerated_nodes, 
+                   double radius, huffman_tree final_tree){
+
+    pos ori, ori_2;
+
+    node *node1, *node2, *node_parent;
+    while (regenerated_nodes.size() > 1){
+        node1 = regenerated_nodes.top();
+        regenerated_nodes.pop();
+        node2 = regenerated_nodes.top();
+        regenerated_nodes.pop();
+
+        node_parent = new node();
+
+        node_parent->weight = node1->weight + node2->weight;
+        node_parent->x = (node1->x + node2->x) * 0.5;
+        node_parent->y = (node_parent->weight / final_tree.root->weight) 
+                         * .9 * anim.res_y + anim.res_y * 0.05;        
+        node1->y = (node1->weight / final_tree.root->weight) 
+                    * .9 * anim.res_y + anim.res_y * 0.05;  
+        node2->y = (node2->weight / final_tree.root->weight) 
+                    * .9 * anim.res_y + anim.res_y * 0.05; 
+        node_parent->left = node1;
+        node_parent->right = node2;
+
+        // visualize this new node with lines...
+        // Drawing first line
+        ori.x = node1->x; ori.y = node1->y;
+        ori_2.x = node_parent->x; ori_2.y = node_parent->y;
+        animate_line(anim,anim.curr_frame,time/100.0,ori,0,ori_2,0);
+
+        ori.x = node2->x; ori.y = node2->y;
+        animate_line(anim,anim.curr_frame - ((time / 100.0) * anim.fps),
+                     time/100.0,ori,0,ori_2,0);
+
+        regenerated_nodes.push(node_parent);
+
+    }
+
+}
+
+// Similar to create_nodes... This time we are recreating the tree for later
+node_queue regenerate_nodes(frame &anim, node *root, 
+                            std::unordered_map<char, std::string> bitmap){
+    node_queue regenerated_nodes;
+
+    // Performs Depth-first search and push back the priorirty queue
+    depth_first_search(anim, root, regenerated_nodes, bitmap);
+    
+    return regenerated_nodes;
+}
+
+// Does a simple search to regenerated node_queue from root
+void depth_first_search(frame &anim, node* root, node_queue &regenerated_nodes,
+                        std::unordered_map<char, std::string> bitmap){
+
+    // Are we on a leaf?
+    if (!root->right && !root->left){
+        if (root->key){
+            std::string bitstring = bitmap[root->key];
+            root->x = find_x_pos(anim, bitstring);
+        }
+        // Filling the regenerated nodes 
+        regenerated_nodes.push(root);
+    }
+
+    if (root->right){
+        depth_first_search(anim, root->right, regenerated_nodes, bitmap);
+    }
+    if (root->left){
+        depth_first_search(anim, root->left, regenerated_nodes, bitmap);
+    }
+
+}
+
