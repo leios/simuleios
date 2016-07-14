@@ -8,11 +8,13 @@
 #              blender -b -P eigentest.py
 #          To show on stream, use:
 #              mplayer out.mp4 -vo x11
+#          Figure out if we are in the exterior box.
 #
 #------------------------------------------------------------------------------#
 
 import bpy
 import numpy as np
+import random
 
 # goes through all the data! Woo!
 # Written (in part) by Kramsfasel
@@ -94,10 +96,25 @@ def new_sphere(diam, x, y, z, r, g, b, id):
     me.materials.append(mat)
     return temp_sphere
 
+# places new sphere at given location
+def new_sphere_MC(diam, x, y, z, r, g, b, id):
+    temp_sphere = bpy.ops.mesh.primitive_uv_sphere_add(segments = 8, 
+                                                       ring_count = 16,
+                                                       size = diam,
+                                                       location = (x, y, z),
+                                                       rotation = (0, 0, 0))
+    ob = bpy.context.active_object
+    ob.name = str(id)
+    me = ob.data
+    color = (r, g, b)
+    mat = create_new_material(ob.name, color)
+    me.materials.append(mat)
+    return temp_sphere
+
+
 # places sphere duplicates around for fun!
-def place_duplicates(x, y, z, id, ob = None):
-    if not ob:
-        ob = bpy.context.active_object
+def place_duplicates(x, y, z, id, obid):
+    ob = bpy.data.objects[obid]
     obs = []
     sce = bpy.context.scene
         
@@ -344,10 +361,146 @@ def render_movie(scene):
     bpy.data.scenes["Scene"].render.use_file_extension = False
     bpy.ops.render.render( animation=True ) 
 
-def vis_determinant(box_length, num):
-    cage_set(box_length, num)
+# Hiding original cube until a particular time
+def hide_interior(make_frame):
+    # hiding the particles
+    for i in range(8):
+        name = "%d.001" % (i)
+        print(name)
+        bpy.data.objects[name].hide = True
+        bpy.data.objects[name].hide_render = True
+        bpy.data.objects[name].keyframe_insert("hide_render", 
+                                               frame=make_frame-1)
+        bpy.data.objects[name].keyframe_insert("hide", 
+                                               frame=make_frame-1)
+        bpy.data.objects[name].hide = False
+        bpy.data.objects[name].hide_render = False
+        bpy.data.objects[name].keyframe_insert("hide_render", 
+                                               frame=make_frame)
+        bpy.data.objects[name].keyframe_insert("hide", 
+                                               frame=make_frame)
+
+    # hiding of the lines
+    for i in range(12):
+        if i == 0:
+            name = "BezierCurve"
+        else:
+            name = "BezierCurve.%03d" % (i)
+        print(name)
+        bpy.data.objects[name].hide = True
+        bpy.data.objects[name].hide_render = True
+        bpy.data.objects[name].keyframe_insert("hide_render", 
+                                               frame=make_frame-1)
+        bpy.data.objects[name].keyframe_insert("hide", 
+                                               frame=make_frame-1)
+        bpy.data.objects[name].hide = False
+        bpy.data.objects[name].hide_render = False
+        bpy.data.objects[name].keyframe_insert("hide_render", 
+                                               frame=make_frame)
+        bpy.data.objects[name].keyframe_insert("hide", 
+                                               frame=make_frame)
+
+# Monte carlo for this special case of two internal cubes
+def monte_carlo(framenum, resolution, box_length):
+    tot_count = 0
+    in_count = 0
+    ex_count = 0
+    create_MCspheres(0.05)
+    for j in range(1):
+        for i in range(resolution):
+            MCid = "MCB"
+            tot_count += 1
+            count = i + j * resolution
+            x = random.random() * box_length - box_length * 0.5
+            y = random.random() * box_length - box_length * 0.5
+            z = random.random() * box_length - box_length * 0.5
     
+            (in_box, MCid) = in_exterior(x, y, z, MCid, in_count)
+            ex_count += in_box
+            (in_box, MCid) = in_interior(x, y, z, MCid, ex_count)
+            in_count += in_box
+    
+            # MC points are above 100...
+            place_duplicates(x, y, z, "MC%d" % count, MCid)
+    
+            # Adding in the appropriate Keyframes
+    
+            bpy.data.objects["MC%d" % count].hide = True
+            bpy.data.objects["MC%d" % count].hide_render = True
+            bpy.data.objects["MC%d" % count].keyframe_insert("hide_render", 
+                                                         frame=framenum-1)
+            bpy.data.objects["MC%d" % count].keyframe_insert("hide", 
+                                                         frame=framenum-1)
+            bpy.data.objects["MC%d" % count].hide = False
+            bpy.data.objects["MC%d" % count].hide_render = False
+            bpy.data.objects["MC%d" % count].keyframe_insert("hide_render", 
+                                                         frame=framenum)
+            bpy.data.objects["MC%d" % count].keyframe_insert("hide", 
+                                                         frame=framenum)
+
+
+        framenum += 1
+        print(i)
+    in_vol = in_count / tot_count * box_length
+    ex_vol = ex_count / tot_count * box_length
+    vol_ratio = ex_vol / in_vol
+    with open('volumes.dat','w') as outfile:
+        outfile.write("{} {} {}".format(in_vol, ex_vol, vol_ratio)) 
+ 
+    return framenum
+
+def in_interior(x, y, z, MCid, in_count):
+    in_box = 0
+    if x > -1 and x <= 1 and y > -1 and y <= 1 and z > -1 and z <= 1:
+        in_box = 1
+        MCid = "MCR"
+    return (in_box, MCid)
+
+def in_exterior(x, y, z, MCid, ex_count):
+    in_box = 0
+    # Defining the transformation matrix and inverse
+    matrix = np.matrix('1 2 0; 2 1 0; 0 0 -3')
+    inverse = np.linalg.inv(matrix)
+    rand_vector = np.array([x, y, z])
+
+    # Now transforming back and checking against original cube
+    point = rand_vector * inverse
+
+    if point[0,0] > -1 and point[0,0] <= 1 \
+       and point[0,1] > -1 and point[0,1] <= 1 \
+       and point[0,2] > -1 and point[0,2] <= 1:
+        MCid = "MCY"
+        in_box = 1
+    return (in_box, MCid)
+
+def create_MCspheres(diam):
+    new_sphere_MC(diam, 0, 0, 0, 1, 0, 0, "MCR")
+    bpy.data.materials["MCR"].use_transparency = True
+    bpy.data.materials["MCR"].alpha = 0.25
+    bpy.data.objects["MCR"].hide = True
+    bpy.data.objects["MCR"].hide_render = True
+
+    new_sphere_MC(diam, 0, 0, 0, 1, 1, 0, "MCY")
+    bpy.data.materials["MCY"].use_transparency = True
+    bpy.data.materials["MCY"].alpha = 0.25
+    bpy.data.objects["MCY"].hide = True
+    bpy.data.objects["MCY"].hide_render = True
+
+    new_sphere_MC(diam, 0, 0, 0, 0, 0, 1, "MCB")
+    bpy.data.materials["MCB"].use_transparency = True
+    bpy.data.materials["MCB"].alpha = 0.25
+    bpy.data.objects["MCB"].hide = True
+    bpy.data.objects["MCB"].hide_render = True
+
+def vis_determinant(box_length, num):
+    hide_interior(num)
     num += 10
+
+    cage_set(box_length, num)
+    num += 10
+
+    num = monte_carlo(num, 1000, box_length)
+
     return num
 
 scene = bpy.context.scene
@@ -359,5 +512,5 @@ num = parse_data()
 num = vis_determinant(6.0, num)
 bpy.data.scenes["Scene"].frame_end = num
 scene.update()
-render_movie(scene)
+#render_movie(scene)
 #print (array)
