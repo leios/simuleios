@@ -44,10 +44,10 @@ struct frame{
     std::string pngbase;
 
     // Function to call frame struct
-    frame(int x, int y, int ps, std::string pngname);
+    void create_frame(int x, int y, int ps, std::string pngname);
 
     // Function to initialize the frame struct
-    void init(int r, int g, int b);
+    void init();
 
     // Function to draw all frames in the frame struct
     void draw_frames();
@@ -56,6 +56,9 @@ struct frame{
     void destroy_all();
 
 };
+
+// Function to create basic colored background
+void create_bg(frame &anim, int r, int g, int b);
 
 // Function to grow a circle at a provided point
 void grow_circle(frame &anim, double time, pos ori, double radius);
@@ -83,40 +86,24 @@ node_queue regenerate_nodes(frame &anim, node *root,
 void depth_first_search(frame &anim, node* root, node_queue &regenerated_nodes,
                         std::unordered_map<char, std::string> bitmap);
 
+// Function to draw layers
+void draw_layers(std::vector<frame> layer);
+
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
 
 int main(){
 
-    frame anim = frame(400, 300, 10, "frames/image");
-    anim.init(0,0,0);
+    std::vector<frame> layer(3);
+    for (size_t i = 0; i < layer.size(); ++i){
+        layer[i].create_frame(400, 300, 10, "frames/image");
+        layer[i].init();
 
-    anim.curr_frame = 1;
+        layer[i].curr_frame = 1;
+    }
 
-/*
-
-    pos ori, ori_2, ori_3, ori_4;
-    ori.x = 100;
-    ori.y = 100;
-    ori_2.x = 200;
-    ori_2.y = 200;
-    ori_3.x = 200;
-    ori_3.y = 100;
-    ori_4.x = 100;
-    ori_4.y = 200;
-
-    grow_circle(anim, 0.5, ori, 10);
-    grow_circle(anim, 0.5, ori_2, 10);
-    grow_circle(anim, 0.5, ori_3, 10);
-    grow_circle(anim, 0.5, ori_4, 10);
-
-    animate_line(anim, anim.curr_frame, 0.5, ori, 10, ori_2, 10);
-
-    animate_line(anim, anim.curr_frame - 0.5 * anim.fps, 0.5, ori_3, 10, ori_4, 10);
-
-    anim.draw_frames();  
-*/
+    create_bg(layer[0], 0, 0, 0);
 
     // encoding with 2-pass huffman
     huffman_tree final_tree = two_pass_huffman("Jack and Jill went up the hill to fetch a pail of water. Jack fell down and broke his crown and Jill came Tumbling after! \nWoo!");
@@ -125,33 +112,24 @@ int main(){
     std::cout << "final_tree root weight is: " 
               << final_tree.root->weight << '\n';
 
-    node_queue regenerated_nodes = regenerate_nodes(anim,final_tree.root,
+    node_queue regenerated_nodes = regenerate_nodes(layer[0],final_tree.root,
                                                     final_tree.bitmap);
 
-/*
-    while (regenerated_nodes.size() > 1){
-       std::cout << regenerated_nodes.top()->weight << '\n';
-       regenerated_nodes.pop();
-    }
-*/
+    draw_external(layer[1], 10.0, final_tree);
+    layer[2].curr_frame = layer[1].curr_frame;
+    draw_internal(layer[2], 10.0, regenerated_nodes, 10, final_tree);
 
-    draw_external(anim, 10.0, final_tree);
-    draw_internal(anim, 10.0, regenerated_nodes, 10, final_tree);
-
-    anim.draw_frames();
+    draw_layers(layer);
 
 } 
 
 // Function to initialize the frame struct
-void frame::init(int r, int g, int b){
+void frame::init(){
     int line_width = 3;
     for (size_t i = 0; i < num_frames; ++i){
         frame_surface[i] = 
             cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
         frame_ctx[i] = cairo_create(frame_surface[i]);
-        cairo_set_source_rgb(frame_ctx[i],(double)r, (double)g, (double)b);
-        cairo_rectangle(frame_ctx[i],0,0,res_x,res_y);
-        cairo_fill(frame_ctx[i]);
         cairo_set_line_cap(frame_ctx[i], CAIRO_LINE_CAP_ROUND);
         cairo_set_line_width(frame_ctx[i], line_width);
         cairo_set_font_size(frame_ctx[i], 20.0);
@@ -160,6 +138,15 @@ void frame::init(int r, int g, int b){
         cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
     bg_ctx = cairo_create(bg_surface);
     curr_frame = 0;
+}
+
+// Creating basic colored background
+void create_bg(frame &anim, int r, int g, int b){
+    for (int i = 0; i < num_frames; ++i){
+        cairo_set_source_rgb(anim.frame_ctx[i],(double)r, (double)g, (double)b);
+        cairo_rectangle(anim.frame_ctx[i],0,0,anim.res_x,anim.res_y);
+        cairo_fill(anim.frame_ctx[i]);
+    }
 }
 
 // Function to draw all frames in the frame struct
@@ -182,7 +169,7 @@ void frame::draw_frames(){
 }
 
 // Function to set the initial variables
-frame::frame(int x, int y, int ps, std::string pngname){
+void frame::create_frame(int x, int y, int ps, std::string pngname){
     res_x = x;
     res_y = y;
     pngbase = pngname;
@@ -239,26 +226,6 @@ void grow_circle(frame &anim, double time, pos ori, double radius){
         
     }
 
-/*
-    for (int i = anim.curr_frame; i < num_frames; ++i){
-        cairo_set_source_rgb(anim.frame_ctx[i], 1, 1, 1);
-        j++;
-        if (i < anim.curr_frame + draw_frames){
-            curr_radius = (double)j * radius / (double)draw_frames;
-            cairo_arc(anim.frame_ctx[i], ori.x, ori.y, 
-                      curr_radius, 0, 2*M_PI);
-        }
-        else{
-            cairo_arc(anim.frame_ctx[i], ori.x, ori.y, 
-                      radius, 0, 2*M_PI);
-
-        }
-
-        cairo_stroke(anim.frame_ctx[i]);
-        
-    }
-*/
-
     //std::cout << "finished loop" << '\n';
     anim.curr_frame += draw_frames;
     std::cout << anim.curr_frame << '\n';
@@ -310,17 +277,6 @@ void animate_line(frame &anim, int start_frame, double time,
         cairo_set_source_rgb(anim.frame_ctx[i], 1, 1, 1);
         cairo_stroke(anim.frame_ctx[i]);
 
-/*
-        // redraw circles
-        cairo_set_source_rgb(anim.frame_ctx[i], 0.25, 1, 0.25);
-        cairo_arc(anim.frame_ctx[i], ori_1.x, ori_1.y, radius_1, 0, 2*M_PI);
-        cairo_arc(anim.frame_ctx[i], ori_2.x, ori_2.y, radius_2, 0, 2*M_PI);
-
-        cairo_fill(anim.frame_ctx[i]);
-*/
-
-        //cairo_stroke(anim.frame_ctx[i]);
-
     }
 
     if (start_frame + draw_frames > anim.curr_frame){
@@ -334,6 +290,7 @@ void draw_external(frame &anim, double time, huffman_tree tree){
 
     // Creating positions for external nodes
     std::vector<pos> external_nodes;
+    std::vector<std::string> characters;
 
     double lowest_location = log10(1.0 / tree.root->weight);
 
@@ -347,6 +304,7 @@ void draw_external(frame &anim, double time, huffman_tree tree){
                      * .9 * anim.res_y + anim.res_y * 0.05;
         temp_pos.x = find_x_pos(anim, key.second);
         external_nodes.push_back(temp_pos);
+        characters.push_back({key.first});
 
         std::cout << key.first << '\t' << temp_pos.x << '\t'
                   << temp_pos.y << '\n';
@@ -357,6 +315,23 @@ void draw_external(frame &anim, double time, huffman_tree tree){
     for (size_t i = 0; i < external_nodes.size(); ++i){
         grow_circle(anim, time / (double)external_nodes.size(), 
                     external_nodes[i], 10);
+
+        //temp_char[0] = characters[i];
+
+        // Placing text in circle
+        for (int j = anim.curr_frame; j < num_frames; ++j){
+            cairo_set_source_rgb(anim.frame_ctx[j], 0, 0, 0);
+            cairo_text_extents_t textbox;
+            cairo_text_extents(anim.frame_ctx[j], 
+                               characters[i].c_str(),
+                               &textbox);
+            cairo_move_to(anim.frame_ctx[j], 
+                          external_nodes[i].x - textbox.width / 2.0,
+                          external_nodes[i].y + textbox.height / 2.0);
+            cairo_show_text(anim.frame_ctx[j], characters[i].c_str());
+            cairo_stroke(anim.frame_ctx[j]);
+        }
+        
     }
 
 }
@@ -469,6 +444,28 @@ void depth_first_search(frame &anim, node* root, node_queue &regenerated_nodes,
     }
     if (root->left){
         depth_first_search(anim, root->left, regenerated_nodes, bitmap);
+    }
+
+}
+
+// Function to draw all layers
+void draw_layers(std::vector<frame> layer){
+    std::string pngid, number;
+    for (size_t i = 0; i < num_frames; ++i){
+        for (size_t j = layer.size() - 1; j > 0; --j){
+            cairo_set_source_surface(layer[0].frame_ctx[i], 
+                                     layer[j].frame_surface[i], 0, 0);
+            cairo_paint(layer[0].frame_ctx[i]);
+        }
+
+        // Setting up number with stringstream
+        std::stringstream ss;
+        ss << std::setw(5) << std::setfill('0') << i;
+        number = ss.str();
+
+        pngid = layer[0].pngbase + number + ".png";
+        std::cout << pngid << '\n';
+        cairo_surface_write_to_png(layer[0].frame_surface[i], pngid.c_str());
     }
 
 }
