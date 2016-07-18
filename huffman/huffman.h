@@ -12,11 +12,16 @@
 #include<unordered_map>
 #include<queue>
 
+// Struct to hold positions
+struct pos{
+    double x, y;
+};
+
 // Create the binary tree
 struct node{
     char key;
     double weight;
-    double x, y;
+    pos ori;
 
     node() = default;
     node(char k, double w){
@@ -50,6 +55,7 @@ struct huffman_tree{
     std::unordered_map<char, std::string> bitmap;
     std::string phrase, encoded_phrase;
     std::unordered_map<char, double> weightmap;
+    int alphabet_size;
 };
 
 using node_queue = std::priority_queue<node*,std::vector<node*>,node_comparer>;

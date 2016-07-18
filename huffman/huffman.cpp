@@ -209,6 +209,8 @@ huffman_tree two_pass_huffman(std::string phrase){
 
     final_tree.encoded_phrase = encode(final_tree.bitmap, phrase);
 
+    final_tree.alphabet_size = final_tree.bitmap.size();
+
     return final_tree;
 
 }

@@ -59,7 +59,8 @@ struct frame{
 void create_bg(frame &anim, int r, int g, int b);
 
 // Function to grow a circle at a provided point
-void grow_circle(frame &anim, double time, pos ori, double radius);
+void grow_circle(frame &anim, double time, pos ori, double radius, 
+                 double weight);
 
 // Function to animate a line from two points
 void animate_line(frame &anim, int start_frame, double time, 
@@ -75,14 +76,15 @@ void draw_internal(frame &anim, double time, node_queue regenerated_nodes,
 // Overloaded create_nodes function for root node
 // This time we are recreating the tree for later
 node_queue regenerate_nodes(frame &anim, node *root, 
-                            std::unordered_map<char, std::string> bitmap);
+                            std::unordered_map<char, std::string> bitmap, 
+                            int alphabet_size);
 
 // Function to draw layers
 void draw_layers(std::vector<frame> layer);
 
 // Function to get x and y positions of external nodes:
-void draw_tree(frame &anim, double x, node* root, int level, 
-               node_queue &regenerated_nodes);
+void draw_tree(frame &anim, int &count_x, node* root, int level, 
+               node_queue &regenerated_nodes, int alphabet_size);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -92,7 +94,7 @@ int main(){
 
     std::vector<frame> layer(3);
     for (size_t i = 0; i < layer.size(); ++i){
-        layer[i].create_frame(400, 300, 10, "frames/image");
+        layer[i].create_frame(600, 450, 10, "frames/image");
         layer[i].init();
 
         layer[i].curr_frame = 1;
@@ -108,7 +110,8 @@ int main(){
               << final_tree.root->weight << '\n';
 
     node_queue regenerated_nodes = regenerate_nodes(layer[1],final_tree.root,
-                                                    final_tree.bitmap);
+                                                    final_tree.bitmap,
+                                                    final_tree.alphabet_size);
 
 /*
     // Destrying the regenerated_nodes and printing them out.
@@ -137,7 +140,7 @@ void frame::init(){
         frame_ctx[i] = cairo_create(frame_surface[i]);
         cairo_set_line_cap(frame_ctx[i], CAIRO_LINE_CAP_ROUND);
         cairo_set_line_width(frame_ctx[i], line_width);
-        cairo_set_font_size(frame_ctx[i], 20.0);
+        cairo_set_font_size(frame_ctx[i], 15.0);
     }
     bg_surface = 
         cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
@@ -184,7 +187,8 @@ void frame::create_frame(int x, int y, int ps, std::string pngname){
 }
 
 // Function to grow a circle at a provided point
-void grow_circle(frame &anim, double time, pos ori, double radius){
+void grow_circle(frame &anim, double time, pos ori, double radius, 
+                 double weight){
 
     // Number of frames 
     int draw_frames = time * anim.fps;
@@ -193,6 +197,8 @@ void grow_circle(frame &anim, double time, pos ori, double radius){
 
     // internal counts that definitely start at 0
     int j = 0, k = 0;
+
+    double temp_weight;
 
     for (int i = anim.curr_frame; i < num_frames; ++i){
         if (i < anim.curr_frame + draw_frames){
@@ -222,7 +228,19 @@ void grow_circle(frame &anim, double time, pos ori, double radius){
                       radius, 0, 2*M_PI);
         }
 
-        cairo_set_source_rgb(anim.frame_ctx[i], .25, 1, .25);
+        // Adding in a color ramp
+        // Note: Ramp is arbitrarily set
+        if (weight < 0.25){
+            temp_weight = weight * 4.0;
+            cairo_set_source_rgb(anim.frame_ctx[i], .25 + 0.75 * temp_weight, 
+                                 1, .25);
+        }
+        else{
+            temp_weight = (weight - 0.25) * 1.333333;
+            cairo_set_source_rgb(anim.frame_ctx[i], 1, 
+                                 1 - (0.75 * temp_weight), .25);
+
+        }
 
         cairo_fill(anim.frame_ctx[i]);
 
@@ -302,34 +320,40 @@ void draw_internal(frame &anim, double time, node_queue regenerated_nodes,
 
 // Similar to create_nodes... This time we are recreating the tree for later
 node_queue regenerate_nodes(frame &anim, node *root, 
-                            std::unordered_map<char, std::string> bitmap){
+                            std::unordered_map<char, std::string> bitmap,
+                            int alphabet_size){
     node_queue regenerated_nodes;
 
     // Performs Depth-first search and push back the priorirty queue
-    draw_tree(anim, anim.res_x * 0.5, root, 1, regenerated_nodes);
+    int count_x = 0;
+    draw_tree(anim, count_x, root, 1, regenerated_nodes, 
+              alphabet_size);
     
     return regenerated_nodes;
 }
 
-void draw_tree(frame &anim, double x, node* root, int level, 
-               node_queue &regenerated_nodes){
-    root->ori.x = x;
+void draw_tree(frame &anim, int &count_x, node* root, int level, 
+               node_queue &regenerated_nodes, int alphabet_size){
     root->ori.y = level * anim.res_y / 8.25;
     //root->ori.y = (1-(root->weight / 127.0)) * anim.res_y;
     regenerated_nodes.push(root);
-    double dx = anim.res_x / pow(2, double(level) + 1);
-    //double dx = anim.res_x / 20;
 
     if (root->right){
-        draw_tree(anim, x + dx, root->right, level + 1, regenerated_nodes);
+        draw_tree(anim, count_x, root->right, level + 1, regenerated_nodes,
+                  alphabet_size);
     }
     if (root->left){
-        draw_tree(anim, x - dx, root->left, level + 1, regenerated_nodes);
+        draw_tree(anim, count_x, root->left, level + 1, regenerated_nodes,
+                  alphabet_size);
     }
 
     if (!root->left && !root->right){
+        root->ori.x = ((((double)count_x+0.5)/(double)alphabet_size)*anim.res_x)
+                      * 0.85 + anim.res_x * 0.0725;
+        count_x += 1;
+        //std::cout << "weight is: " << root->weight << '\n';
         grow_circle(anim, 0.25, 
-                    root->ori, 10);
+                    root->ori, 10 + (root->weight * 0.5), root->weight/24.0);
 
         char test[] = { root->key, '\0' };
 
@@ -346,6 +370,9 @@ void draw_tree(frame &anim, double x, node* root, int level,
             cairo_show_text(anim.frame_ctx[j], test);
             cairo_stroke(anim.frame_ctx[j]);
         }
+    }
+    else{
+        root->ori.x = (root->left->ori.x + root->right->ori.x) * 0.5;
     }
         
 
