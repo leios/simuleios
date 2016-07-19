@@ -17,6 +17,12 @@ struct pos{
     double x, y;
 };
 
+// Struct for colors
+struct color{
+    double r, g, b;
+};
+
+
 // Create the binary tree
 struct node{
     char key;

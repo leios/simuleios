@@ -5,9 +5,8 @@
 *   Notes: This will be using the cairo package, hopefully creating animations
 *              I could use the subroutine-comic project, but this will be from 
 *              scratch
-*          In draw_tree, nodes are being overwritten
-*          draw_internal still need to be completed
-*          check y positions in draw_tree
+*          In draw_tree, nodes are beign drawn backwards
+*          find a way to place weight number on each node
 *
 *-----------------------------------------------------------------------------*/
 
@@ -22,12 +21,7 @@
 #include "huffman.h"
 
 //#define num_frames 300
-#define num_frames 200
-
-// Struct for colors
-struct color{
-    double r, g, b;
-};
+#define num_frames 300
 
 // Struct to hold all the necessary data for animations
 struct frame{
@@ -59,32 +53,39 @@ struct frame{
 void create_bg(frame &anim, int r, int g, int b);
 
 // Function to grow a circle at a provided point
-void grow_circle(frame &anim, double time, pos ori, double radius, 
+void grow_circle(frame &anim, double time, pos &ori, double radius, 
                  double weight);
 
 // Function to animate a line from two points
 void animate_line(frame &anim, int start_frame, double time, 
-                  pos ori_1, pos ori_2);
+                  pos &ori_1, pos &ori_2, color &clr);
 
 // Function to draw huffman tree
-void draw_external(frame &anim, double time, huffman_tree tree);
+void draw_external(frame &anim, double time, huffman_tree &tree);
 
 // Function to draw internal_nodes
-void draw_internal(frame &anim, double time, node_queue regenerated_nodes, 
-                   huffman_tree final_tree);
+void draw_internal(frame &anim, double time, node_queue &regenerated_nodes, 
+                   huffman_tree &final_tree);
 
 // Overloaded create_nodes function for root node
 // This time we are recreating the tree for later
 node_queue regenerate_nodes(frame &anim, node *root, 
-                            std::unordered_map<char, std::string> bitmap, 
+                            std::unordered_map<char, std::string> &bitmap, 
                             int alphabet_size);
 
 // Function to draw layers
-void draw_layers(std::vector<frame> layer);
+void draw_layers(std::vector<frame> &layer);
 
 // Function to get x and y positions of external nodes:
 void draw_tree(frame &anim, int &count_x, node* root, int level, 
-               node_queue &regenerated_nodes, int alphabet_size);
+               node_queue &regenerated_nodes, int alphabet_size, int max_level);
+
+// Function to visualize the encoding process
+void draw_encoding(frame &anim, std::unordered_map<char, std::string> &bitmap,
+                   node *root);
+
+// Function to drop text under leaf node
+void drop_text(frame &anim, std::string &codeword, double weight, pos &ori);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -126,6 +127,8 @@ int main(){
 
     layer[2].curr_frame = layer[1].curr_frame;
     draw_internal(layer[2], 10.0, regenerated_nodes, final_tree);
+
+    draw_encoding(layer[2], final_tree.bitmap, final_tree.root);
 
     draw_layers(layer);
 
@@ -187,7 +190,7 @@ void frame::create_frame(int x, int y, int ps, std::string pngname){
 }
 
 // Function to grow a circle at a provided point
-void grow_circle(frame &anim, double time, pos ori, double radius, 
+void grow_circle(frame &anim, double time, pos &ori, double radius, 
                  double weight){
 
     // Number of frames 
@@ -256,7 +259,7 @@ void grow_circle(frame &anim, double time, pos ori, double radius,
 
 // Function to animate a line from two points
 void animate_line(frame &anim, int start_frame, double time,  
-                  pos ori_1, pos ori_2){
+                  pos &ori_1, pos &ori_2, color &clr){
 
     // Finding number of frames
     int draw_frames = time * anim.fps;
@@ -280,7 +283,7 @@ void animate_line(frame &anim, int start_frame, double time,
             cairo_line_to(anim.frame_ctx[i], ori_2.x, ori_2.y);
         }
 
-        cairo_set_source_rgb(anim.frame_ctx[i], 1, 1, 1);
+        cairo_set_source_rgb(anim.frame_ctx[i], clr.r, clr.g, clr.b);
         cairo_stroke(anim.frame_ctx[i]);
 
     }
@@ -292,9 +295,11 @@ void animate_line(frame &anim, int start_frame, double time,
 }
 
 // Function to draw internal_nodes
-void draw_internal(frame &anim, double time, node_queue regenerated_nodes, 
-                   huffman_tree final_tree){
+void draw_internal(frame &anim, double time, node_queue &regenerated_nodes, 
+                   huffman_tree &final_tree){
 
+    color line_clr;
+    line_clr.r = 1; line_clr.b = 1; line_clr.g = 1;
     int num_lines = 40;
 
     node *temp_node;
@@ -310,9 +315,10 @@ void draw_internal(frame &anim, double time, node_queue regenerated_nodes,
         if (!temp_node->key){
             // Left line
             animate_line(anim,anim.curr_frame,time/num_lines,
-                         temp_node->left->ori,temp_node->ori);
+                         temp_node->left->ori,temp_node->ori, line_clr);
             animate_line(anim,anim.curr_frame-((time/num_lines) * anim.fps)+1,
-                         time/num_lines,temp_node->right->ori,temp_node->ori);
+                         time/num_lines,temp_node->right->ori,temp_node->ori,
+                          line_clr);
         }
     }
 
@@ -320,31 +326,31 @@ void draw_internal(frame &anim, double time, node_queue regenerated_nodes,
 
 // Similar to create_nodes... This time we are recreating the tree for later
 node_queue regenerate_nodes(frame &anim, node *root, 
-                            std::unordered_map<char, std::string> bitmap,
+                            std::unordered_map<char, std::string> &bitmap,
                             int alphabet_size){
     node_queue regenerated_nodes;
 
     // Performs Depth-first search and push back the priorirty queue
     int count_x = 0;
     draw_tree(anim, count_x, root, 1, regenerated_nodes, 
-              alphabet_size);
+              alphabet_size, 8);
     
     return regenerated_nodes;
 }
 
 void draw_tree(frame &anim, int &count_x, node* root, int level, 
-               node_queue &regenerated_nodes, int alphabet_size){
-    root->ori.y = level * anim.res_y / 8.25;
+               node_queue &regenerated_nodes, int alphabet_size, int max_level){
+    root->ori.y = ((level - 1) * (anim.res_y - max_level * 10 )/max_level) + 5;
     //root->ori.y = (1-(root->weight / 127.0)) * anim.res_y;
     regenerated_nodes.push(root);
 
     if (root->right){
         draw_tree(anim, count_x, root->right, level + 1, regenerated_nodes,
-                  alphabet_size);
+                  alphabet_size,max_level);
     }
     if (root->left){
         draw_tree(anim, count_x, root->left, level + 1, regenerated_nodes,
-                  alphabet_size);
+                  alphabet_size, max_level);
     }
 
     if (!root->left && !root->right){
@@ -379,7 +385,7 @@ void draw_tree(frame &anim, int &count_x, node* root, int level,
 }
 
 // Function to draw all layers
-void draw_layers(std::vector<frame> layer){
+void draw_layers(std::vector<frame> &layer){
     std::string pngid, number;
     for (size_t i = 0; i < num_frames; ++i){
         for (size_t j = layer.size() - 1; j > 0; --j){
@@ -400,3 +406,59 @@ void draw_layers(std::vector<frame> layer){
 
 }
 
+// Function to draw encoding scheme
+void draw_encoding(frame &anim, std::unordered_map<char, std::string> &bitmap,
+                   node *root){
+
+    // Color of visual encoding line
+    color clr_encoding{ 0.3, 0.3, 1.0};
+
+    // Continually draw blue lines to leaf node
+    if (root->right){
+        animate_line(anim, anim.curr_frame, 0.10, root->ori,  
+                     root->right->ori, clr_encoding);
+
+        draw_encoding(anim, bitmap, root->right);
+    }
+    if (root->left){
+
+        animate_line(anim, anim.curr_frame, 0.10, root->ori,  
+                     root->left->ori, clr_encoding);
+
+        draw_encoding(anim, bitmap, root->left);
+    }
+
+    // If on leaf node, drop encoding string
+    if (!root->right && !root->left){
+        drop_text(anim, bitmap[root->key], root->weight, root->ori);
+    }
+}
+
+// Function to drop text under leaf node
+void drop_text(frame &anim, std::string &codeword, double weight, pos &ori){
+
+    // Going through each letter in codeword
+    for (size_t i = 0; i < codeword.size(); ++i){
+        char test[] = { codeword[i], '\0' };
+
+        // Going through each frame in layer
+        for (int j = anim.curr_frame; j < num_frames; ++j){
+
+            cairo_set_source_rgb(anim.frame_ctx[j], 1, 1, 1);
+            cairo_text_extents_t textbox;
+            cairo_text_extents(anim.frame_ctx[j], test,
+                               &textbox);
+
+            // y height is location - text height - fontsize * i - size of leaf
+            //    (plus arbitrary 2 pixel offset)
+            cairo_move_to(anim.frame_ctx[j], 
+                          ori.x - textbox.width / 2.0,
+                          ori.y + textbox.height + (double)i * 15 
+                          + 12 + (weight * 0.5));
+            cairo_show_text(anim.frame_ctx[j], test);
+            cairo_stroke(anim.frame_ctx[j]);
+        }
+        anim.curr_frame +=1;
+    }
+
+}
