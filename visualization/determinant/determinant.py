@@ -22,7 +22,11 @@ def parse_data(num_part=0):
     array = []
 
     # Set of connections for lines later on
-    connectome = create_connectome(2)
+    #connectome = create_connectome(2)
+    connectome = []
+    for i in range(23):
+        if (i % 2  == 0):
+            connectome.append([i/2,i, i+1])
     #connectome = []
     #connectome.append([0,0,1])
     #connectome.append([1,2,3])
@@ -50,8 +54,8 @@ def parse_data(num_part=0):
 
     (max_vel, min_vel) = place_spheres(array, num_part, linesInDataSet)
     add_lines(connectome)
-    (max_vel, min_vel) = place_spheres(array, num_part, linesInDataSet)
-    add_lines(connectome)
+    #(max_vel, min_vel) = place_spheres(array, num_part, linesInDataSet)
+    #add_lines(connectome)
 
     numberOfFrames = int (linesInDataSet / num_part) 
 
@@ -248,6 +252,7 @@ def def_scene(box_length, bgcolor):
     # Camera stuff
    
     '''
+    # scewed angle
     x_cam = 2.2
     y_cam = 2.75
     z_cam = 1.43
@@ -255,6 +260,7 @@ def def_scene(box_length, bgcolor):
     r_camy = 0
     r_camz = 145
 
+    # Side angle
     x_cam = 0
     y_cam = 0.5
     z_cam = 4
@@ -262,13 +268,38 @@ def def_scene(box_length, bgcolor):
     r_camy = 0
     r_camz = 0
 
-    '''
+    # Scewed angle * 0.5
     x_cam = 1.1
     y_cam = 1.625
     z_cam = 0.723
     r_camx = 70
     r_camy = 0
     r_camz = 145
+
+    # scewed angle y
+    x_cam = 1.1
+    y_cam = -1.625
+    z_cam = 0.723
+    r_camx = 70
+    r_camy = 0
+    r_camz = 35
+
+    # Scewed angle * 0.25
+    x_cam = .55
+    y_cam = 0.8125
+    z_cam = 0.3615
+    r_camx = 70
+    r_camy = 0
+    r_camz = 145
+    '''
+
+    # scewed angle y
+    x_cam = 0.55
+    y_cam = -0.8125
+    z_cam = 0.3615
+    r_camx = 70
+    r_camy = 0
+    r_camz = 35
 
     scene.camera.location.x = box_length * x_cam
     scene.camera.location.y = box_length * y_cam
@@ -406,7 +437,7 @@ def monte_carlo(framenum, resolution, box_length):
     in_count = 0
     ex_count = 0
     create_MCspheres(0.05)
-    for j in range(1):
+    for j in range(100):
         for i in range(resolution):
             MCid = "MCB"
             tot_count += 1
@@ -440,7 +471,7 @@ def monte_carlo(framenum, resolution, box_length):
 
 
         framenum += 1
-        print(i)
+        print(j)
     in_vol = in_count / tot_count * box_length
     ex_vol = ex_count / tot_count * box_length
     vol_ratio = ex_vol / in_vol
@@ -482,13 +513,13 @@ def create_MCspheres(diam):
 
     new_sphere_MC(diam, 0, 0, 0, 1, 1, 0, "MCY")
     bpy.data.materials["MCY"].use_transparency = True
-    bpy.data.materials["MCY"].alpha = 0.25
+    bpy.data.materials["MCY"].alpha = 0.025
     bpy.data.objects["MCY"].hide = True
     bpy.data.objects["MCY"].hide_render = True
 
     new_sphere_MC(diam, 0, 0, 0, 0, 0, 1, "MCB")
     bpy.data.materials["MCB"].use_transparency = True
-    bpy.data.materials["MCB"].alpha = 0.25
+    bpy.data.materials["MCB"].alpha = 0.01
     bpy.data.objects["MCB"].hide = True
     bpy.data.objects["MCB"].hide_render = True
 
@@ -496,10 +527,12 @@ def vis_determinant(box_length, num):
     hide_interior(num)
     num += 10
 
+    '''
     cage_set(box_length, num)
     num += 10
 
-    num = monte_carlo(num, 1000, box_length)
+    num = monte_carlo(num, 500, box_length)
+    '''
 
     return num
 
@@ -509,7 +542,7 @@ remove_obj(scene)
 num = parse_data()
 
 # Adding in extra function for determinant visualization
-num = vis_determinant(6.0, num)
+#num = vis_determinant(6.0, num)
 bpy.data.scenes["Scene"].frame_end = num
 scene.update()
 #render_movie(scene)
