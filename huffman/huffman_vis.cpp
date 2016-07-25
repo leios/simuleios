@@ -107,7 +107,8 @@ int main(){
     create_bg(layer[0], 0, 0, 0);
 
     // encoding with 2-pass huffman
-    huffman_tree final_tree = two_pass_huffman("Jack and Jill went up the hill to fetch a pail of water. Jack fell down and broke his crown and Jill came Tumbling after!");
+    std::string phrase = "Jack and Jill went up the hill to fetch a pail of water. Jack fell down and broke his crown and Jill came Tumbling after!";
+    huffman_tree final_tree = two_pass_huffman(phrase);
     decode(final_tree);
 
     std::cout << "final_tree root weight is: " 

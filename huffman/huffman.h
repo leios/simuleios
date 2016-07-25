@@ -67,27 +67,27 @@ struct huffman_tree{
 using node_queue = std::priority_queue<node*,std::vector<node*>,node_comparer>;
 
 // creates nodes from vectors of characters and doubles
-node_queue create_nodes(std::vector<char> keys, std::vector<double> weights);
-node_queue create_nodes(std::unordered_map<char, double> keyweights);
+node_queue create_nodes(std::vector<char> &keys, std::vector<double> &weights);
+node_queue create_nodes(std::unordered_map<char, double> &keyweights);
 
 // Creates the simple binary tree
 node* huffman(node_queue &initial_nodes);
 
 // creates bit code
 //std::vector<huffman_cp> create_bits(node* root);
-std::unordered_map<char, std::string> create_bits(node* root);
+std::unordered_map<char, std::string> create_bits(node* &root);
 
 // does the encoding
-std::string encode(std::unordered_map<char, std::string> bitmap, 
-                   std::string phrase);
+std::string encode(std::unordered_map<char, std::string> &bitmap, 
+                   std::string &phrase);
 
 // Does a simple search
-void depth_first_search(node* root, huffman_cp &current,
+void depth_first_search(node* &root, huffman_cp &current,
                                       std::vector<huffman_cp> &bitstrings);
 // Does a simple 2-pass encoding scheme
-huffman_tree two_pass_huffman(std::string phrase);
+huffman_tree two_pass_huffman(std::string &phrase);
 
 // Simple decoding scheme
-void decode(huffman_tree encoded_tree);
+void decode(huffman_tree &encoded_tree);
 
 #endif

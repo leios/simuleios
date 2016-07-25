@@ -33,14 +33,15 @@ int main(){
     std::string encoded_phrase = encode(bitmap, "AABBCCDD");
 
     // encoding with 2-pass huffman
-    huffman_tree final_tree = two_pass_huffman("Jack and Jill went up the hill to fetch a pail of water. Jack fell down and broke his crown and Jill came Tumbling after! \nWoo!");
+    std::string phrase ="Jack and Jill went up the hill to fetch a pail of water. Jack fell down and broke his crown and Jill came Tumbling after! \nWoo!";
+    huffman_tree final_tree = two_pass_huffman(phrase);
     decode(final_tree);
 
 }
 */
 
 // creates nodes from vectors of characters and doubles
-node_queue create_nodes(std::vector<char> keys, std::vector<double> weights){
+node_queue create_nodes(std::vector<char> &keys, std::vector<double> &weights){
 
     node_queue initial_nodes;
     //initial_nodes.reserve(keys.size());
@@ -59,7 +60,7 @@ node_queue create_nodes(std::vector<char> keys, std::vector<double> weights){
 }
 
 // Overloaded create_nodes function
-node_queue create_nodes(std::unordered_map<char, double> keyweights){
+node_queue create_nodes(std::unordered_map<char, double> &keyweights){
     node_queue initial_nodes;
 
     node* tempnode;
@@ -111,7 +112,7 @@ node* huffman(node_queue &initial_nodes){
 // creates bit code by recreating the huffman tree
 // sets length and code, itself
 // Note: To be continued
-std::unordered_map<char, std::string> create_bits(node* root){
+std::unordered_map<char, std::string> create_bits(node* &root){
 
     std::vector<huffman_cp> bitstrings;
     std::unordered_map<char, std::string> bitmap;
@@ -129,7 +130,7 @@ std::unordered_map<char, std::string> create_bits(node* root){
 }
 
 // Does a simple search
-void depth_first_search(node* root, huffman_cp &current,
+void depth_first_search(node* &root, huffman_cp &current,
                                       std::vector<huffman_cp> &bitstrings){
 
     // Are we on a leaf node?
@@ -152,7 +153,7 @@ void depth_first_search(node* root, huffman_cp &current,
 }
 
 // Does a simple search to regenerated node_queue from root
-void depth_first_search(node* root, node_queue &regenerated_nodes){
+void depth_first_search(node* &root, node_queue &regenerated_nodes){
 
     // Filling the regenerated nodes 
     regenerated_nodes.push(root);
@@ -169,8 +170,8 @@ void depth_first_search(node* root, node_queue &regenerated_nodes){
 
 // does the encoding -- Assuming that all characters in phrase are already
 // encoded in bitmap
-std::string encode(std::unordered_map<char, std::string> bitmap, 
-                   std::string phrase){
+std::string encode(std::unordered_map<char, std::string> &bitmap, 
+                   std::string &phrase){
 
     std::cout << "phrase is: " << phrase << '\n';
     std::string encoded_phrase;
@@ -184,11 +185,12 @@ std::string encode(std::unordered_map<char, std::string> bitmap,
 }
 
 // Does a simple 2-pass encoding scheme
-huffman_tree two_pass_huffman(std::string phrase){
+huffman_tree two_pass_huffman(std::string &phrase){
 
     huffman_tree final_tree;
     final_tree.phrase = phrase;
 
+    // Adding weights to the weightmap in our final huffman tree
     for (size_t i = 0; i < phrase.size(); ++i){
         if(final_tree.weightmap[phrase[i]]){
             final_tree.weightmap[phrase[i]] += 1;
@@ -198,17 +200,23 @@ huffman_tree two_pass_huffman(std::string phrase){
         }
     }
 
+    // Creating initial external nodes
     node_queue initial_nodes = create_nodes(final_tree.weightmap);
+
+    // Performing huffman algorithm
     final_tree.root = huffman(initial_nodes);
 
+    // creating our map from characters to bits
     final_tree.bitmap = create_bits(final_tree.root);
 
     for (auto& key : final_tree.bitmap){
         std::cout << key.first << '\t' << key.second << '\n';
     }
 
+    // Doing the encoding of our phrase
     final_tree.encoded_phrase = encode(final_tree.bitmap, phrase);
 
+    // finding size of alphabet
     final_tree.alphabet_size = final_tree.bitmap.size();
 
     return final_tree;
@@ -216,7 +224,7 @@ huffman_tree two_pass_huffman(std::string phrase){
 }
 
 // Simple decoding scheme
-void decode(huffman_tree encoded_tree){
+void decode(huffman_tree &encoded_tree){
     
     // Create decoding map
     std::unordered_map<std::string, char> decoding_map;
