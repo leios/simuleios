@@ -139,12 +139,12 @@ void depth_first_search(node* root, huffman_cp &current,
     }
 
     if (root->right){
-        current.code += "1";
+        current.code += "0";
         depth_first_search(root->right, current, bitstrings);
         current.code.pop_back();
     }
     if (root->left){
-        current.code += "0";
+        current.code += "1";
         depth_first_search(root->left, current, bitstrings);
         current.code.pop_back();
     }

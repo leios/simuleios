@@ -5,7 +5,7 @@
 *   Notes: This will be using the cairo package, hopefully creating animations
 *              I could use the subroutine-comic project, but this will be from 
 *              scratch
-*          In draw_tree, nodes are beign drawn backwards
+*          In draw_tree, nodes are being drawn backwards
 *          find a way to place weight number on each node
 *
 *-----------------------------------------------------------------------------*/
@@ -86,6 +86,9 @@ void draw_encoding(frame &anim, std::unordered_map<char, std::string> &bitmap,
 
 // Function to drop text under leaf node
 void drop_text(frame &anim, std::string &codeword, double weight, pos &ori);
+
+// Function to place the weights
+void draw_weights(frame &anim, double weight, pos &ori);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -376,6 +379,9 @@ void draw_tree(frame &anim, int &count_x, node* root, int level,
             cairo_show_text(anim.frame_ctx[j], test);
             cairo_stroke(anim.frame_ctx[j]);
         }
+
+        //draw_weights(anim, root->weight, root->ori);
+
     }
     else{
         root->ori.x = (root->left->ori.x + root->right->ori.x) * 0.5;
@@ -453,7 +459,7 @@ void drop_text(frame &anim, std::string &codeword, double weight, pos &ori){
             //    (plus arbitrary 2 pixel offset)
             cairo_move_to(anim.frame_ctx[j], 
                           ori.x - textbox.width / 2.0,
-                          ori.y + textbox.height + (double)i * 15 
+                          ori.y + textbox.height + i * 15 
                           + 12 + (weight * 0.5));
             cairo_show_text(anim.frame_ctx[j], test);
             cairo_stroke(anim.frame_ctx[j]);
@@ -461,4 +467,32 @@ void drop_text(frame &anim, std::string &codeword, double weight, pos &ori){
         anim.curr_frame +=1;
     }
 
+}
+
+// Function to place the weights
+void draw_weights(frame &anim, double weight, pos &ori){
+    std::string weighttext = std::to_string((int)weight);
+    std::cout << weighttext <<'\n';
+    for (size_t i = anim.curr_frame; i < num_frames; ++i){
+        cairo_set_source_rgb(anim.frame_ctx[i], 1, 1, 1);
+        cairo_text_extents_t textbox;
+        cairo_text_extents(anim.frame_ctx[i], weighttext.c_str(), 
+                           &textbox);
+        cairo_move_to(anim.frame_ctx[i],
+                      ori.x - textbox.width / 2,
+                      ori.y + textbox.height + 12 + weight * 0.5);
+        cairo_show_text(anim.frame_ctx[i], weighttext.c_str());
+
+
+/*
+        cairo_text_extents_t linebox;
+        cairo_text_extents(anim.frame_ctx[i], "-", &linebox);
+        cairo_move_to(anim.frame_ctx[i],
+                      ori.x - linebox.width / 2,
+                      ori.y + linebox.height + 12 + weight * 0.5 + 15);
+        cairo_show_text(anim.frame_ctx[i], "-");
+
+        cairo_stroke(anim.frame_ctx[i]);
+*/
+    }
 }
