@@ -5,6 +5,8 @@ CXXFLAGS = -std=c++11 -g -Wall -march=native -fopenmp -fno-omit-frame-pointer -O
 CAIROFLAGS = `pkg-config --cflags --libs cairo`
 BINS = huffman_vis
 OBJ = huffman.o huffman_vis.o
+#BINS = vitter
+#OBJ = huffman.o vitter.o
 DEPS = huffman.h
 
 %.o: %.cpp $(DEPS)
@@ -12,6 +14,7 @@ DEPS = huffman.h
 
 $(BINS): $(OBJ)
 	$(CXX) $(CXXFLAGS) $(CAIROFLAGS) -o $(BINS) $(BINS).cpp $<
+	#./vitter
 	./huffman_vis
 	convert -delay 5 -loop 0 frames/*.png frames/animation.gif
 

@@ -62,6 +62,10 @@ struct huffman_tree{
     std::string phrase, encoded_phrase;
     std::unordered_map<char, double> weightmap;
     int alphabet_size;
+
+    // Note: These will be used for vitter algorithm testing
+    std::vector<node*> internal, external;
+    node *NYT;
 };
 
 using node_queue = std::priority_queue<node*,std::vector<node*>,node_comparer>;
@@ -71,7 +75,8 @@ node_queue create_nodes(std::vector<char> &keys, std::vector<double> &weights);
 node_queue create_nodes(std::unordered_map<char, double> &keyweights);
 
 // Creates the simple binary tree
-node* huffman(node_queue &initial_nodes);
+node* huffman(node_queue &initial_nodes, std::vector<node*> &internal,
+              std::vector<node*> &external);
 
 // creates bit code
 //std::vector<huffman_cp> create_bits(node* root);

@@ -3,8 +3,6 @@
 * Purpose: Create a simple huffman tree, given a likelihood of receiving
 *          certain letters
 *
-*   Notes: Binary tree not implement yet
-*
 *-----------------------------------------------------------------------------*/
 
 #include<iostream>
@@ -17,25 +15,18 @@
 /*
 int main(){
 
-    // Create vector of weights and keys
-    std::vector<char> keys = { 'A', 'B' , 'C', 'D'};
-    std::vector<double> weights = { 1, 1, 1, 1};
-
-    node_queue initial_nodes = create_nodes(keys, weights);
-    node *root = huffman(initial_nodes);
-
-    std::unordered_map<char, std::string> bitmap = create_bits(root);
-
-    for (auto& key : bitmap){
-        std::cout << key.first << '\t' << key.second << '\n';
-    }
-
-    std::string encoded_phrase = encode(bitmap, "AABBCCDD");
-
     // encoding with 2-pass huffman
     std::string phrase ="Jack and Jill went up the hill to fetch a pail of water. Jack fell down and broke his crown and Jill came Tumbling after! \nWoo!";
     huffman_tree final_tree = two_pass_huffman(phrase);
     decode(final_tree);
+
+    for (auto element : final_tree.internal){
+        std::cout << element->weight << '\n';
+    }
+
+    for (auto element : final_tree.external){
+        std::cout << element->key << '\n';
+    }
 
 }
 */
@@ -78,7 +69,8 @@ node_queue create_nodes(std::unordered_map<char, double> &keyweights){
 }
 
 // Creates the simple binary tree
-node* huffman(node_queue &initial_nodes){
+node* huffman(node_queue &initial_nodes, std::vector<node*> &internal,
+              std::vector<node*> &external){
 
     node *node1, *node2, *node_parent;
 
@@ -86,8 +78,30 @@ node* huffman(node_queue &initial_nodes){
     while (initial_nodes.size() > 1){
         // Add two nodes together and point to the previous nodes
         node1 = initial_nodes.top();
+
+        // Check to see if node is an internal or external node
+        if (node1->key){
+            // External node
+            external.push_back(node1);
+        }
+        else{
+            // internal node
+            internal.push_back(node1);
+        }
+
         initial_nodes.pop();
         node2 = initial_nodes.top();
+
+        // Check to see if node is an internal or external node
+        if (node2->key){
+            // External node
+            external.push_back(node2);
+        }
+        else{
+            // internal node
+            internal.push_back(node2);
+        }
+
         initial_nodes.pop();
 
         node_parent = new node();
@@ -104,6 +118,10 @@ node* huffman(node_queue &initial_nodes){
         //std::cout << initial_nodes.size() << '\n';
         
     }
+
+    // Should be returning just the root node in initial_nodes
+    // root node needs to be placed into internal nodes
+    internal.push_back(initial_nodes.top());
 
     return initial_nodes.top();
     
@@ -200,11 +218,33 @@ huffman_tree two_pass_huffman(std::string &phrase){
         }
     }
 
+    // finding size of alphabet
+    final_tree.alphabet_size = final_tree.weightmap.size();
+
     // Creating initial external nodes
     node_queue initial_nodes = create_nodes(final_tree.weightmap);
 
     // Performing huffman algorithm
-    final_tree.root = huffman(initial_nodes);
+
+    // Creating internal and external node vectors
+    // Number of internal nodes is # leaf nodes (alphabet size) - 1
+    final_tree.internal.reserve(final_tree.alphabet_size - 1);
+    final_tree.external.reserve(final_tree.alphabet_size);
+    final_tree.root = huffman(initial_nodes, final_tree.internal, 
+                              final_tree.external);
+
+    // outputting the weights of internal and external nodes
+    std::cout << "internal nodes are: " << '\n';
+    for (auto node : final_tree.internal){
+        std::cout << node->weight << '\n';
+    }
+
+    std::cout << '\n';
+    std::cout << "external node are: " << '\n';
+
+    for (auto node : final_tree.external){
+        std::cout << node->key << '\t' << node->weight << '\n';
+    }
 
     // creating our map from characters to bits
     final_tree.bitmap = create_bits(final_tree.root);
@@ -217,7 +257,7 @@ huffman_tree two_pass_huffman(std::string &phrase){
     final_tree.encoded_phrase = encode(final_tree.bitmap, phrase);
 
     // finding size of alphabet
-    final_tree.alphabet_size = final_tree.bitmap.size();
+    //final_tree.alphabet_size = final_tree.bitmap.size();
 
     return final_tree;
 
