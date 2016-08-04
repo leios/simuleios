@@ -65,6 +65,7 @@ struct huffman_tree{
 
     // Note: These will be used for vitter algorithm testing
     std::vector<node*> internal, external;
+    std::unordered_map<char, node*> nodemap;
     node *NYT;
 };
 

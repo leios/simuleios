@@ -3,7 +3,7 @@
 * Purpose: Create an adaptive huffman tree, given a likelihood of receiving
 *          certain letters
 *
-*   Notes: Adding elements if already in tree has not been completed
+*   Notes: add slide and increment function
 *
 *-----------------------------------------------------------------------------*/
 
@@ -11,6 +11,7 @@
 #include<vector>
 #include<algorithm>
 #include<unordered_map>
+#include<cassert>
 #include "huffman.h"
 
 struct block{
@@ -96,10 +97,10 @@ int main(){
 
     // Checking the vitter function
     huffman_tree vitter_tree;
-    vitter_tree.NYT = new node();
+    vitter_tree.root = new node();
+    vitter_tree.NYT = vitter_tree.root;
     std::string vitter_phrase = "qqJ";
     vitter(vitter_phrase, vitter_tree);
-    
     
 }
 
@@ -122,6 +123,8 @@ void vitter(std::string &phrase, huffman_tree &tree){
             std::cout << "Element not found in tree... adding..." << '\n';
             node *q = extend_node(tree, phrase[i]);
         }
+
+        tree.bitmap = create_bits(tree.root);
         
     }
 }
@@ -165,6 +168,9 @@ node* extend_node(huffman_tree &tree, char new_key){
 
     add_internal(tree, node_parent, tree.internal);
 
+    // Adding this character to the nodemap
+    tree.nodemap.emplace(new_key, node_external);
+
     return node_parent;
 }
 
@@ -173,11 +179,52 @@ node* swap(huffman_tree &tree, char new_key){
     // Find the external node to swap
     // This is inefficient, but will probably work
     // We will be using the bitmap to transverse the tree to get our node
-    std::string guide_to_node = tree.bitmap[new_key];
 
-    node *found_node = find_node(tree, guide_to_node);
+    std::cout << "swapping nodes..." << '\n';
+    //std::string guide_to_node = tree.bitmap[new_key];
 
-    // Do the swapping
+    auto it = tree.nodemap.find(new_key);
+    assert(it != tree.nodemap.end());
+/*
+    if (it == tree.nodemap.end()){
+        std::cout << "ERROR: could not find node in swap" << '\n';
+        exit(1);
+    }
+*/
+    node *found_node = it->second;
+    //node *found_node = find_node(tree, guide_to_node);
+
+    std::cout << "found_node weight is: " << found_node->weight << '\n';
+
+    std::cout << "found node to swap. " << '\n';
+    // Do the swapping with the leader of it's block
+    node *leader = find_leader(tree.external, found_node);
+
+    std::cout << "leader found" << '\n';
+
+    // children first
+    // Check whether leader and found_node are on left or right
+    if (leader->parent->left == leader){
+        leader->parent->left = found_node;
+    }
+    else{
+        leader->parent->right = found_node;
+    }
+
+    if (found_node->parent->left == found_node){
+        found_node->parent->left = leader;
+    }
+    else{
+        found_node->parent->right = leader;
+    }
+
+    std::cout << "children swapped" << '\n';
+
+    node *leader_parent = leader->parent;
+    leader->parent = found_node->parent;
+    found_node->parent = leader_parent;
+
+    std::cout << "parents swapped. " << '\n';
 
     return found_node->parent;
 }
@@ -186,7 +233,7 @@ node* find_node(huffman_tree tree, std::string guide_to_node){
     node *found_node = tree.root;
 
     // Traverse tree to find node
-    for (int i = 0; i < guide_to_node.size(); ++i){
+    for (size_t i = 0; i < guide_to_node.size(); ++i){
         if (guide_to_node[i] == 1){
             found_node = found_node->left;
         }
@@ -230,7 +277,7 @@ void add_internal(huffman_tree tree, node *internal_to_add,
 // Function to find insertion index
 int find_insert_index(std::vector<node*> &internal, node* block_member){
     int index = 0;
-    for (int i = 0; i < internal.size(); ++i){
+    for (size_t i = 0; i < internal.size(); ++i){
         if (internal[i]->weight - 1 == block_member->weight){
             index = i;
             break;
