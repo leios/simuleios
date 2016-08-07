@@ -24,7 +24,7 @@ struct block{
 };
 
 // Function to slide and increment object along tree
-void slideandincrement(block &blockset);
+node *slideandincrement(huffman_tree &tree, node* &the_node);
 
 // Function to generate dynamic tree
 void vitter(std::string &phrase, huffman_tree &tree);
@@ -61,6 +61,9 @@ node* find_leader(const std::vector<node*>& internal, node* block_member) {
 
 // Function to find insertion index
 int find_insert_index(std::vector<node*> &internal, node* block_member);
+
+// Function to find the start of a block of a given weight
+int find_block_start(std::vector<node*> &internal, double weight);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -105,28 +108,58 @@ int main(){
 }
 
 // Function to slide and increment object along tree
-void slideandincrement(block &blockset){
+node *slideandincrement(huffman_tree &tree, node* &the_node){
+    int start, end;
+    // Figure out which block we need to work with.
+    // external nodes have keys associated with them
+    if (the_node->key){
+        // Work with internal node block of the_node->weight
+/*
+        start = find_block_start(tree.internal, the_node->weight);
+        end = find_insert_index(tree.internal, the_node);
+
+        std::cout << start << '\t' << end << '\n';
+*/
+        
+    }
+    // Internal node
+    else{
+       // Work with external node block of the_node->weight + 1
+    }
+    
+    return the_node->parent;
 }
 
 // Function to generate dynamic tree
 void vitter(std::string &phrase, huffman_tree &tree){
 
+    node *q;
+
     for (size_t i = 0; i < phrase.size(); ++i){
         // Element already in tree
         if (in_tree(tree.external, phrase[i])){
             std::cout << "Element already in tree." << '\n';
-            swap(tree, phrase[i]);
+            q = swap(tree, phrase[i]);
         }
 
         // Element must be added to tree
         else{
             std::cout << "Element not found in tree... adding..." << '\n';
-            node *q = extend_node(tree, phrase[i]);
+            q = extend_node(tree, phrase[i]);
         }
 
         tree.bitmap = create_bits(tree.root);
+
+        std::cout << "traversing the tree..." << '\n';
+        int count = 0;
+        while (q != tree.root){
+            std::cout << count << '\n';
+            q = slideandincrement(tree, q);
+            count++;
+        }
         
     }
+
 }
 
 // Function to test to see whether a new character is in the tree
@@ -147,6 +180,7 @@ node* extend_node(huffman_tree &tree, char new_key){
     node_parent = new node();
     node_parent->weight = 0;
     node_parent->left = tree.NYT;
+    node_parent->parent = tree.NYT->parent;
 
     // Creating new external node with given character
     node_external = new node();
@@ -170,6 +204,11 @@ node* extend_node(huffman_tree &tree, char new_key){
 
     // Adding this character to the nodemap
     tree.nodemap.emplace(new_key, node_external);
+
+    if (tree.NYT == tree.root){
+        std::cout << "NYT is root" << '\n';
+        tree.root = node_parent;
+    }
 
     return node_parent;
 }
@@ -226,7 +265,7 @@ node* swap(huffman_tree &tree, char new_key){
 
     std::cout << "parents swapped. " << '\n';
 
-    return found_node->parent;
+    return found_node;
 }
 
 node* find_node(huffman_tree tree, std::string guide_to_node){
@@ -287,3 +326,15 @@ int find_insert_index(std::vector<node*> &internal, node* block_member){
     return index;
 }
 
+// Function to find the start of a block of a given weight
+int find_block_start(std::vector<node*> &internal, double weight){
+    int index = 0;
+    for (size_t i = 0; i < internal.size(); ++i){
+        if (internal[i]->weight == weight){
+            index = i;
+            break;
+        }
+    }
+
+    return index;
+}
