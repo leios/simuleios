@@ -1,27 +1,20 @@
-# Usage: 'make sim=<one of the values from BINS>' to compile and plot
-# the relevant simulation
-#
-# Do 'make sim=<value> compile' if you only want to compile
-# Or 'make sim=<value> run' if you only want to run and not plot
+# Makefile for huffman simulation
 
-BINS = fdtd fdtd_tez geometrical
 CXX = g++
 CXXFLAGS = -std=c++11 -g -Wall -march=native -fopenmp -fno-omit-frame-pointer -O2
-sim = geometrical
+CAIROFLAGS = `pkg-config --cflags --libs cairo`
+BINS = geometrical
+OBJ = geometrical.o optics_vis.o
+DEPS = geometrical.h optics_vis.h
 
-plot: $(sim)
-	./$(sim) > /dev/null
-	gnuplot $(sim).gp -
+%.o: %.cpp $(DEPS)
+	$(CXX) $(CXXFLAGS) $(CAIROFLAGS) -c -o $@ $<
 
-compile: $(sim)
-
-run: $(sim)
-	./$(sim)
-
-%: %..cpp
-	$(CXX) $(CXXFLAGS) $*.cpp -o $*
+$(BINS): $(OBJ)
+	$(CXX) $(CXXFLAGS) $(CAIROFLAGS) -o $(BINS) $^
+	./geometrical
+	#convert -delay 5 -loop 0 frames/*.png frames/animation.gif
 
 clean:
-	cp $(sim).dat backup.dat
-	rm -Rf $(BINS)
+	rm -Rf $(BINS) $(OBJ)
 
