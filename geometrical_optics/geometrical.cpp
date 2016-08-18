@@ -51,7 +51,7 @@ int main() {
     sphere lens = {radius, lens_p.x, lens_p.y};
     ray_array rays = light_gen(dim, lens, max_vel, 0 /*0.523598776*/,
                                (layer[0].res_y / 2.0) - radius);
-    draw_lens(layer[1], 1, lens);
+    draw_lens(layer, 1, lens);
     propagate(rays, lens, 0.0001, max_vel, layer[1]);
 
     draw_layers(layer);
@@ -210,6 +210,7 @@ double refractive_index_at(const simple& lens, vec p) {
 }
 
 // Circle / sphere
+// NOTE: TAKE NEW RADIUS INTO ACCOUNT
 double refractive_index_at(const sphere& lens, vec p) {
     //return inside_of(lens, p) ? 1.4 : 1.0;
 
@@ -219,14 +220,13 @@ double refractive_index_at(const sphere& lens, vec p) {
     if (inside_of(lens, p)){
         double r = distance(lens.origin, p);
         diff = r;
-/*
         if (fabs(r) > cutoff){
-            index = (1/sqrt(r));
+            index = erf(.5/(r / lens.radius));
         }
         else{
             index = 100;
         }
-*/
+/*
         // Formula for invisible lens
         if (fabs(r) > cutoff){
             double a = lens.radius;
@@ -239,7 +239,8 @@ double refractive_index_at(const sphere& lens, vec p) {
             double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
             index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
         }
-        //index = 1.4;
+        //index = 5;
+*/
     }
     else{
         index = 1.0;

@@ -79,7 +79,8 @@ void animate_circle(frame &anim, double time, double radius, vec ori,
                     color clr);
 
 // Function to draw lens at provided position
-void draw_lens(frame &anim, double time, const struct sphere &lens);
+void draw_lens(std::vector<frame> &layer, double time, 
+               const struct sphere &lens);
 
 // function to create vector<double> for index_plot function
 std::vector<double> create_index_texture(const sphere &lens);
@@ -92,5 +93,11 @@ void index_plot(frame &anim, int framenum,
 void index_plot(frame &anim, int framenum, 
                 std::vector<double> &index_texture, 
                 const sphere &lens, color lens_clr, double max_alpha);
+
+// overloaded function to fill inside of lens with appropriate ior colors
+void index_plot(frame &anim, int framenum, 
+                std::vector<unsigned char> &index_texture, 
+                const sphere &lens, color lens_clr, double max_alpha);
+
 
 #endif 
