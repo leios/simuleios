@@ -31,7 +31,7 @@ struct vec {
 
 // Struct for colors
 struct color{
-    double r, g, b;
+    double r, g, b, a;
 };
 
 // Struct to hold all the necessary data for animations
@@ -76,7 +76,7 @@ void draw_layers(std::vector<frame> &layer);
 
 // Function to draw an animated circle
 void animate_circle(frame &anim, double time, double radius, vec ori, 
-                    color clr);
+                    color &clr);
 
 // Function to draw lens at provided position
 void draw_lens(std::vector<frame> &layer, double time, 
@@ -87,17 +87,16 @@ std::vector<double> create_index_texture(const sphere &lens);
 
 // function to fill inside of lens with appropriate refractive index colors
 void index_plot(frame &anim, int framenum,
-                const sphere &lens, color lens_clr, double max_alpha);
+                const sphere &lens, color &lens_clr);
 
 // overloaded function to fill inside of lens with appropriate ior colors
 void index_plot(frame &anim, int framenum, 
                 std::vector<double> &index_texture, 
-                const sphere &lens, color lens_clr, double max_alpha);
+                const sphere &lens, color &lens_clr);
 
 // overloaded function to fill inside of lens with appropriate ior colors
 void index_plot(frame &anim, int framenum, 
-                std::vector<unsigned char> &index_texture, 
-                const sphere &lens, color lens_clr, double max_alpha);
-
+                cairo_surface_t *image, 
+                const sphere &lens, color &lens_clr);
 
 #endif 

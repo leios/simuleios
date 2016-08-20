@@ -16,6 +16,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <omp.h>
 #include "optics_vis.h"
 #include "geometrical.h"
 
@@ -52,7 +53,9 @@ int main() {
     ray_array rays = light_gen(dim, lens, max_vel, 0 /*0.523598776*/,
                                (layer[0].res_y / 2.0) - radius);
     draw_lens(layer, 1, lens);
-    propagate(rays, lens, 0.0001, max_vel, layer[1]);
+    //propagate(rays, lens, 0.0001, max_vel, layer[1]);
+    std::cout << layer[1].curr_frame << '\n';
+    propagate_sweep(lens, 0.0001, max_vel, layer[1]);
 
     draw_layers(layer);
 
@@ -113,13 +116,15 @@ void propagate(ray_array& rays, const T& lens,
     int ray_frame = start_frame;
 
     // white color for fun
-    color white{1,1,1};
+    color white{1,1,1, 0.5};
 
     // move simulation every timestep
-    for (auto& ray : rays){
+    for (size_t i = 0; i < rays.size(); ++i){
+        auto& ray = rays[i];
         ray_frame = start_frame;
-        for (size_t i = 0; i < TIME_RES; i++){
-            //temp_p = ray.p;
+        for (size_t j = 0; j < TIME_RES; j++){
+
+            // cutting off excess calculations past 5 * lens.radius
             if (fabs(ray.p.x) > lens.origin.x + 5 * lens.radius + 1){
                 continue;
             }
@@ -156,24 +161,189 @@ void propagate(ray_array& rays, const T& lens,
 
             ray.previous_index = n2;
 
-            if (i % 2000 == 0 && i != 0){
+            if (j % 2000 == 0 && j != 0){
                 animate_line(anim, ray_frame, 1/anim.fps, 
                              temp_p, ray.p, white);
                 ray_frame++;
                 temp_p = ray.p;
             }
-            else if(i == 0){
+            else if(j == 0){
                 temp_p = ray.p;
             }
 
 /*
-            if (i % 1000 == 0){
+            if (j % 1000 == 0){
                 output << ray.p.x <<'\t'<< ray.p.y << '\t'
                        << ray.v.x <<'\t'<< ray.v.y << '\n';
             }
 */
         }
         //output << '\n' << '\n';
+    }
+
+}
+
+// Template / Function for sweeping a single ray across the lens
+template <typename T>
+void propagate_sweep(const T& lens,
+                     double step_size, double max_vel,
+                     frame &anim){
+
+    // defining the ray to work with
+    ray sweep_ray;
+    int draw_frame = anim.curr_frame;
+
+    color white{1,1,1,0.5};
+
+    // We will simulate a single ray and change the initial position each time
+    for (int i = 0; i < num_frames - 50; ++i){
+
+        // define initial position for ray
+        sweep_ray.p = vec(0.0, i * 2 * lens.radius / (num_frames - 50)
+                               + lens.origin.y - lens.radius);
+        sweep_ray.v = vec(max_vel, 0);
+        sweep_ray.previous_index = 1;
+        //std::cout << sweep_ray.p.x << '\t' << sweep_ray.p.y << '\t'
+        //          << sweep_ray.v.x << '\t' << sweep_ray.v.y << '\n';
+        cairo_move_to(anim.frame_ctx[draw_frame], sweep_ray.p.x, sweep_ray.p.y);
+
+        // Changing line color to white
+        cairo_set_source_rgba(anim.frame_ctx[draw_frame], 
+                              white.r, white.g, white.b, white.a);
+
+        for (size_t j = 0; j < TIME_RES; ++j){
+
+            // cutting off excess calculations past 5 * lens.radius
+            if (fabs(sweep_ray.p.x) > lens.origin.x + 5 * lens.radius + 1){
+                continue;
+            }
+            sweep_ray.p += sweep_ray.v * step_size;
+
+            double n1 = sweep_ray.previous_index;
+            double n2 = refractive_index_at(lens, sweep_ray.p);
+
+            // If the ray passed through a refraction index change
+            if (n1 != n2) {
+                vec n = normal_at(lens, sweep_ray.p);
+                vec l = normalize(sweep_ray.v);
+                double ior = n1 / n2;
+
+                if (dot(-n, l) < 0.0) {
+                    n = -n;
+                }
+
+                vec speed = refract(l, n, ior);
+
+                if (is_null(speed)) {
+                    speed = reflect(l, n);
+                }
+
+                // Multiply with ior * length(ray.v) to get the proper velocity
+                // for the refracted vector
+                if (ior > 0){
+                    sweep_ray.v = normalize(speed) * ior * length(sweep_ray.v);
+                }
+                else{
+                    sweep_ray.v = -normalize(speed) * ior * length(sweep_ray.v);
+                }
+            }
+
+            sweep_ray.previous_index = n2;
+            if (j % 5000 == 0 && j != 0){
+                cairo_set_source_rgba(anim.frame_ctx[draw_frame], 
+                                      white.r, white.g, white.b, white.a);
+
+                cairo_line_to(anim.frame_ctx[draw_frame], 
+                              sweep_ray.p.x, sweep_ray.p.y);
+                cairo_stroke(anim.frame_ctx[draw_frame]);
+                cairo_move_to(anim.frame_ctx[draw_frame], sweep_ray.p.x, 
+                              sweep_ray.p.y);
+            }
+        }
+
+        draw_frame++;
+    }
+}
+
+// Template / function for a modified refractive index during propagation
+template <typename T>
+void propagate_mod(T& lens,
+                   double step_size, double max_vel,
+                   frame &anim){
+    // defining the ray to work with
+    ray sweep_ray;
+    int draw_frame = anim.curr_frame;
+
+    color white{1,1,1,0.5};
+
+    // We will simulate a single ray and change the initial position each time
+    for (int i = 0; i < num_frames - 50; ++i){
+
+        // define initial position for ray
+        sweep_ray.p = vec(0.0, i * 2 * lens.radius / (num_frames - 50)
+                               + lens.origin.y - lens.radius);
+        sweep_ray.v = vec(max_vel, 0);
+        sweep_ray.previous_index = 1;
+        //std::cout << sweep_ray.p.x << '\t' << sweep_ray.p.y << '\t'
+        //          << sweep_ray.v.x << '\t' << sweep_ray.v.y << '\n';
+        cairo_move_to(anim.frame_ctx[draw_frame], sweep_ray.p.x, sweep_ray.p.y);
+
+        // Changing line color to white
+        cairo_set_source_rgba(anim.frame_ctx[draw_frame], 
+                              white.r, white.g, white.b, white.a);
+
+        for (size_t j = 0; j < TIME_RES; ++j){
+
+            // cutting off excess calculations past 5 * lens.radius
+            if (fabs(sweep_ray.p.x) > lens.origin.x + 5 * lens.radius + 1){
+                continue;
+            }
+            sweep_ray.p += sweep_ray.v * step_size;
+
+            double n1 = sweep_ray.previous_index;
+            double n2 = refractive_index_at(lens, sweep_ray.p);
+
+            // If the ray passed through a refraction index change
+            if (n1 != n2) {
+                vec n = normal_at(lens, sweep_ray.p);
+                vec l = normalize(sweep_ray.v);
+                double ior = n1 / n2;
+
+                if (dot(-n, l) < 0.0) {
+                    n = -n;
+                }
+
+                vec speed = refract(l, n, ior);
+
+                if (is_null(speed)) {
+                    speed = reflect(l, n);
+                }
+
+                // Multiply with ior * length(ray.v) to get the proper velocity
+                // for the refracted vector
+                if (ior > 0){
+                    sweep_ray.v = normalize(speed) * ior * length(sweep_ray.v);
+                }
+                else{
+                    sweep_ray.v = -normalize(speed) * ior * length(sweep_ray.v);
+                }
+            }
+
+            sweep_ray.previous_index = n2;
+            if (j % 5000 == 0 && j != 0){
+                cairo_set_source_rgba(anim.frame_ctx[draw_frame], 
+                                      white.r, white.g, white.b, white.a);
+
+                cairo_line_to(anim.frame_ctx[draw_frame], 
+                              sweep_ray.p.x, sweep_ray.p.y);
+                cairo_stroke(anim.frame_ctx[draw_frame]);
+                cairo_move_to(anim.frame_ctx[draw_frame], sweep_ray.p.x, 
+                              sweep_ray.p.y);
+            }
+        }
+
+        lens.index_param += 0.1;
+        draw_frame++;
     }
 
 }
@@ -219,14 +389,14 @@ double refractive_index_at(const sphere& lens, vec p) {
 
     if (inside_of(lens, p)){
         double r = distance(lens.origin, p);
-        diff = r;
+        diff = r / lens.radius;
+/*
         if (fabs(r) > cutoff){
-            index = erf(.5/(r / lens.radius));
+            index = 1.0 / ((diff) / (diff + 1));
         }
         else{
             index = 100;
         }
-/*
         // Formula for invisible lens
         if (fabs(r) > cutoff){
             double a = lens.radius;
@@ -239,12 +409,54 @@ double refractive_index_at(const sphere& lens, vec p) {
             double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
             index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
         }
-        //index = 5;
 */
+
+        index = lens.index_param;
     }
     else{
         index = 1.0;
     }
 
     return index;
+}
+
+// lens with varying refractive index
+double refractive_index_at(const funky_sphere& lens, vec p){
+    //return inside_of(lens, p) ? 1.4 : 1.0;
+
+    double index, diff, cutoff;
+    cutoff = 0.001;
+
+    if (inside_of(lens, p)){
+        double r = distance(lens.origin, p);
+        diff = r / lens.radius;
+/*
+        if (fabs(r) > cutoff){
+            index = 1.0 / ((diff) / (diff + 1));
+        }
+        else{
+            index = 100;
+        }
+        // Formula for invisible lens
+        if (fabs(r) > cutoff){
+            double a = lens.radius;
+            double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
+            index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
+        }
+        else{
+            r = cutoff;
+            double a = lens.radius;
+            double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
+            index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
+        }
+*/
+
+        index = lens.index_param;
+    }
+    else{
+        index = 1.0;
+    }
+
+    return index;
+
 }

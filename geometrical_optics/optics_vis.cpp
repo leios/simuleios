@@ -13,12 +13,12 @@
 
 // Function to initialize the frame struct
 void frame::init(){
-    int line_width = 3;
+    int line_width = 1;
     for (size_t i = 0; i < num_frames; ++i){
         frame_surface[i] = 
             cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
         frame_ctx[i] = cairo_create(frame_surface[i]);
-        cairo_set_line_cap(frame_ctx[i], CAIRO_LINE_CAP_ROUND);
+        //cairo_set_line_cap(frame_ctx[i], CAIRO_LINE_CAP_ROUND);
         cairo_set_line_width(frame_ctx[i], line_width);
         cairo_set_font_size(frame_ctx[i], 15.0);
     }
@@ -160,7 +160,7 @@ void animate_line(frame &anim, int start_frame, double time,
             cairo_line_to(anim.frame_ctx[i], ori_2.x, ori_2.y);
         }
 
-        cairo_set_source_rgb(anim.frame_ctx[i], clr.r, clr.g, clr.b);
+        cairo_set_source_rgba(anim.frame_ctx[i], clr.r, clr.g, clr.b, clr.a);
         cairo_stroke(anim.frame_ctx[i]);
 
     }
@@ -195,7 +195,7 @@ void draw_layers(std::vector<frame> &layer){
 
 // Function to draw an animated circle
 void animate_circle(frame &anim, double time, double radius, vec ori, 
-                    color clr){
+                    color &clr){
     int j = 0;
 
     int draw_frames = time * anim.fps;
@@ -226,7 +226,7 @@ void draw_lens(std::vector<frame> &layer, double time, const sphere &lens){
 
     frame anim = layer[1];
 
-    color lens_clr{.25,.75,1};
+    color lens_clr{.25,.75,1, 1};
     animate_circle(layer[2], time * 0.5, lens.radius, lens.origin, lens_clr);
 
     // Now we need to fade the interior of the circle (lens) into existence
@@ -241,6 +241,12 @@ void draw_lens(std::vector<frame> &layer, double time, const sphere &lens){
         index_texture_char[i] = index_texture[i] * 255;
     }
 
+    cairo_surface_t *image = cairo_image_surface_create_for_data(
+        (unsigned char *)index_texture_char.data(),
+        CAIRO_FORMAT_A8, 2 * lens.radius, 2 * lens.radius,
+        cairo_format_stride_for_width(CAIRO_FORMAT_A8, 2 * lens.radius));
+
+
     // Finding number of frames available
     int draw_frames = time * 0.5 * anim.fps;
     int j = 0;
@@ -248,8 +254,8 @@ void draw_lens(std::vector<frame> &layer, double time, const sphere &lens){
     for (int i = anim.curr_frame + draw_frames; i < num_frames; ++i){
         if (i < anim.curr_frame + 2 * draw_frames){
             j++;
-            max_alpha = (double)j * 0.5 / (double)draw_frames;
-            index_plot(anim, i, index_texture_char, lens, lens_clr, max_alpha);
+            lens_clr.a = (double)j / (double)draw_frames;
+            index_plot(anim, i, image, lens, lens_clr);
             //cairo_set_source_rgba(anim.frame_ctx[i], lens_clr.r, 
             //                      lens_clr.g, lens_clr.b, max_alpha);
             //cairo_arc(anim.frame_ctx[i], lens.origin.x, 
@@ -258,7 +264,7 @@ void draw_lens(std::vector<frame> &layer, double time, const sphere &lens){
             //cairo_fill(anim.frame_ctx[i]);
         }
         else{
-            index_plot(anim, i, index_texture_char, lens, lens_clr, 0.5);
+            index_plot(anim, i, image, lens, lens_clr);
             //cairo_set_source_rgba(anim.frame_ctx[i], lens_clr.r, lens_clr.g, 
             //                      lens_clr.b, 0.5);
             //cairo_arc(anim.frame_ctx[i], lens.origin.x, 
@@ -267,7 +273,10 @@ void draw_lens(std::vector<frame> &layer, double time, const sphere &lens){
         }
     }
 
-    anim.curr_frame += draw_frames;
+    for (size_t i = 0; i < layer.size(); ++i){
+        layer[i].curr_frame += time * layer[i].fps;
+    }
+
 }
 
 // function to create vector<double> for index_plot function
@@ -327,7 +336,7 @@ std::vector<double> create_index_texture(const sphere &lens){
 // Note: Index plot should read in only a square of values to plot 
 //       (vector<double> will be created in a separate function
 void index_plot(frame &anim, int framenum,
-                const sphere &lens, color lens_clr, double max_alpha){
+                const sphere &lens, color &lens_clr){
 
     // Creating the square that we will be working with.
     // We only need to store the upper left point, and then iterate through
@@ -360,7 +369,7 @@ void index_plot(frame &anim, int framenum,
                 ior = refractive_index_at(lens, loc);
                 cairo_rectangle(anim.frame_ctx[framenum], loc.x, loc.y, 1, 1);
                 cairo_set_source_rgba(anim.frame_ctx[framenum], lens_clr.r,
-                                      lens_clr.g, lens_clr.b, ior * max_alpha);
+                                      lens_clr.g, lens_clr.b, ior * lens_clr.a);
                 cairo_fill(anim.frame_ctx[framenum]);
             }
 
@@ -372,7 +381,7 @@ void index_plot(frame &anim, int framenum,
 // overloaded function to fill inside of lens with appropriate ior colors
 void index_plot(frame &anim, int framenum, 
                 std::vector<double> &index_texture, 
-                const sphere &lens, color lens_clr, double max_alpha){
+                const sphere &lens, color &lens_clr){
 
     // Creating the square that we will be working with.
     // We only need to store the upper left point, and then iterate through
@@ -394,7 +403,7 @@ void index_plot(frame &anim, int framenum,
             //std::cout << "ior is: " << ior << '\n';
             cairo_rectangle(anim.frame_ctx[framenum], loc.x, loc.y, 1, 1);
             cairo_set_source_rgba(anim.frame_ctx[framenum], lens_clr.r,
-                                  lens_clr.g, lens_clr.b, ior * max_alpha);
+                                  lens_clr.g, lens_clr.b, ior * lens_clr.a);
             cairo_fill(anim.frame_ctx[framenum]);
         }
     }
@@ -402,8 +411,8 @@ void index_plot(frame &anim, int framenum,
 
 // overloaded function to fill inside of lens with appropriate ior colors
 void index_plot(frame &anim, int framenum, 
-                std::vector<unsigned char> &index_texture, 
-                const sphere &lens, color lens_clr, double max_alpha){
+                cairo_surface_t *image, 
+                const sphere &lens, color &lens_clr){
 
     // Creating the square that we will be working with.
     // We only need to store the upper left point, and then iterate through
@@ -412,31 +421,7 @@ void index_plot(frame &anim, int framenum,
     vertex.x = lens.origin.x - lens.radius;
     vertex.y = lens.origin.y - lens.radius;
 
-/*
-    // Using Cairo instead, need vector<double>
-    // NOTE: simple 255 factor different
-    //       cairo_mask_surface
-    cairo_surface_t *image = cairo_image_surface_create_for_data(
-        (unsigned char *)index_texture.data(),
-        CAIRO_FORMAT_A8, 2 * lens.radius, 2 * lens.radius,
-        cairo_format_stride_for_width(CAIRO_FORMAT_A8, 2 * lens.radius));
-    cairo_set_source_rgba(anim.frame_ctx[framenum], lens_clr.r, 
-                          lens_clr.g, lens_clr.b, max_alpha);
-    //cairo_set_source_surface(anim.frame_ctx[framenum], 
-    //                         image,
-    //                         0, 0);
-    cairo_paint(anim.frame_ctx[framenum]);
-
-    cairo_mask_surface(anim.frame_ctx[framenum], image, 0, 0);
-    //                         vertex.x, vertex.y);
-    //cairo_set_operator(anim.frame_ctx[framenum], CAIRO_OPERATOR_DEST_IN);
-    //cairo_paint(anim.frame_ctx[framenum]);
-*/
     cairo_t *cr = anim.frame_ctx[framenum];
-    cairo_surface_t *image = cairo_image_surface_create_for_data(
-        (unsigned char *)index_texture.data(),
-        CAIRO_FORMAT_A8, 2 * lens.radius, 2 * lens.radius,
-        cairo_format_stride_for_width(CAIRO_FORMAT_A8, 2 * lens.radius));
 
     cairo_set_source_surface(anim.frame_ctx[framenum], image,
                              vertex.x, vertex.y);
@@ -444,7 +429,7 @@ void index_plot(frame &anim, int framenum,
                     2 * lens.radius, 2 * lens.radius);
     cairo_paint(cr);
     cairo_set_operator(cr, CAIRO_OPERATOR_IN);
-    cairo_set_source_rgba(cr, lens_clr.r, lens_clr.g, lens_clr.b, max_alpha);
+    cairo_set_source_rgba(cr, lens_clr.r, lens_clr.g, lens_clr.b, lens_clr.a);
     //cairo_paint(cr);
 
     cairo_fill(cr);
