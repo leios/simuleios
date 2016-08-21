@@ -234,7 +234,7 @@ void draw_lens(std::vector<frame> &layer, double time, const sphere &lens){
     std::vector<unsigned char> index_texture_char(index_texture.size());
 
     // modifying index_texture
-    for (int i = 0; i < index_texture.size(); ++i){
+    for (size_t i = 0; i < index_texture.size(); ++i){
         if (index_texture[i] > 1.0){
             index_texture[i] = 1.0;
         }
@@ -250,26 +250,14 @@ void draw_lens(std::vector<frame> &layer, double time, const sphere &lens){
     // Finding number of frames available
     int draw_frames = time * 0.5 * anim.fps;
     int j = 0;
-    double max_alpha;
     for (int i = anim.curr_frame + draw_frames; i < num_frames; ++i){
         if (i < anim.curr_frame + 2 * draw_frames){
             j++;
             lens_clr.a = (double)j / (double)draw_frames;
             index_plot(anim, i, image, lens, lens_clr);
-            //cairo_set_source_rgba(anim.frame_ctx[i], lens_clr.r, 
-            //                      lens_clr.g, lens_clr.b, max_alpha);
-            //cairo_arc(anim.frame_ctx[i], lens.origin.x, 
-            //          lens.origin.y, lens.radius, 0, 2*M_PI);
-            
-            //cairo_fill(anim.frame_ctx[i]);
         }
         else{
             index_plot(anim, i, image, lens, lens_clr);
-            //cairo_set_source_rgba(anim.frame_ctx[i], lens_clr.r, lens_clr.g, 
-            //                      lens_clr.b, 0.5);
-            //cairo_arc(anim.frame_ctx[i], lens.origin.x, 
-            //          lens.origin.y, lens.radius, 0, 2*M_PI);
-            //cairo_fill(anim.frame_ctx[i]);
         }
     }
 
@@ -391,7 +379,7 @@ void index_plot(frame &anim, int framenum,
     vertex.y = lens.origin.y - lens.radius;
 
     vec loc;
-    double r_prime, ior;
+    double ior;
 
     for (int i = 0; i < lens.radius * 2; ++i){
         for (int j = 0; j < lens.radius * 2; ++j){

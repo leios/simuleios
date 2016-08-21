@@ -79,14 +79,6 @@ struct sphere{
     sphere(double rad, double x, double y) : radius(rad), origin(x, y) {}
 };
 
-// Struct for spherical lens with varying refractive index
-struct funky_sphere {
-    double radius, index_param;
-    vec origin;
-    funky_sphere(double rad, double x, double y, double index) :
-                 radius(rad), origin(x, y), index_param(index) {}
-};
-
 // Add overloads for 'normal_at' and 'refractive_index_at' for your own stuff,
 // example (you'll need a separate struct for the different lenses):
 //
@@ -94,13 +86,10 @@ struct funky_sphere {
 // double refractive_index_at(const circle& lens, vec p) { ... }
 bool inside_of(const simple& lens, vec p);
 bool inside_of(const sphere& lens, vec p);
-bool inside_of(const funky_sphere& lens, vec p);
 vec normal_at(const simple& lens, vec p);
 vec normal_at(const sphere& lens, vec p);
-vec normal_at(const funky_sphere& lens, vec p);
 double refractive_index_at(const simple& lens, vec p);
 double refractive_index_at(const sphere& lens, vec p);
-double refractive_index_at(const funky_sphere lens, vec p);
 
 // Templated so it can accept any lens type. Stuff will dispatch at compile
 // time, so the performance will be good
@@ -112,7 +101,7 @@ ray_array light_gen(vec dim, const T& lens, double max_vel, double angle,
 template <typename T>
 void propagate(ray_array& rays, const T& lens,
                double step_size, double max_vel,
-               frame &anim);
+               frame &anim, double time);
 
 // Template / Function for sweeping a single ray across the lens
 template <typename T>
@@ -122,8 +111,9 @@ void propagate_sweep(const T& lens,
 
 // Template / function for a modified refractive index during propagation
 template <typename T>
-void propagate_mod(T& lens,
-                   double step_size, double max_vel,
-                   frame &anim);
+void propagate_mod(ray_array& rays, T& lens, double step_size,
+                   double max_vel, frame &anim, double index_max);
 
+// Function to write out index at any frame
+void print_index(frame &anim, double index, color clr);
 #endif
