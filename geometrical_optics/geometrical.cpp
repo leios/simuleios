@@ -49,13 +49,15 @@ int main() {
 
     // Implement other lenses and change this line to use them
     vec lens_p = {layer[0].res_x / 2.0, layer[0].res_y / 2.0};
-    sphere lens = {radius, lens_p.x, lens_p.y};
+    //sphere<constant_index> lens = {lens_p, radius, constant_index};
+    constant_index constant = 1.0;
+    auto lens = make_sphere(lens_p, radius, constant);
     ray_array rays = light_gen(dim, lens, max_vel, 0 /*0.523598776*/,
                                (layer[0].res_y / 2.0) - radius);
     draw_lens(layer, 1, lens);
     //propagate(rays, lens, 0.0001, max_vel, layer[1], 1.0 / layer[1].fps);
     propagate_mod(rays, lens, 0.0001, max_vel, layer[1], 2.0);
-    std::cout << layer[1].curr_frame << '\n';
+    //std::cout << layer[1].curr_frame << '\n';
     //propagate_sweep(lens, 0.0001, max_vel, layer[1]);
 
     draw_layers(layer);
@@ -96,11 +98,17 @@ ray_array light_gen(vec dim, const T& lens, double max_vel, double angle,
     vec velocity = vec(cos(angle), sin(angle)) * max_vel;
 
     // Create rays
-    for (size_t i = 0; i < rays.size(); i++) {
+    rays[0].p = vec(0.0, 0.0);
+    rays[0].v = velocity;
+    rays[0].previous_index = lens.refractive_index_at(rays[0].p);
+
+    for (size_t i = 1; i < rays.size(); i++) {
         rays[i].p = vec(0.0, offset + i * dim.x / NUM_LIGHTS);
         rays[i].v = velocity;
-        rays[i].previous_index = refractive_index_at(lens, rays[i].p);
+        rays[i].previous_index = lens.refractive_index_at(rays[i].p);
     }
+
+   
 
     return rays;
 }
@@ -139,11 +147,11 @@ void propagate(ray_array& rays, const T& lens,
 
             // Storing refractive indices
             double n1 = ray.previous_index;
-            double n2 = refractive_index_at(lens, ray.p);
+            double n2 = lens.refractive_index_at(ray.p);
 
             // If the ray passed through a refraction index change
             if (n1 != n2) {
-                vec n = normal_at(lens, ray.p);
+                vec n = lens.normal_at(ray.p);
                 vec l = normalize(ray.v);
                 double ior = n1 / n2;
 
@@ -241,11 +249,11 @@ void propagate_sweep(const T& lens,
             sweep_ray.p += sweep_ray.v * step_size;
 
             double n1 = sweep_ray.previous_index;
-            double n2 = refractive_index_at(lens, sweep_ray.p);
+            double n2 = lens.refractive_index_at(sweep_ray.p);
 
             // If the ray passed through a refraction index change
             if (n1 != n2) {
-                vec n = normal_at(lens, sweep_ray.p);
+                vec n = lens.normal_at(sweep_ray.p);
                 vec l = normalize(sweep_ray.v);
                 double ior = n1 / n2;
 
@@ -321,70 +329,16 @@ bool inside_of(const simple& lens, vec p) {
     return p.x > lens.left && p.x < lens.right;
 }
 
-// Circle / sphere
-bool inside_of(const sphere& lens, vec p) {
-    double diff = distance(lens.origin, p);
-    return diff < lens.radius;
-}
-
 // Find the normal
 // Lens slab
 vec normal_at(const simple&, vec) {
     return normalize(vec(-1.0, 0.0));
 }
 
-// Circle / sphere
-// ERROR: This is defined incorrectly!
-vec normal_at(const sphere& lens, vec p) {
-    //return normalize(vec(-1.0, 0.0));
-    return normalize(p - lens.origin);
-}
-
 // find refractive index
 // Lens slab
 double refractive_index_at(const simple& lens, vec p) {
     return inside_of(lens, p) ? 1.4 : 1.0;
-}
-
-// Circle / sphere
-// NOTE: TAKE NEW RADIUS INTO ACCOUNT
-double refractive_index_at(const sphere& lens, vec p) {
-    //return inside_of(lens, p) ? 1.4 : 1.0;
-
-    double index, diff, cutoff;
-    cutoff = 0.001;
-
-    if (inside_of(lens, p)){
-        double r = distance(lens.origin, p);
-        diff = r / lens.radius;
-        if (fabs(r) > cutoff){
-            //index = 1.0 / ((diff) / (diff + 1));
-            index = erf(lens.index_param/diff);
-        }
-        else{
-            index = 100;
-        }
-/*
-        // Formula for invisible lens
-        if (fabs(r) > cutoff){
-            double a = lens.radius;
-            double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
-            index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
-        }
-        else{
-            r = cutoff;
-            double a = lens.radius;
-            double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
-            index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
-        }
-*/
-        //index = lens.index_param;
-    }
-    else{
-        index = 1.0;
-    }
-
-    return index;
 }
 
 // Function to write out index at any frame

@@ -72,11 +72,49 @@ struct simple {
 };
 
 // A simple struct for circular / spherical lens
+template <typename T>
 struct sphere{
-    double radius;
     vec origin;
+    double radius;
     double index_param = 1.0;
-    sphere(double rad, double x, double y) : radius(rad), origin(x, y) {}
+    T index_fn;
+
+    sphere(vec origin , double radius, const T &fn) 
+          : origin(origin), radius(radius), index_fn(fn)  {}
+
+    vec normal_at(vec p) const{
+        return normalize(p - origin);
+    }
+
+    bool contains(vec p) const {
+        vec d = origin - p;
+        return dot(d, d) < radius * radius;
+    }
+
+    double refractive_index_at (vec p) const {
+        if (contains(p)){
+            return index_fn(*this, p) * index_param;
+        }
+        else{
+            return 1.0;
+        }
+    }
+};
+
+// template function to create our sphere lens
+template <typename T>
+sphere<T> make_sphere(vec origin, double radius, const T& fn){
+    return sphere<T>(origin, radius, fn);
+};
+
+// Structs for all lenses
+// Struct for simple lens
+struct constant_index{
+    double index;
+    constant_index(double i) : index(i) {}
+    double operator()(const sphere<constant_index>&, vec) const{
+        return index;
+    }
 };
 
 // Add overloads for 'normal_at' and 'refractive_index_at' for your own stuff,
@@ -85,11 +123,8 @@ struct sphere{
 // vec normal_at(const circle& lens, vec p) { ... }
 // double refractive_index_at(const circle& lens, vec p) { ... }
 bool inside_of(const simple& lens, vec p);
-bool inside_of(const sphere& lens, vec p);
 vec normal_at(const simple& lens, vec p);
-vec normal_at(const sphere& lens, vec p);
 double refractive_index_at(const simple& lens, vec p);
-double refractive_index_at(const sphere& lens, vec p);
 
 // Templated so it can accept any lens type. Stuff will dispatch at compile
 // time, so the performance will be good
