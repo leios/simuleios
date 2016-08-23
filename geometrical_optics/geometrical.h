@@ -76,11 +76,11 @@ template <typename T>
 struct sphere{
     vec origin;
     double radius;
-    double index_param = 1.0;
+    double index_param;
     T index_fn;
 
-    sphere(vec origin , double radius, const T &fn) 
-          : origin(origin), radius(radius), index_fn(fn)  {}
+    sphere(vec origin, double radius, double ip, const T &fn) 
+          : origin(origin), radius(radius), index_param(ip), index_fn(fn){}
 
     vec normal_at(vec p) const{
         return normalize(p - origin);
@@ -93,7 +93,7 @@ struct sphere{
 
     double refractive_index_at (vec p) const {
         if (contains(p)){
-            return index_fn(*this, p) * index_param;
+            return index_fn(*this, p);
         }
         else{
             return 1.0;
@@ -103,16 +103,90 @@ struct sphere{
 
 // template function to create our sphere lens
 template <typename T>
-sphere<T> make_sphere(vec origin, double radius, const T& fn){
-    return sphere<T>(origin, radius, fn);
+sphere<T> make_sphere(vec origin, double radius, double ip, const T& fn){
+    return sphere<T>(origin, radius, ip, fn);
 };
 
 // Structs for all lenses
 // Struct for simple lens
 struct constant_index{
-    double index;
-    constant_index(double i) : index(i) {}
-    double operator()(const sphere<constant_index>&, vec) const{
+    //double index;
+    //constant_index(double i) : index(i) {}
+    double operator()(const sphere<constant_index>& lens, vec) const{
+        return lens.index_param;
+    }
+};
+
+// Struct for erf(1/r)
+struct inverse_erf_index{
+    double operator()(const sphere<inverse_erf_index>& lens, vec p) const{
+        double r = (distance(lens.origin, p)) / lens.radius;
+        return erf(lens.index_param / r);
+    }
+};
+
+// Struct for the invisible lens
+struct invisible_index{
+    double operator()(const sphere<invisible_index>& lens, vec p) const {
+        double index;
+        double cutoff = 0.001;
+
+        double a = lens.radius;
+        double r = distance(lens.origin, p);
+        if (r > cutoff){
+            double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
+            index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
+        }
+        else{
+            r = cutoff;
+            double q = cbrt(-(a/r) + sqrt((a * a) / (r * r) + 1.0 / 27.0));
+            index = (q - 1.0 / (3.0 * q)) * (q - 1.0 / (3.0 * q));
+        }
+
+        return index;
+    }
+};
+
+// Struct for piecemeal
+struct piecemeal_index{
+    double operator()(const sphere<piecemeal_index>& lens, vec p) const {
+        double index;
+        index = 1.5 - floor(distance(lens.origin, p) / lens.radius * 5) * 0.1;
+        return index;
+    }
+};
+
+// Struct for inverse (1/r)
+struct inverse_index{
+    double operator()(const sphere<inverse_index>& lens, vec p) const {
+        return lens.index_param / (distance(lens.origin, p)/lens.radius);
+    }
+};
+
+// Struct for r
+struct r_index{
+    double operator()(const sphere<r_index>& lens, vec p) const {
+        return lens.index_param * (distance(lens.origin, p)/lens.radius);
+    }
+};
+
+// Struct for part of the batman function
+struct batman_index{
+    double operator()(const sphere<batman_index>& lens, vec p) const {
+        double diff = distance(lens.origin, p) / lens.radius;
+        double index = 0.5 * (fabs(0.5 * diff) + sqrt(1 - (pow(fabs(fabs(diff) - 2) - 1, 2))) -
+                1 / 112 * (3 * sqrt(33) - 7) * diff * diff + 3 * sqrt(1 - (diff / 7) * (diff / 7) ) - 3) *
+                ((diff + 4) / fabs(diff + 4) - (diff - 4) / fabs(diff - 4)) - 3 * sqrt(1 - (diff / 7) * (diff / 7));
+        index = fabs(index);
+        return index;
+    }
+};
+
+// Struct for sigmoid function
+struct sigmoid_index{
+    double operator()(const sphere<sigmoid_index>& lens, vec p) const {
+        double r = distance(lens.origin, p) / lens.radius;
+        double index = 1.0 / (1.0 + exp(-lens.index_param *r));
         return index;
     }
 };
@@ -133,8 +207,8 @@ ray_array light_gen(vec dim, const T& lens, double max_vel, double angle,
                     double offset);
 
 // Same as above
-template <typename T>
-void propagate(ray_array& rays, const T& lens,
+template <typename T, typename I>
+void propagate(I begin, I end, const T& lens,
                double step_size, double max_vel,
                frame &anim, double time);
 

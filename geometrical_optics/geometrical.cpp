@@ -50,12 +50,14 @@ int main() {
     // Implement other lenses and change this line to use them
     vec lens_p = {layer[0].res_x / 2.0, layer[0].res_y / 2.0};
     //sphere<constant_index> lens = {lens_p, radius, constant_index};
-    constant_index constant = 1.0;
-    auto lens = make_sphere(lens_p, radius, constant);
+    //constant_index constant;
+    //inverse_erf_index inverse_erf;
+    auto lens = make_sphere(lens_p, radius, 1.0, sigmoid_index());
     ray_array rays = light_gen(dim, lens, max_vel, 0 /*0.523598776*/,
                                (layer[0].res_y / 2.0) - radius);
     draw_lens(layer, 1, lens);
-    //propagate(rays, lens, 0.0001, max_vel, layer[1], 1.0 / layer[1].fps);
+    //propagate(std::begin(rays), std::end(rays), lens, 0.0001, 
+    //          max_vel, layer[1], 1.0 / layer[1].fps);
     propagate_mod(rays, lens, 0.0001, max_vel, layer[1], 2.0);
     //std::cout << layer[1].curr_frame << '\n';
     //propagate_sweep(lens, 0.0001, max_vel, layer[1]);
@@ -98,7 +100,7 @@ ray_array light_gen(vec dim, const T& lens, double max_vel, double angle,
     vec velocity = vec(cos(angle), sin(angle)) * max_vel;
 
     // Create rays
-    rays[0].p = vec(0.0, 0.0);
+    rays[0].p = vec(0.0, offset / 2);
     rays[0].v = velocity;
     rays[0].previous_index = lens.refractive_index_at(rays[0].p);
 
@@ -108,13 +110,11 @@ ray_array light_gen(vec dim, const T& lens, double max_vel, double angle,
         rays[i].previous_index = lens.refractive_index_at(rays[i].p);
     }
 
-   
-
     return rays;
 }
 
-template <typename T>
-void propagate(ray_array& rays, const T& lens,
+template <typename T, typename I>
+void propagate(I begin, I end, const T& lens,
                double step_size, double max_vel,
                frame &anim, double time) {
 
@@ -131,8 +131,8 @@ void propagate(ray_array& rays, const T& lens,
     color white{1,1,1, 0.5};
 
     // move simulation every timestep
-    for (size_t i = 0; i < rays.size(); ++i){
-        auto ray = rays[i];
+    for (; begin != end; ++begin){
+        auto ray = *begin;
         cairo_move_to(anim.frame_ctx[anim.curr_frame], ray.p.x, ray.p.y);
         ray_frame = start_frame;
         for (size_t j = 0; j < TIME_RES; j++){
@@ -309,16 +309,19 @@ void propagate_mod(ray_array& rays, T& lens, double step_size,
         lens.index_param += (index_max - start_index) 
                             / (num_frames - 50 - start_frame);
         std::cout << lens.index_param << '\n';
-        propagate(rays, lens, step_size, max_vel, anim, 0);
+        propagate(std::begin(rays) + 1, std::end(rays), lens, 
+                  step_size, max_vel, anim, 0);
         print_index(anim, lens.index_param, white);
         anim.curr_frame += 1;
         
     }
+
+    // Setting the final image to the rest of the animation
     for (int i = anim.curr_frame; i <= num_frames; ++i){
-        propagate(rays, lens, step_size, max_vel, anim, 0);
+        propagate(std::begin(rays) + 1, std::end(rays), lens, 
+                  step_size, max_vel, anim, 0);
         print_index(anim, lens.index_param, white);
         anim.curr_frame += 1;
-
     }
 
 }
