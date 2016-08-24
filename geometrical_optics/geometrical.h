@@ -170,6 +170,14 @@ struct r_index{
     }
 };
 
+// Struct for sin_inverse_r_index = sin((1/param) * r) + 1.0
+struct sin_inverse_r_index{
+    double operator()(const sphere<sin_inverse_r_index>& lens, vec p) const {
+        double r = distance(lens.origin, p);
+        return (sin((.2/lens.index_param) * r)) * 0.5 + 2.0;
+    }
+};
+
 // Struct for part of the batman function
 struct batman_index{
     double operator()(const sphere<batman_index>& lens, vec p) const {
@@ -187,6 +195,15 @@ struct sigmoid_index{
     double operator()(const sphere<sigmoid_index>& lens, vec p) const {
         double r = distance(lens.origin, p) / lens.radius;
         double index = 1.0 / (1.0 + exp(-lens.index_param *r));
+        return index;
+    }
+};
+
+// Struct for scale / cosh(r * index_param)
+struct inverse_cosh_index{
+    double operator()(const sphere<inverse_cosh_index>& lens, vec p) const {
+        double r = distance(lens.origin, p) / lens.radius;
+        double index = 1.0 / cosh(r * lens.index_param) + 1.0;
         return index;
     }
 };
@@ -225,4 +242,11 @@ void propagate_mod(ray_array& rays, T& lens, double step_size,
 
 // Function to write out index at any frame
 void print_index(frame &anim, double index, color clr);
+
+// Function to plot index function instead of lens and propagate
+// Primarily for propagate_mod
+template <typename T>
+void draw_function(frame &anim, T& lens, double time, double index_max, 
+                   double scale_y);
+
 #endif
