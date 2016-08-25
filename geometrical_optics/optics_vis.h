@@ -156,6 +156,35 @@ void draw_lens(std::vector<frame> &layer, double time, const sphere<T> &lens){
 
 }
 
+// Function for drawing lens for propagate_mod function
+template <typename T>
+void draw_lens_for_frame(frame &anim, const sphere<T> &lens){
+
+    color lens_clr{.25,.75,1, 1};
+
+    // Now we need to fade the interior of the circle (lens) into existence
+    std::vector<double> index_texture = create_index_texture(lens);
+    std::vector<unsigned char> index_texture_char(index_texture.size());
+
+    // modifying index_texture
+    for (size_t i = 0; i < index_texture.size(); ++i){
+        if (index_texture[i] > 1.0){
+            index_texture[i] = 1.0;
+        }
+        index_texture_char[i] = index_texture[i] * 255;
+    }
+
+    cairo_surface_t *image = cairo_image_surface_create_for_data(
+        (unsigned char *)index_texture_char.data(),
+        CAIRO_FORMAT_A8, 2 * lens.radius, 2 * lens.radius,
+        cairo_format_stride_for_width(CAIRO_FORMAT_A8, 2 * lens.radius));
+
+
+    // Finding number of frames available
+    index_plot(anim, anim.curr_frame, image, lens, lens_clr);
+
+}
+
 // function to create vector<double> for index_plot function
 template <typename T>
 std::vector<double> create_index_texture(const sphere<T> &lens){

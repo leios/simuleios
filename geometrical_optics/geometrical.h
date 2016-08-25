@@ -208,6 +208,36 @@ struct inverse_cosh_index{
     }
 };
 
+// Struct for erf_damped_sinusoid 
+// exp(erf(sin(x) * cos(x) * exp((cos(x)* exp(sin(x))))))
+struct erf_damped_sinusoid_index{
+    double operator()(const sphere<erf_damped_sinusoid_index>& lens, vec p) 
+        const {
+        double x = distance(lens.origin, p) / lens.index_param;
+        double index = exp(erf(sin(x) * cos(x) * exp((cos(x)* exp(sin(x))))));
+        return index;
+    }
+};
+
+// Struct for exp(erf(tan(x)))
+struct exp_erf_tan_index{
+    double operator()(const sphere<exp_erf_tan_index>& lens, vec p) const{
+        double x = distance(lens.origin, p) / lens.index_param;
+        double index = exp(erf(tan(x)));
+        return index;
+    }
+};
+
+// Struct for damped_sinusoid
+// exp(sin(x) * cos(0.5 * x) * sin(pi / 7.0 + 5.0 * x)*cos(pi / 5.0 + 4.0 * x))
+struct damped_sinusoid_index{
+    double operator()(const sphere<damped_sinusoid_index>& lens, vec p) const{
+        double x = distance(lens.origin, p) / lens.index_param;
+        double index = exp(sin(x) * cos(0.5 * x) * sin(M_PI / 7.0 + 5.0 * x)*cos(M_PI / 5.0 + 2.0 * x)) ;
+        return index;
+    }
+};
+
 // Add overloads for 'normal_at' and 'refractive_index_at' for your own stuff,
 // example (you'll need a separate struct for the different lenses):
 //
