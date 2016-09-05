@@ -65,7 +65,7 @@ inline vec operator*(vec lhs, double b) {
 }
 
 inline vec operator*(double lhs, vec rhs) {
-    return lhs * rhs;
+    return vec(lhs * rhs.x, lhs * rhs.y, lhs * rhs.z);
 }
 
 inline vec operator/(vec lhs, double rhs) {
@@ -78,9 +78,9 @@ inline double dot(vec lhs, vec rhs) {
 }
 
 inline vec cross(vec lhs, vec rhs) {
-	return vec(lhs.y * rhs.z - lhs.z * rhs.y,
-               lhs.z * rhs.x - lhs.x * rhs.z,
-               lhs.x * rhs.y - lhs.y * rhs.x);
+    return vec(lhs.y * rhs.z - lhs.z * rhs.y,
+       lhs.z * rhs.x - lhs.x * rhs.z,
+       lhs.x * rhs.y - lhs.y * rhs.x);
 }
 
 inline double length(vec lhs) {
@@ -96,7 +96,7 @@ inline double distance(vec lhs, vec rhs) {
 }
 
 inline void print(vec v) {
-    printf("% .3lf, % .3lf, % .3lf", v.x, v.y, v.z);
+    printf("% .3lf, % .3lf, % .3lf\n", v.x, v.y, v.z);
 }
 
 #endif

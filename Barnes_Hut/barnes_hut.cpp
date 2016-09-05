@@ -2,112 +2,37 @@
 *
 * Purpose: We start with an octree, then we move onto an N-body simulator
 *
-*   Notes: implement theta
-*          force integration
-*          visualization -- use OGL, blender, or VTK?
+*   Notes: change particle vectors to particle *'s
+*          force integration -- All particles drift to a plane
+*          visualization -- use OGL?
 *          to plot use:
 *              gnuplot cube_plot.gp -
+*          we may have to ignore particles that are too far away
 *
 *-----------------------------------------------------------------------------*/
 
-#include <iostream>
-#include <cstdio> // For printf (which should replace iostream)
-#include <vector>
-#include <array>
-#include <random>
-#include <fstream>
-#include "vec.h"
-
-/*----------------------------------------------------------------------------//
-* STRUCTS
-*-----------------------------------------------------------------------------*/
-
-const double PARTICLE_MASS = 1;
-
-// Struct for Center of mass
-struct particle{
-    vec p;
-    double mass, radius;
-
-    particle() : mass(PARTICLE_MASS) {}
-    explicit particle(vec p, double m = PARTICLE_MASS)
-        : p(p), mass(m) {}
-};
-
-// struct for octree nodes
-struct node {
-
-    // Position of node / box
-    vec p;
-    double box_length;
-    node *parent;
-
-    // Nodes are ordered in the following way:
-    // Split cube into north / south, then into NSEW again,
-    // 0: NNE, 1: NSE, 2: NSW, 3: NNW, 4: SNE, 5: SSE, 6: SSW, 7: SNW
-    std::array<node *, 8> children;
-
-    particle com;
-
-    // Positions of all particles in box
-    std::vector<particle> p_vec;
- 
-    node() : p(vec()), box_length(1.0), parent(nullptr), children{nullptr},
-             com(vec(),0.0) {}
-    node(vec loc, double length, node *par) : 
-        p(loc), box_length(length), parent(par), children{nullptr}, 
-        com(vec(),0.0) {}
-
-};
-
-// Function to create random distribution of particles for Octree
-std::vector<particle> create_rand_dist(double box_length, int pnum);
-
-// Function to create octree from vecition data
-// Initially, read in root node
-void divide_octree(std::vector<particle> &p_vec, node *curr, 
-                   size_t box_threshold, double mass);
-
-// Function to check whether a particle is within a box
-bool in_box(node *curr, particle p);
-
-// Function to create 8 children node for octree
-void make_octchild(node *curr);
-
-// Function to find center of mass
-// NOTE: some objects may have different masses, maybe read in center of masses
-particle find_com(std::vector<particle> &p_vec, double mass);
-
-// Function to perform a depth first search of octree
-void depth_first_search(node *curr);
-
-// Function to output vertex positions of cube(s)
-void octree_output(node *curr, std::ofstream &output);
-
-// Fucntion to output all particle positions
-// This function will be used later to plot out what particles actually see
-// witht he barnes hut algorithm for gravitational / electrostatic forces
-void particle_output(node *curr, std::ofstream &p_output);
+#include "barnes_hut.h"
 
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
 
 int main(){
+    // Defining file for output
+    std::ofstream output("out.dat", std::ofstream::out);
+    std::ofstream p_output("pout.dat", std::ofstream::out);
+
     std::vector<particle> p_vec = create_rand_dist(1.0, 100);
     //std::vector<particle> p_vec(1);
     //p_vec[0].x = 0.25; p_vec[0].y = 0.25; p_vec[0].z = 0.25;
 
-    std::cout << '\n' << '\n';
+    //std::cout << '\n' << '\n';
 
     // Creating root node
     node *root = new node();
+    root->p_vec = p_vec;
     divide_octree(p_vec, root, 1, 0.1);
-    depth_first_search(root);
-
-    // Defining file for output
-    std::ofstream output("out.dat", std::ofstream::out);
-    std::ofstream p_output("pout.dat", std::ofstream::out);
+    //depth_first_search(root);
 
 /*
     for (auto &p : p_vec){
@@ -117,10 +42,20 @@ int main(){
     }
 */
 
+    for (auto& part : p_vec){
+        std::cout << part.p.x << '\t' << part.p.y << '\t' << part.p.z << '\n';
+    }
+    std::cout << '\n' << '\n';
+    particle_output(root, p_output);
+    p_output << '\n' << '\n';
+
+    force_integrate(root, 0.001);
+
     octree_output(root, output);
     particle_output(root, p_output);
 
     output.close();
+    p_output.close();
 
 }
 
@@ -131,7 +66,7 @@ int main(){
 // Function to create random distribution of particles for Octree
 std::vector<particle> create_rand_dist(double box_length, int pnum){
 
-    // Creating vector for particle vecitions (p_vec)
+    // Creating vector for particle positions (p_vec)
     std::vector<particle> p_vec;
     p_vec.reserve(pnum);
 
@@ -142,13 +77,13 @@ std::vector<particle> create_rand_dist(double box_length, int pnum){
     std::uniform_real_distribution<double> 
         box_dist(-box_length * 0.5, box_length * 0.5);
 
-    std::cout << "creating random vecitions for all " << pnum
-              << " particles!" << '\n';
+    //std::cout << "creating random vecitions for all " << pnum
+    //          << " particles!" << '\n';
     // Iterating over all particles to create random vecitions
     for (int i = 0; i < pnum; ++i){
         p_vec.emplace_back(vec(box_dist(gen), box_dist(gen), box_dist(gen)), 
-                           PARTICLE_MASS);
-        printf("%lf %lf %lf \n", p_vec[i].p.x, p_vec[i].p.y, p_vec[i].p.z);
+                           vec(), vec(), PARTICLE_MASS);
+        //printf("%lf %lf %lf \n", p_vec[i].p.x, p_vec[i].p.y, p_vec[i].p.z);
     }
     
     return p_vec;
@@ -168,7 +103,7 @@ void divide_octree(std::vector<particle> &p_vec, node *curr,
         for (auto &p : p_vec){
             if (in_box(child, p)){
                 child->p_vec.push_back(p);
-                child->com.p += p.p;
+                child->com.p += p.p * p.mass;
                 child->com.mass += p.mass;
             }
         }
@@ -177,17 +112,17 @@ void divide_octree(std::vector<particle> &p_vec, node *curr,
         //std::cout << child->p_vec.size() << '\n';
         if (child->p_vec.size() > box_threshold){
             //child->com = find_com(child->p_vec, mass);
-            std::cout << child->com.p.x << '\t' << child->com.p.y << '\t'
-                      << child->com.p.z << '\t' << child->com.mass << '\n';
+            //std::cout << child->com.p.x << '\t' << child->com.p.y << '\t'
+            //          << child->com.p.z << '\t' << child->com.mass << '\n';
 
             divide_octree(child->p_vec, child, box_threshold, mass);
         }
         else if(child->p_vec.size() <= box_threshold && 
                 child->p_vec.size() != 0){
             //child->com = find_com(child->p_vec, mass);
-            std::cout << child->com.p.x << '\t' << child->com.p.y << '\t'
-                      << child->com.p.z << '\t' << child->com.mass << '\n';
-            std::cout << "Found particle!" << '\n';
+            //std::cout << child->com.p.x << '\t' << child->com.p.y << '\t'
+            //          << child->com.p.z << '\t' << child->com.mass << '\n';
+            //std::cout << "Found particle!" << '\n';
         }
         //else{
         //    std::cout << "No particle in box!" << '\n';
@@ -253,7 +188,7 @@ void depth_first_search(node *curr){
         return;
     }
 
-    std::cout << curr->p.x << '\t' << curr->p.y << '\t' << curr->p.z << '\n';
+    //std::cout << curr->p.x << '\t' << curr->p.y << '\t' << curr->p.z << '\n';
 
     for (auto child : curr->children){
         depth_first_search(child);
@@ -339,9 +274,81 @@ void particle_output(node *curr, std::ofstream &p_output){
     }
 
     // Recursively outputting additional particles
-    for (auto child : curr->children){
+    for (auto& child : curr->children){
         particle_output(child, p_output);
     }
 
 }
 
+// Function to find acceleration of particle in Barnes Hut tree
+void force_integrate(node *root, double dt){
+
+    // Going through all particles in p_vec, finding the new acceleration
+    for (auto& part : root->p_vec){
+        RKsearch(root, part);
+    }   
+
+    // Going through all the particles and updating position 
+    for (auto& part : root->p_vec){
+        RK4(part, dt);
+    }
+}
+
+// Recursive function to find acceleration of particle in tree
+void RKsearch(node *curr, particle &part){
+
+    if (!curr){
+        return;
+    }
+
+    // Defining a few variables, distance and inverse_r (save those divisions)
+    vec d = curr->p - part.p;
+    double inverse_r = 1/length(d);
+
+    // Defining new theta of current node
+    double theta_2 = curr->box_length * inverse_r;
+
+    // find the new acceleration due to the current node
+
+    if (theta_2 <= THETA){
+        //double acc = G * curr.com.mass * inverse_r * inverse_r;
+        // a = GM/r^2 * norm(r)
+        part.acc += d*(G * curr->com.mass * inverse_r * inverse_r * inverse_r);
+    }
+    // if above thresh THETA, then search again.
+    else{
+        for (auto& child : curr->children){
+            RKsearch(child, part);
+        }
+    }
+    
+}
+
+// Actual implementation of Runge-Kutta 4 method
+// Note: It's assumed that all particles have already updated their acc.
+void RK4(particle &part, double dt){
+    // For RK4, we need an array of size 4 for acc, vel, and pos
+    vec pos[4], vel[4], acc[4];
+
+    // Populating the arrays
+    pos[0] = part.p;
+    vel[0] = part.vel;
+    acc[0] = part.acc;
+
+    pos[1] = pos[0] + 0.5 * dt * vel[0];
+    vel[1] = vel[0] + 0.5 * dt * acc[0];
+    acc[1] = part.acc;
+
+    pos[2] = pos[0] + 0.5 * vel[1] * dt;
+    vel[2] = vel[0] + 0.5 * acc[1] * dt;
+    acc[2] = part.acc;
+
+    pos[3] = pos[0] + vel[2] * dt;
+    vel[3] = vel[0] + acc[2] * dt;
+    acc[3] = part.acc;
+
+    part.p = pos[0] + (dt / 6) * (vel[0] + 2 * vel[1] + 2 * vel[2] + vel[3]);
+    part.vel = vel[0] + (dt / 6) * (acc[0] + 2 * acc[1] + 2 * acc[2] + acc[3]);
+
+    std::cout << part.p.x << '\t' << part.p.y << '\t' << part.p.x << '\n';
+}
