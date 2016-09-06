@@ -74,7 +74,7 @@ inline vec operator/(vec lhs, double rhs) {
 }
 
 inline double dot(vec lhs, vec rhs) {
-    return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z + rhs.z;
+    return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
 }
 
 inline vec cross(vec lhs, vec rhs) {

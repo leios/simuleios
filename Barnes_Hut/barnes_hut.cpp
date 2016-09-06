@@ -2,7 +2,8 @@
 *
 * Purpose: We start with an octree, then we move onto an N-body simulator
 *
-*   Notes: change particle vectors to particle *'s
+*   Notes: think about regenerating octree every timestep, happylittlerat: 
+*              http://www.randygaul.net/2013/08/06/dynamic-aabb-tree/ 
 *          force integration -- All particles drift to a plane
 *          visualization -- use OGL?
 *          to plot use:
@@ -23,10 +24,22 @@ int main(){
     std::ofstream p_output("pout.dat", std::ofstream::out);
 
     // Creating the octree
-    std::vector<particle> p_vec = create_rand_dist(1.0, 100);
+    std::vector<particle> p_vec = create_rand_dist(1, 100);
     node *root = make_octree(p_vec);
     divide_octree(root, 1);
 
+    for (int i = 0; i < 100; ++i){
+        //node *root = make_octree(p_vec);
+        //divide_octree(root, 1);
+        particle_output(root, p_output);
+        p_output << "\n\n";
+        force_integrate(root, 0.01);
+        //traverse_post_order(root, [](node* node){
+        //    delete node;
+        //});
+    }
+
+/*
     // Show all particle positions
     particle_output(root, std::cout);
     particle_output(root, p_output);
@@ -34,11 +47,14 @@ int main(){
     std::cout << "\n\n";
     p_output << "\n\n";
 
-    force_integrate(root, 0.001);
+    force_integrate(root, 0.01);
+    force_integrate(root, 0.01);
 
     particle_output(root, std::cout);
     particle_output(root, p_output);
     octree_output(root, output);
+*/
+
 }
 
 /*----------------------------------------------------------------------------//
@@ -231,14 +247,17 @@ void particle_output(node *curr, std::ostream &p_output){
 void force_integrate(node *root, double dt){
 
     // Going through all particles in p_vec, finding the new acceleration
-    for (auto part : root->p_vec){
-        RKsearch(root, part);
+    #pragma omp parallel for
+    for (size_t i = 0; i < root->p_vec.size(); i++){
+        RKsearch(root, root->p_vec[i]);
     }   
 
     // Going through all the particles and updating position 
-    for (auto part : root->p_vec){
-        RK4(part, dt);
+    #pragma omp parallel for
+    for (size_t i = 0; i < root->p_vec.size(); i++){
+        RK4(root->p_vec[i], dt);
     }
+
 }
 
 // Recursive function to find acceleration of particle in tree
@@ -247,9 +266,12 @@ void RKsearch(node *curr, particle *part){
     if (!curr){
         return;
     }
+    if (curr->p_vec.size() == 1 && curr->p_vec[0] == part){
+        return;
+    }
 
     // Defining a few variables, distance and inverse_r (save those divisions)
-    vec d = curr->p - part->p;
+    vec d = curr->com.p - part->p;
     double inverse_r = 1/length(d);
 
     // Defining new theta of current node
@@ -260,6 +282,10 @@ void RKsearch(node *curr, particle *part){
     if (theta_2 <= THETA){
         //double acc = G * curr.com.mass * inverse_r * inverse_r;
         // a = GM/r^2 * norm(r)
+        part->acc += d*(G * curr->com.mass * inverse_r * inverse_r * inverse_r);
+    }
+    // if we are in a leaf node
+    else if (curr->p_vec.size() == 1){
         part->acc += d*(G * curr->com.mass * inverse_r * inverse_r * inverse_r);
     }
     // if above thresh THETA, then search again.

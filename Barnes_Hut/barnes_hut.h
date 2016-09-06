@@ -13,6 +13,7 @@
 #include <array>
 #include <random>
 #include <fstream>
+#include <omp.h>
 #include "vec.h"
 
 /*----------------------------------------------------------------------------//
@@ -21,7 +22,7 @@
 
 const double PARTICLE_MASS = 1E10;
 const double G = 6.67408E-11;
-const double THETA = 0.5;
+const double THETA = 1;
 
 // Struct for Center of mass
 struct particle{
@@ -61,7 +62,7 @@ struct node {
         parent(par), children{nullptr}, 
         com(vec(), vec(), vec(),0.0) {}
 
-    ~node();
+    //~node();
 };
 
 // Function to create random distribution of particles for Octree
@@ -115,8 +116,10 @@ void traverse_post_order(node* curr, const T& fn) {
     fn(curr);
 }
 
+/*
 inline node::~node() {
     traverse_post_order(this, [](node* node) { delete node; });
 }
+*/
 
 #endif

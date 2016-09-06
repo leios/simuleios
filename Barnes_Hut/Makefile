@@ -1,7 +1,7 @@
 # Makefile for huffman simulation
 
 CXX = g++
-CXXFLAGS = -std=c++11 -g -Wall -march=native
+CXXFLAGS = -std=c++11 -g -Wall -march=native -fopenmp
 
 OGLFLAGS = -lGLEW -lglfw -lGL -lX11 -lpthread -lXrandr -lXi
 
@@ -14,7 +14,7 @@ DEPS = vec.h barnes_hut.h
 
 $(BINS): $(OBJ)
 	$(CXX) $(CXXFLAGS) $(OGLFLAGS) -o $(BINS) $^
-	./barnes_hut >> particle_check.dat
+	time ./barnes_hut >> /dev/null
 
 clean:
 	rm -Rf $(BINS) #$(OBJ)
