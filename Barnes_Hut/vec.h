@@ -18,38 +18,38 @@ struct vec {
     vec() : x(0.0), y(0.0), z(0.0) {}
     vec(double x0, double y0, double z0) : x(x0), y(y0), z(z0) {}
 
-	vec& operator+=(vec rhs) {
-	    x += rhs.x;
-	    y += rhs.y;
-	    z += rhs.z;
-	    return *this;
-	}
+    vec& operator+=(vec rhs) {
+        x += rhs.x;
+        y += rhs.y;
+        z += rhs.z;
+        return *this;
+    }
 
-	vec& operator-=(vec rhs) {
-	    x -= rhs.x;
-	    y -= rhs.y;
-	    z -= rhs.z;
-	    return *this;
-	}
+    vec& operator-=(vec rhs) {
+        x -= rhs.x;
+        y -= rhs.y;
+        z -= rhs.z;
+        return *this;
+    }
 
-	vec& operator*=(double rhs) {
-	    x *= rhs;
-	    y *= rhs;
-	    z *= rhs;
-	    return *this;
-	}
+    vec& operator*=(double rhs) {
+        x *= rhs;
+        y *= rhs;
+        z *= rhs;
+        return *this;
+    }
 
-	vec& operator/=(double rhs) {
-	    auto inv = 1.0 / rhs;
-	    x *= inv;
-	    y *= inv;
-	    z *= inv;
-	    return *this;
-	}
+    vec& operator/=(double rhs) {
+        auto inv = 1.0 / rhs;
+        x *= inv;
+        y *= inv;
+        z *= inv;
+        return *this;
+    }
 };
 
-inline vec operator-(vec lhs) { 
-    return vec(-lhs.x, -lhs.y, -lhs.z); 
+inline vec operator-(vec lhs) {
+    return vec(-lhs.x, -lhs.y, -lhs.z);
 }
 
 inline vec operator+(vec lhs, vec rhs) {
@@ -79,8 +79,8 @@ inline double dot(vec lhs, vec rhs) {
 
 inline vec cross(vec lhs, vec rhs) {
     return vec(lhs.y * rhs.z - lhs.z * rhs.y,
-       lhs.z * rhs.x - lhs.x * rhs.z,
-       lhs.x * rhs.y - lhs.y * rhs.x);
+               lhs.z * rhs.x - lhs.x * rhs.z,
+               lhs.x * rhs.y - lhs.y * rhs.x);
 }
 
 inline double length(vec lhs) {
