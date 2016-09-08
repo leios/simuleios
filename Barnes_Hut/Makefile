@@ -17,5 +17,5 @@ $(BINS): $(OBJ)
 	time ./barnes_hut >> /dev/null
 
 clean:
-	rm -Rf $(BINS) #$(OBJ)
+	rm -Rf $(BINS) $(OBJ) *.dat
 

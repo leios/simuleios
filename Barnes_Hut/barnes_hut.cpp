@@ -19,24 +19,42 @@
 *-----------------------------------------------------------------------------*/
 
 int main(){
+    int numsteps = 1000;
     // Defining file for output
-    std::ofstream output("out.dat", std::ofstream::out);
+    std::vector <std::ofstream> octree_files;
+    std::string filename;
+    for (int i = 0; i < numsteps; i++){
+        filename = "octree" + std::to_string(i) + ".dat";
+        octree_files.emplace_back(filename, std::ofstream::out);
+    }
     std::ofstream p_output("pout.dat", std::ofstream::out);
 
     // Creating the octree
-    std::vector<particle> p_vec = create_rand_dist(1, 100);
-    node *root = make_octree(p_vec);
+    //std::vector<particle> p_vec = create_rand_dist(1, 1);
+    double vel = sqrt(10);
+    double dt = 0.01;
+    std::vector<particle> p_vec;
+    p_vec.reserve(1);
+    p_vec.emplace_back(vec(1, 0, 0), 
+                       vec(0, vel, 0), vec(), PARTICLE_MASS);
+    p_vec[0].prev_p = vec(cos(vel* dt), sin(vel * dt),0);
+    print(p_vec[0].prev_p);
+
+    node *root = make_octree(p_vec, 1000);
     divide_octree(root, 1);
 
-    for (int i = 0; i < 100; ++i){
-        //node *root = make_octree(p_vec);
-        //divide_octree(root, 1);
-        particle_output(root, p_output);
-        p_output << "\n\n";
+    for (int i = 0; i < numsteps; ++i){
+        node *root = make_octree(p_vec, 1000);
+        divide_octree(root, 1);
+        if (i % 100 || i == 0){
+            particle_output(root, p_output);
+            p_output << "\n\n";
+        }
         force_integrate(root, 0.01);
-        //traverse_post_order(root, [](node* node){
-        //    delete node;
-        //});
+        traverse_post_order(root, [](node* node){
+            delete node;
+        });
+        //octree_output(root, octree_files[i]);
     }
 
 /*
@@ -47,8 +65,8 @@ int main(){
     std::cout << "\n\n";
     p_output << "\n\n";
 
-    force_integrate(root, 0.01);
-    force_integrate(root, 0.01);
+    force_integrate(root, 0.001);
+    force_integrate(root, 0.001);
 
     particle_output(root, std::cout);
     particle_output(root, p_output);
@@ -82,8 +100,8 @@ std::vector<particle> create_rand_dist(double box_length, int pnum){
     return p_vec;
 }
 
-node* make_octree(std::vector<particle> &p_vec) {
-    auto root = new node();
+node* make_octree(std::vector<particle> &p_vec, double box_length) {
+    auto root = new node(vec(), box_length, nullptr);
     root->p_vec.reserve(p_vec.size());
 
     for (auto& p : p_vec) {
@@ -249,13 +267,15 @@ void force_integrate(node *root, double dt){
     // Going through all particles in p_vec, finding the new acceleration
     #pragma omp parallel for
     for (size_t i = 0; i < root->p_vec.size(); i++){
+        root->p_vec[i]->acc = vec();
         RKsearch(root, root->p_vec[i]);
     }   
 
     // Going through all the particles and updating position 
     #pragma omp parallel for
     for (size_t i = 0; i < root->p_vec.size(); i++){
-        RK4(root->p_vec[i], dt);
+        //RK4(root->p_vec[i], dt);
+        verlet(root->p_vec[i], dt);
     }
 
 }
@@ -263,6 +283,23 @@ void force_integrate(node *root, double dt){
 // Recursive function to find acceleration of particle in tree
 void RKsearch(node *curr, particle *part){
 
+    vec d = -part->p;
+    double inverse_r = 1/length(d);
+
+    if (inverse_r > 10){
+        inverse_r = 10;
+    }
+    if (inverse_r < -10){
+        inverse_r = -10;
+    }
+
+
+    //part->acc += d*(G * 1E11 * inverse_r * inverse_r * inverse_r);
+    part->acc += d * inverse_r * 10;
+    //print(part->acc);
+    //print(d);
+
+/*
     if (!curr){
         return;
     }
@@ -295,6 +332,7 @@ void RKsearch(node *curr, particle *part){
         }
     }
     
+*/
 }
 
 // Actual implementation of Runge-Kutta 4 method
@@ -322,4 +360,11 @@ void RK4(particle *part, double dt){
 
     part->p = pos[0] + (dt / 6) * (vel[0] + 2 * vel[1] + 2 * vel[2] + vel[3]);
     part->vel = vel[0] + (dt / 6) * (acc[0] + 2 * acc[1] + 2 * acc[2] + acc[3]);
+}
+
+// Simple implementation of verlet algorithm as a test against RK4
+void verlet(particle *part, double dt){
+    vec temp = part->p;
+    part->p = 2 * part->p - part->prev_p + part->acc * dt*dt;
+    part->prev_p = temp;   
 }

@@ -27,6 +27,7 @@ const double THETA = 1;
 // Struct for Center of mass
 struct particle{
     vec p;
+    vec prev_p;
     vec vel;
     vec acc;
     double mass, radius;
@@ -69,7 +70,7 @@ struct node {
 std::vector<particle> create_rand_dist(double box_length, int pnum);
 
 // Creates the root node for an octree, given a list of particles and maxim
-node* make_octree(std::vector<particle> &particles);
+node* make_octree(std::vector<particle> &particles, double box_length);
 
 // Divides an octree node if 
 void divide_octree(node *curr, size_t box_threshold);
@@ -100,6 +101,9 @@ void RKsearch(node *curr, particle *part);
 // Actual implementation of Runge-Kutta 4 method
 // Note: It's assumed that all particles have already updated their acc.
 void RK4(particle *part, double dt);
+
+// Simple implementation of verlet algorithm as a test against RK4
+void verlet(particle *part, double dt);
 
 // Traverses the tree in a post-order manner, executing the function given
 // as the argument for each node
