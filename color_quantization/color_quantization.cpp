@@ -4,6 +4,7 @@
 *
 *   Notes: Figure out why output image is all black
 *          Find way to visualize particle data and octree boxes (blender?)
+*          Fix pointer problem / remove p_vec from node
 *
 *-----------------------------------------------------------------------------*/
 
@@ -45,10 +46,11 @@ int main(){
 
     // Show all particle positions
     //particle_output(root, std::cout);
+    print(root->p_vec[0]->p);
     particle_output(root, p_output);
 
     //std::cout << "\n\n";
-    //p_output << "\n\n";
+    p_output << "\n\n";
 
     //octree_output(root, output);
 
@@ -124,7 +126,9 @@ void divide_octree(node *curr, size_t box_threshold){
     make_octchild(curr);
     
     // Iterating through all the children
-    for (auto &child : curr->children){
+    //for (auto &child : curr->children){
+    for (int i = 0; i < 8; ++i){
+        auto *child = &curr->children[i];
         // Determine number of particles in our current box
         for (auto p : curr->p_vec){
             if (in_box(child, p)){
@@ -235,6 +239,9 @@ bool in_box(node *curr, particle &p){
 
 // Function to create 8 children node for octree
 void make_octchild(node *curr){
+
+    curr->children = new node[8];
+
     double node_length = curr->box_length * 0.5;
     double quarter_box = curr->box_length * 0.25;
 
@@ -244,12 +251,12 @@ void make_octchild(node *curr){
         for (int j = -1; j <= 1; j += 2){
             for (int i = -1; i <= 1; i +=2){
                 int n = 2 * k + j + (i+1)/2 + 3;
-                curr->children[n] = new node();
-                curr->children[n]->parent = curr;
-                curr->children[n]->box_length = node_length;
-                curr->children[n]->p.z = curr->p.z + k * quarter_box;
-                curr->children[n]->p.y = curr->p.y + j * quarter_box;
-                curr->children[n]->p.x = curr->p.x + i * quarter_box;
+                //curr->children[n] = new node();
+                curr->children[n].parent = curr;
+                curr->children[n].box_length = node_length;
+                curr->children[n].p.z = curr->p.z + k * quarter_box;
+                curr->children[n].p.y = curr->p.y + j * quarter_box;
+                curr->children[n].p.x = curr->p.x + i * quarter_box;
             }
         }
     }
@@ -262,8 +269,8 @@ void depth_first_search(node *curr){
     }
     print(curr->com.p);
 
-    for (auto child : curr->children){
-        depth_first_search(child);
+    for (int i = 0; i < 8; ++i){
+        depth_first_search(&curr->children[i]);
     }
 }
 
@@ -326,8 +333,8 @@ void octree_output(node *curr, std::ostream &output){
     output << '\n' << '\n';
 
     // Recursively outputting internal boxes
-    for (auto child : curr->children){
-        octree_output(child, output);
+    for (int i = 0; i < 8; ++i){
+        octree_output(&curr->children[i], output);
     }
  
 }
@@ -338,14 +345,10 @@ void particle_output(node *curr, std::ostream &p_output){
         return;
     }
 
-    if (curr->p_vec.size() == 1){
+    for (size_t i = 0; i < curr->p_vec.size(); ++i){
         p_output << curr->p_vec[0]->p.x << '\t' << curr->p_vec[0]->p.y << '\t' 
                  << curr->p_vec[0]->p.z << '\n';
-    }
 
-    // Recursively outputting additional particles
-    for (auto child : curr->children){
-        particle_output(child, p_output);
     }
 
 }
@@ -353,7 +356,6 @@ void particle_output(node *curr, std::ostream &p_output){
 // Function to merge unnecessary nodes
 void cull_tree(node *root, int cull_num){
 
-    int threshold;
     int depth = 0;
     std::vector <node*> tree_vec;
     create_tree_vec(root, tree_vec, depth);
@@ -377,8 +379,11 @@ void create_tree_vec(node *curr, std::vector<node*> &tree_vec, int depth){
     curr->depth = depth;
     tree_vec.push_back(curr);
 
-    for (auto child : curr->children){
-        create_tree_vec(child, tree_vec, depth);
+    if (curr->children){
+        for (int i = 0; i < 8; ++i){
+            auto *child = &curr->children[i];
+            create_tree_vec(child, tree_vec, depth);
+        }
     }
 
 }

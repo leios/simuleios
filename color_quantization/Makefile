@@ -14,8 +14,8 @@ DEPS = vec.h coloir_quantization.h
 
 $(BINS): $(OBJ)
 	$(CXX) $(CXXFLAGS) $(OGLFLAGS) -o $(BINS) $^
-	#./color_quantization
-	time ./color_quantization >> /dev/null
+	./color_quantization
+	#time ./color_quantization >> /dev/null
 
 clean:
 	rm -Rf $(BINS) $(OBJ) *.dat

@@ -48,11 +48,13 @@ struct node {
     double box_length;
     node *parent;
     int depth = 0;
+    int pnum;
 
     // Nodes are ordered in the following way:
     // Split cube into north / south, then into NSEW again,
     // 0: NNE, 1: NSE, 2: NSW, 3: NNW, 4: SNE, 5: SSE, 6: SSW, 7: SNW
-    std::array<node*, 8> children;
+    //std::array<node*, 8> children;
+    node *children;
 
     particle com;
 
@@ -124,8 +126,10 @@ void traverse_post_order(node* curr, const T& fn) {
         return;
     }
 
-    for (auto child : curr->children) {
-        traverse_post_order(child, fn);
+    if (curr->children){
+        for (int i = 0; i < 8; ++i){
+            traverse_post_order(&curr->children[i], fn);
+        }
     }
 
     fn(curr);
