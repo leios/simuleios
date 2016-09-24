@@ -58,7 +58,9 @@ int main(){
 
     quantize_color(root, p_vec, image, "out.bmp");
 
-    traverse_post_order(root, [](node* n) { delete n; });
+    //traverse_post_order(root, [](node* n) { delete [] n; });
+    delete_tree(root);
+    //delete root;
 
 }
 
@@ -269,8 +271,10 @@ void depth_first_search(node *curr){
     }
     print(curr->com.p);
 
-    for (int i = 0; i < 8; ++i){
-        depth_first_search(&curr->children[i]);
+    if (curr->children){
+        for (int i = 0; i < 8; ++i){
+            depth_first_search(&curr->children[i]);
+        }
     }
 }
 
@@ -333,8 +337,10 @@ void octree_output(node *curr, std::ostream &output){
     output << '\n' << '\n';
 
     // Recursively outputting internal boxes
-    for (int i = 0; i < 8; ++i){
-        octree_output(&curr->children[i], output);
+    if (curr->children){
+        for (int i = 0; i < 8; ++i){
+            octree_output(&curr->children[i], output);
+        }
     }
  
 }
@@ -433,3 +439,21 @@ void quantize_color(node *root, std::vector<particle> color_data,
     image.save(outfile.c_str());
 }
 
+// Function to delete the tree
+void delete_tree(node* curr){
+    if (!curr) {
+        return;
+    }
+
+    if (curr->children){
+        for (int i = 0; i < 8; ++i){
+            delete_tree(&curr->children[i]);
+        }
+        delete [] curr->children;
+    }
+
+    if (!curr->parent){
+        delete curr;
+    }
+
+}

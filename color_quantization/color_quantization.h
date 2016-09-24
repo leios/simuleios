@@ -126,13 +126,14 @@ void traverse_post_order(node* curr, const T& fn) {
         return;
     }
 
+    print(curr->p);
     if (curr->children){
         for (int i = 0; i < 8; ++i){
+            std::cout << i << '\n';
             traverse_post_order(&curr->children[i], fn);
         }
+        delete [] curr->children;
     }
-
-    fn(curr);
 }
 
 /*
@@ -140,5 +141,8 @@ inline node::~node() {
     traverse_post_order(this, [](node* node) { delete node; });
 }
 */
+
+// Function to deletel octree
+void delete_tree(node *curr);
 
 #endif
