@@ -75,8 +75,11 @@ struct node {
 
 // Function for sorting tree_vec
 bool node_ineq(node *i, node *j){
-    return (i->depth < j->depth);
+    return (i->p_vec.size() > j->p_vec.size());
 }
+
+// Full function to quantize color
+void quantize(std::string infile, std::string outfile, int colornum);
 
 // Function to create random distribution of particles for Octree
 std::vector<particle> create_rand_dist(double box_length, int pnum);
@@ -102,6 +105,9 @@ void depth_first_search(node *curr);
 
 // Function to output vertex positions of cube(s)
 void octree_output(node *curr, std::ostream &output);
+
+// Function to output octree for blender
+void octree_blender_output(node *curr, std::ostream &output);
 
 // Function to output all particle positions
 // This function will be used later to plot out what particles actually see

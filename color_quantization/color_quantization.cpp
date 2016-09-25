@@ -17,12 +17,59 @@
 *-----------------------------------------------------------------------------*/
 
 int main(){
+    //std::string outfile, number;
+    //std::string infile = "/tmp/";
+    int colores = 8;
+    quantize("flower_power_5.png","out.bmp", 8);
+/*
+    #pragma omp parallel for num_threads(4)
+    for (int i = 1; i <= 1200; i++){
+        std::string infile = "/tmp/";
+        std::string number = std::to_string(i);
+        std::cout << number << '\t' << number.size() << '\n';
+        for (int j = 0; j < 4 - number.size(); ++j){
+            infile += "0";
+        }
+        infile += number + ".bmp";
+        std::string outfile = "out" + number + ".bmp";
+
+        std::cout << infile << '\n';
+        if (i <= 468){
+            colores = 8;
+        }
+        if (i > 468 && i <= 587){
+            colores = 64;
+        }
+        if (i > 587 && i <= 697){
+            colores = 256;
+        }
+        if (i > 697 && i <= 813){
+            colores = 512;
+        }
+        if (i > 813 && i <= 943){
+            colores = 1024;
+        }
+        if (i > 943 && i <= 1200){
+            colores = 16384;
+        }
+        quantize(infile,outfile,colores);
+    }
+*/
+
+}
+
+/*----------------------------------------------------------------------------//
+* SUBROUTINES
+*-----------------------------------------------------------------------------*/
+
+// Full function to quantize color
+void quantize(std::string infile, std::string outfile, int colornum){
     // Defining file for output
     std::ofstream p_output("pout.dat", std::ofstream::out);
     std::ofstream output("octree0.dat", std::ofstream::out);
 
     // Rading in image from CImg.h
-    std::string image_file = "flower_power.png";
+    std::string image_file = infile;
     CImg<float> image(image_file.c_str());
 
     // Creating the octree by reading pixels -- to come later!
@@ -46,17 +93,21 @@ int main(){
 
     // Show all particle positions
     //particle_output(root, std::cout);
-    print(root->p_vec[0]->p);
+    //print(root->p_vec[0]->p);
     particle_output(root, p_output);
 
     //std::cout << "\n\n";
     p_output << "\n\n";
 
     //octree_output(root, output);
+    output << root->p.x << '\t' << root->p.y << '\t' << root->p.z << '\t'
+           << root->box_length << '\n';
+    output << '\n' << '\n';
+    octree_blender_output(root, output);
 
-    cull_tree(root, 256);
+    cull_tree(root, colornum);
 
-    quantize_color(root, p_vec, image, "out.bmp");
+    quantize_color(root, p_vec, image, outfile);
 
     //traverse_post_order(root, [](node* n) { delete [] n; });
     delete_tree(root);
@@ -64,9 +115,6 @@ int main(){
 
 }
 
-/*----------------------------------------------------------------------------//
-* SUBROUTINES
-*-----------------------------------------------------------------------------*/
 
 // Function to create random distribution of particles for Octree
 std::vector<particle> create_rand_dist(double box_length, int pnum){
@@ -345,6 +393,30 @@ void octree_output(node *curr, std::ostream &output){
  
 }
 
+void octree_blender_output(node *curr, std::ostream &output){
+    if (!curr){
+        return;
+    }
+
+    if (curr->children){
+        for (int i = 0; i < 8; ++i){
+            output << curr->children[i].p.x << '\t' << curr->children[i].p.y
+                   << '\t' << curr->children[i].p.z << '\t'
+                   << '\t' << curr->children[i].box_length << '\n';
+        }
+
+        output << '\n' << '\n';
+    }
+
+    // Recursively outputting internal boxes
+    if (curr->children){
+        for (int i = 0; i < 8; ++i){
+            octree_blender_output(&curr->children[i], output);
+        }
+    }
+
+}
+
 // Function to output particle positions
 void particle_output(node *curr, std::ostream &p_output){
     if (!curr){
@@ -352,8 +424,8 @@ void particle_output(node *curr, std::ostream &p_output){
     }
 
     for (size_t i = 0; i < curr->p_vec.size(); ++i){
-        p_output << curr->p_vec[0]->p.x << '\t' << curr->p_vec[0]->p.y << '\t' 
-                 << curr->p_vec[0]->p.z << '\n';
+        p_output << curr->p_vec[i]->p.x << '\t' << curr->p_vec[i]->p.y << '\t' 
+                 << curr->p_vec[i]->p.z << '\n';
 
     }
 
@@ -367,7 +439,9 @@ void cull_tree(node *root, int cull_num){
     create_tree_vec(root, tree_vec, depth);
     std::sort(tree_vec.begin(), tree_vec.end(), node_ineq);
 
+
     for (int i = 0; i < cull_num; i++){
+        //std::cout << i << '\t' << tree_vec[i]->p_vec.size() << '\n';
         for (auto &p : tree_vec[i]->p_vec){
             p->leaf = tree_vec[i];
         }
@@ -421,18 +495,6 @@ void quantize_color(node *root, std::vector<particle> color_data,
             //image(i, j, 0, 1) = (color_p.p.y + 0.5) * 255;
             //image(i, j, 0, 2) = (color_p.p.z + 0.5) * 255;
 
-/*
-            for (auto child : root->children){
-                if(in_box(child, color_data[j + i * image.height()])){
-                    r = (child->com.p.x + 0.5) * 255;
-                    g = (child->com.p.y + 0.5) * 255;
-                    b = (child->com.p.z + 0.5) * 255;
-                    image(i, j, 0, 0) = r;
-                    image(i, j, 0, 1) = g;
-                    image(i, j, 0, 2) = b;
-                }
-            }
-*/
         }
     }
 

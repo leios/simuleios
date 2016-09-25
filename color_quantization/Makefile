@@ -1,7 +1,7 @@
 # Makefile for huffman simulation
 
 CXX = g++
-CXXFLAGS = -std=c++11 #-g -Wall -march=native -fopenmp -fsanitize=address
+CXXFLAGS = -std=c++11 -fopenmp #-g -Wall -march=native -fsanitize=address
 
 OGLFLAGS = -lGLEW -lglfw -lGL -lX11 -lpthread -lXrandr -lXi
 
