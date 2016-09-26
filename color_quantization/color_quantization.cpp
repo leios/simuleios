@@ -20,7 +20,7 @@ int main(){
     //std::string outfile, number;
     //std::string infile = "/tmp/";
     int colores = 8;
-    quantize("flower_power_5.png","out.bmp", 8);
+    quantize("flower_power.png","out.bmp", 512);
 /*
     #pragma omp parallel for num_threads(4)
     for (int i = 1; i <= 1200; i++){
@@ -75,6 +75,7 @@ void quantize(std::string infile, std::string outfile, int colornum){
     // Creating the octree by reading pixels -- to come later!
     //std::vector<particle> p_vec = create_rand_dist(1, 10);
     std::vector<particle> p_vec = image_read(image, image_file);
+    //p_vec = create_rand_dist(1, p_vec.size());
     std::cout << "number of pixels is: " << p_vec.size() << '\n';
 
     //print(p_vec[0].p);

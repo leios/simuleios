@@ -80,13 +80,17 @@ def parse_octree_data(num_part=0):
     print ("found " + str(numberOfFrames) + " and " + str(num_part) + " particles in first frame")
 
     frame = 10
-    cage_set(array[0][3], array[0][0], array[0][1], array[0][2], frame)
+    id = "c%s" %0
+    cage_set(array[0][3], array[0][0], array[0][1], array[0][2], id, frame)
     
     for i in range(1,len(array)):
-        if (i-1 % 8 == 0):
-            frame += 10
-        cage_set(array[i][3], array[i][0], array[i][1], array[i][2], frame)
+        if ((i-1) % 8 == 0):
+            frame += 2
+            print(frame)
+        id = "c%s" %i
+        cage_set(array[i][3], array[i][0], array[i][1], array[i][2], id, frame)
 
+    return frame
 
 # Creates sphere material
 def create_new_material (passedName,passedcolor):
@@ -236,26 +240,28 @@ def create_cage (passedName):
     return cageMat
 
 # Creates cage at location
-def cage_set(Box_length, x, y, z, make_frame):
+def cage_set(Box_length, x, y, z, id, make_frame):
     ccube = bpy.ops.mesh.primitive_cube_add(location=(x,y,z),
                                             radius = Box_length / 2)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.object.mode_set(mode='OBJECT')
-    bpy.data.objects['Cube.001'].hide = True
-    bpy.data.objects['Cube.001'].hide_render = True
-    bpy.data.objects['Cube.001'].keyframe_insert("hide_render", 
-                                                 frame=make_frame-1)
-    bpy.data.objects['Cube.001'].keyframe_insert("hide", 
-                                                 frame=make_frame-1)
-    bpy.data.objects['Cube.001'].hide = False
-    bpy.data.objects['Cube.001'].hide_render = False
-    bpy.data.objects['Cube.001'].keyframe_insert("hide_render", 
-                                                 frame=make_frame)
-    bpy.data.objects['Cube.001'].keyframe_insert("hide", 
-                                                 frame=make_frame)
-
     ob = bpy.context.object
     me = ob.data
+    ob.name = id
+
+    bpy.data.objects[id].hide = True
+    bpy.data.objects[id].hide_render = True
+    bpy.data.objects[id].keyframe_insert("hide_render", 
+                                                 frame=make_frame-1)
+    bpy.data.objects[id].keyframe_insert("hide", 
+                                                 frame=make_frame-1)
+    bpy.data.objects[id].hide = False
+    bpy.data.objects[id].hide_render = False
+    bpy.data.objects[id].keyframe_insert("hide_render", 
+                                                 frame=make_frame)
+    bpy.data.objects[id].keyframe_insert("hide", 
+                                                 frame=make_frame)
+
     mat = create_cage('MaterialCage')
     me.materials.append(mat)
     return ccube
@@ -272,7 +278,7 @@ def def_scene(box_length, bgcolor):
     # Camera stuff
    
     '''
-    # scewed angle
+    # skewed angle
     x_cam = 2.2
     y_cam = 2.75
     z_cam = 1.43
@@ -288,7 +294,7 @@ def def_scene(box_length, bgcolor):
     r_camy = 0
     r_camz = 0
 
-    # Scewed angle * 0.5
+    # skewed angle * 0.5
     x_cam = 1.1
     y_cam = 1.625
     z_cam = 0.723
@@ -296,7 +302,7 @@ def def_scene(box_length, bgcolor):
     r_camy = 0
     r_camz = 145
 
-    # scewed angle y
+    # skewed angle y
     x_cam = 1.1
     y_cam = -1.625
     z_cam = 0.723
@@ -304,7 +310,7 @@ def def_scene(box_length, bgcolor):
     r_camy = 0
     r_camz = 35
 
-    # Scewed angle * 0.25
+    # skewed angle * 0.25
     x_cam = .55
     y_cam = 0.8125
     z_cam = 0.3615
@@ -312,7 +318,7 @@ def def_scene(box_length, bgcolor):
     r_camy = 0
     r_camz = 145
 
-    # scewed angle y
+    # skewed angle y
     x_cam = 0.55
     y_cam = -0.8125
     z_cam = 0.3615
@@ -321,10 +327,10 @@ def def_scene(box_length, bgcolor):
     r_camz = 35
     '''
 
-    # Scewed angle * 0.15
-    x_cam = .275
-    y_cam = 0.40625
-    z_cam = 0.18075
+    # skewed angle * 0.05
+    x_cam = 0.14325
+    y_cam = 0.211588540625
+    z_cam = 0.08
     r_camx = 70
     r_camy = 0
     r_camz = 145
@@ -574,7 +580,7 @@ num_2 = parse_octree_data()
 
 # Adding in extra function for determinant visualization
 #num = vis_determinant(6.0, num)
-bpy.data.scenes["Scene"].frame_end = num
+bpy.data.scenes["Scene"].frame_end = num_2
 scene.update()
-#render_movie(scene)
+render_movie(scene)
 #print (array)
