@@ -12,6 +12,16 @@
 #include <cmath>
 #include <cstdio>
 
+// Struct to hold indices for triangle
+struct triangle{
+    // ab, bc, ca are from geometric representations of trangle with 3 sides
+    // a, b, and c
+    int ab, bc, ca;
+    triangle() : ab(0), bc(0), ca(0) {};
+    triangle(int p1, int p2, int p3) : ab(p1), bc(p2), ca(p3) {};
+};
+
+// Struct for 3d points, stored as floats
 struct vec {
     float x, y, z;
 

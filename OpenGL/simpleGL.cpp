@@ -2,7 +2,7 @@
 *
 * Purpose: to test out some OpenGL stuff!
 *
-*   Notes: Add a new vector for ints and indices
+*   Notes: Triangle uses height for scaling along x, fix that maybe?
 *          Enumerate all vertices in our triangle
 *          scale across the surface of a sphere
 *
@@ -27,7 +27,16 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
 
 // Function to define vertices and indices for a giant triangle
 void create_triangle_vertex(std::vector<vec> &vertices, 
-                            std::vector<GLuint> &indices, int res);
+                            std::vector<triangle> &indices, int res);
+
+// Function to recursively create triangle of triangles
+void divide_triangle(std::vector<vec> &corners, std::vector<triangle> &indices, 
+                     std::vector<vec> &vertices, int depth);
+
+// Function to return a triangle number when provided an integer
+int triangle_number(int n){
+    return n * (n+1) / 2;
+}
 
 // defining shader strings to be built later
 const GLchar* vertexShaderSource = "#version 330 core\n"
@@ -42,6 +51,10 @@ const GLchar* fragmentShaderSource = "#version 330 core\n"
     "{\n"
     "color = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
     "}\n\0";
+
+/*----------------------------------------------------------------------------//
+* MAIN
+*-----------------------------------------------------------------------------*/
 
 int main(){
     // Initializing glfw for window generation
@@ -129,34 +142,19 @@ int main(){
     // Rendering a triangle.. first, we need to define the vertices
     // Note: GL assumes 3 dimensions, and likely parses the vertices by groups
     //       of three.
-/*
-    std::vector <GLfloat> vertices(15);
-    vertices = {
-    //GLfloat vertices[] ={
-        0.5f, 0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-        -0.5f, 0.5f, 0.0f,
-        0.0f, 0.75f, 0.0f
+    //int max_depth = 10;
+    std::vector<vec> vertices;
+    //vertices.reserve(3 * pow(4,max_depth));
+    std::vector<triangle> indices;
+    //indices.reserve(pow(4,max_depth));
+    create_triangle_vertex(vertices, indices, 1000);
+    std::vector<vec> init_corners(3);
+    init_corners = {
+        vec(0,1,0),
+        vec(-1,-1,0),
+        vec(1,-1,0)
     };
-*/
-
-    std::vector<vec>vertices(5);
-    vertices = {
-        vec(0.5, 0.5, 0.0),
-        vec(0.5, -0.5, 0),
-        vec(-0.5, -0.5, 0),
-        vec(-0.5, 0.5, 0),
-        vec(0, 0.75, 0)
-    };
-
-    std::vector <GLuint> indices(9);
-    indices = {
-    //GLuint indices[] = {
-        0,1,3,
-        1,2,3,
-        0,3,4
-    };
+    //divide_triangle(init_corners, indices, vertices, max_depth);
 
     // Now to request space on the GPU with Vertex Buffer Objects (VBO)
     // VAO is Vertex Array Object
@@ -177,9 +175,9 @@ int main(){
     // GL_STATIC_DRAW: No changes in vertices expected
     // GL_DYNAMIC_DRAW:  Regular changes expected
     // GL_STREAM_DRAW: Changes expected every step
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * 3 *sizeof(float), 
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * 3 * sizeof(float), 
                  vertices.data(), GL_STATIC_DRAW);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), 
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * 3 * sizeof(int), 
                  indices.data(), GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 
@@ -204,7 +202,7 @@ int main(){
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
         //glDrawArrays(GL_TRIANGLES, 0, 3);
-        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, indices.size() * 3, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
         glfwSwapBuffers(window);
     }
@@ -217,6 +215,10 @@ int main(){
 
 }
 
+/*----------------------------------------------------------------------------//
+* SUBROUTINES
+*-----------------------------------------------------------------------------*/
+
 // callback function for keys
 void key_callback(GLFWwindow *window, int key, int scancode, int action, 
                   int mode){
@@ -228,27 +230,34 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
 
 // Function to define vertices and indices for a giant triangle
 void create_triangle_vertex(std::vector<vec> &vertices, 
-                            std::vector<GLuint> &indices, int res){
+                            std::vector<triangle> &indices, int res){
+
+    //std::cout << "making triangle stuff" << '\n';
     // assume triangle uses entire screen
-    float height = 2 / res;
+    float height = 2.0 / (float)res;
     float startx = 0;
-    float starty = 1.0
+    float starty = 1.0;
     float x = startx;
+    vec vertex;
+
+    res++;
 
     // finding number of vertices
-    int numvertex = 0;
+    int numvertex;
     int row = 1;
     int intcount = 0;
 
     // Defining all vertices
     numvertex = (res + 1) * (res) / 2.0;
+    vertices.reserve(numvertex-1);
+    //std::cout << "numvertex = " << numvertex << '\n';
     for (int i = 0; i < numvertex; ++i){
-        vertices[i].x = x;
-        vertices[i].y = starty;
-        vertices[i].z = 0.0;
-        indices[i] = i;
+        vertex.x = x;
+        vertex.y = starty;
+        vertex.z = 0.0;
 
-        x += 0.5 * height;
+        vertices.push_back(vertex);
+        x += height;
 
         if (i == intcount){
             startx -= 0.5 * height;
@@ -260,14 +269,101 @@ void create_triangle_vertex(std::vector<vec> &vertices,
     }
 
 /*
-    // defining all indices
-    row = 1;
-    int index = 0;
-    for (int i = 0 i < indices.size(); ++i){
-        // Upright triangles on row
-        // Upside down triangles on row
+    for (int i = 0; i < vertices.size(); i++){
+        std::cout << i << '\n';
+        print(vertices[i]);
+    }
+    std::cout << "done printing" << '\n';
+*/
 
-        indices[i] = index;
+    // this is done by keeping track of every row and incrementing top and 
+    // bottom counts
+    int top_count, bot_count, j, row_count;
+    row_count = 1;
+    bot_count = 2;
+    triangle temp_triangle;
+    while (bot_count < numvertex){
+        //std::cout << bot_count << '\n';
+        top_count = triangle_number(row_count - 1)+1;
+        j = 0;
+        while(bot_count < triangle_number(row_count+1)){
+            // upward-facing triangle
+            if (j % 2 == 0){
+                temp_triangle.ab = top_count-1;
+                temp_triangle.bc = bot_count-1;
+                temp_triangle.ca = bot_count;
+                indices.push_back(temp_triangle);
+                bot_count++;
+            }
+            // downward-facing triangle
+            else{
+                temp_triangle.ab = top_count-1;
+                temp_triangle.bc = top_count;
+                temp_triangle.ca = bot_count-1;
+                indices.push_back(temp_triangle);
+                top_count++;
+            }
+            j++;
+        }
+        bot_count++;
+        row_count++;
+    }
+
+/*
+    for (auto tri : indices){
+        std::cout << tri.ab << '\t' << tri.bc << '\t' << tri.ca << '\n';
     }
 */
 }
+
+void divide_triangle(std::vector<vec> &corners, std::vector<triangle> &indices, 
+                     std::vector<vec> &vertices, int depth){
+
+    // Creating the triangle
+    vertices.push_back(corners[0]);
+    vertices.push_back(corners[1]);
+    vertices.push_back(corners[2]);
+    triangle temp_tri;
+    temp_tri.ab = vertices.size() - 3;
+    temp_tri.bc = vertices.size() - 2;
+    temp_tri.ca = vertices.size() - 1;
+    indices.push_back(temp_tri);
+
+    std::vector<vec> temp_corners(3);
+
+    //std::cout << vertices.size() << '\t' << indices.size() << '\n';
+    //print(corners[0]);
+    //print(corners[1]);
+    //print(corners[2]);
+    //std::cout << temp_tri.ab << '\t' << temp_tri.bc << '\t' 
+    //          << temp_tri.ca << '\n';
+
+    if (depth > 0){
+        // Top triangle
+        temp_corners[0] = corners[0];
+        temp_corners[1] = (corners[0] + corners[1]) / 2.0;
+        temp_corners[2] = (corners[0] + corners[2]) / 2.0;
+        divide_triangle(temp_corners, indices, vertices, depth - 1);
+
+        // bottom left
+        temp_corners[0] = corners[1];
+        temp_corners[1] = (corners[1] + corners[0]) / 2.0;
+        temp_corners[2] = (corners[1] + corners[2]) / 2.0;
+        divide_triangle(temp_corners, indices, vertices, depth - 1);
+
+        // bottom center
+        temp_corners[0] = (corners[1] + corners[2]) / 2.0;
+        temp_corners[1] = (corners[0] + corners[1]) / 2.0;
+        temp_corners[2] = (corners[0] + corners[2]) / 2.0;
+        divide_triangle(temp_corners, indices, vertices, depth - 1);
+
+        // bottom right
+        temp_corners[0] = corners[2];
+        temp_corners[1] = (corners[2] + corners[1]) / 2.0;
+        temp_corners[2] = (corners[2] + corners[0]) / 2.0;
+        divide_triangle(temp_corners, indices, vertices, depth - 1);
+
+    }
+    
+}
+
