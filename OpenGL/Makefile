@@ -14,7 +14,8 @@ DEPS = simpleGL.h shader.h
 
 $(BINS): $(OBJ)
 	$(CXX) $(CXXFLAGS) $(OGLFLAGS) -o $(BINS) $^
-	time ./simpleGL >> /dev/null
+	./simpleGL
+	#time ./simpleGL >> /dev/null
 
 clean:
 	rm -Rf $(BINS) #$(OBJ)

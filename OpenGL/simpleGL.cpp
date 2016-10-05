@@ -18,6 +18,10 @@
 // GLFW next
 #include <GLFW/glfw3.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "shader.h"
 #include "vec.h"
 
@@ -26,11 +30,11 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
                   int mode);
 
 // Function to define vertices and indices for a giant triangle
-void create_triangle_vertex(std::vector<vec> &vertices, 
+void create_triangle_vertex(vec *corners, std::vector<vec> &vertices, 
                             std::vector<triangle> &indices, int res);
 
 // Function to recursively create triangle of triangles
-void divide_triangle(std::vector<vec> &corners, std::vector<triangle> &indices, 
+void divide_triangle(vec *corners, std::vector<triangle> &indices, 
                      std::vector<vec> &vertices, int depth);
 
 // Function to return a triangle number when provided an integer
@@ -38,25 +42,20 @@ int triangle_number(int n){
     return n * (n+1) / 2;
 }
 
-// defining shader strings to be built later
-const GLchar* vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec3 position;\n"
-    "void main()\n"
-    "{\n"
-    "gl_Position = vec4(position.x, position.y, position.z, 1.0);\n"
-    "}\0";
-const GLchar* fragmentShaderSource = "#version 330 core\n"
-    "out vec4 color;\n"
-    "void main()\n"
-    "{\n"
-    "color = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-    "}\n\0";
+// Function to read in shader file
+std::string read_shader(std::string filename);
 
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
 
 int main(){
+
+    std::string vertex_string = read_shader("vertex.glsl");
+    std::string fragment_string = read_shader("fragment.glsl");
+    const GLchar* vertexShaderSource = vertex_string.c_str();
+    const GLchar* fragmentShaderSource = fragment_string.c_str();
+
     // Initializing glfw for window generation
     glfwInit();
 
@@ -142,19 +141,18 @@ int main(){
     // Rendering a triangle.. first, we need to define the vertices
     // Note: GL assumes 3 dimensions, and likely parses the vertices by groups
     //       of three.
-    //int max_depth = 10;
+    int max_depth = 4;
     std::vector<vec> vertices;
-    //vertices.reserve(3 * pow(4,max_depth));
+    vertices.reserve(3 * pow(4,max_depth));
     std::vector<triangle> indices;
-    //indices.reserve(pow(4,max_depth));
-    create_triangle_vertex(vertices, indices, 1000);
-    std::vector<vec> init_corners(3);
-    init_corners = {
-        vec(0,1,0),
-        vec(-1,-1,0),
-        vec(1,-1,0)
-    };
-    //divide_triangle(init_corners, indices, vertices, max_depth);
+    indices.reserve(pow(4,max_depth));
+    //create_triangle_vertex(vertices, indices, 4096);
+    //std::vector<vec> init_corners(3);
+    vec init_corners[3];
+    init_corners[0] = vec(0,1,0);
+    init_corners[1] = vec(-1,-1,-1);
+    init_corners[2] = vec(1,-1,1);
+    divide_triangle(init_corners, indices, vertices, max_depth);
 
     // Now to request space on the GPU with Vertex Buffer Objects (VBO)
     // VAO is Vertex Array Object
@@ -191,6 +189,43 @@ int main(){
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Called a "game loop" continues until window needs to close
+    while (!glfwWindowShouldClose(window))
+    {
+        glfwPollEvents();
+
+        // Render
+        // Clear the color buffer
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Using the program we created
+        glUseProgram(shaderProgram);
+
+        // Create transformations
+        glm::mat4 model;
+        glm::mat4 view;
+        glm::mat4 projection;
+        model = glm::rotate(model, -55.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        projection = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
+        // Get their uniform location
+        GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+        GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+        GLint projLoc = glGetUniformLocation(shaderProgram, "projection"); 
+        // Pass them to the shaders
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection)); 
+
+        // Draw container
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        // Swap the screen buffers
+        glfwSwapBuffers(window);
+    }
+/*
     while (!glfwWindowShouldClose(window)){
         glfwPollEvents();
 
@@ -200,12 +235,28 @@ int main(){
 
         // Using the program we created
         glUseProgram(shaderProgram);
+
+        glm:: mat4 view, projection, model;
+        model = glm::rotate(model, 55.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+        projection = glm::perspective(55.0f,
+                                      (float)width / (float)height, 
+                                      0.1f, 100.0f);
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, 3.0f));
+        
+        GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        GLint projLoc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
         glBindVertexArray(VAO);
         //glDrawArrays(GL_TRIANGLES, 0, 3);
         glDrawElements(GL_TRIANGLES, indices.size() * 3, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
         glfwSwapBuffers(window);
     }
+*/
 
     // termination
     glDeleteVertexArrays(1, &VAO);
@@ -229,7 +280,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action,
 }
 
 // Function to define vertices and indices for a giant triangle
-void create_triangle_vertex(std::vector<vec> &vertices, 
+void create_triangle_vertex(vec *corners, std::vector<vec> &vertices, 
                             std::vector<triangle> &indices, int res){
 
     //std::cout << "making triangle stuff" << '\n';
@@ -316,7 +367,7 @@ void create_triangle_vertex(std::vector<vec> &vertices,
 */
 }
 
-void divide_triangle(std::vector<vec> &corners, std::vector<triangle> &indices, 
+void divide_triangle(vec *corners, std::vector<triangle> &indices, 
                      std::vector<vec> &vertices, int depth){
 
     // Creating the triangle
@@ -329,7 +380,7 @@ void divide_triangle(std::vector<vec> &corners, std::vector<triangle> &indices,
     temp_tri.ca = vertices.size() - 1;
     indices.push_back(temp_tri);
 
-    std::vector<vec> temp_corners(3);
+    vec temp_corners[3];
 
     //std::cout << vertices.size() << '\t' << indices.size() << '\n';
     //print(corners[0]);
@@ -367,3 +418,21 @@ void divide_triangle(std::vector<vec> &corners, std::vector<triangle> &indices,
     
 }
 
+// Function to read in shader file
+std::string read_shader(std::string filename){
+    // Defining necessary shaders
+    std::ifstream shader_file;
+
+    shader_file.open(filename);
+
+    std::stringstream stream;
+
+    stream << shader_file.rdbuf();
+
+    std::string str = stream.str();
+
+    shader_file.close();
+
+    return str;
+
+}
