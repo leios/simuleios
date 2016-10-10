@@ -19,14 +19,16 @@
 *-----------------------------------------------------------------------------*/
 
 int main(){
-    int numsteps = 1000;
+    int numsteps = 5;
     // Defining file for output
-    std::vector <std::ofstream> octree_files;
+    //std::vector <std::ofstream> octree_files;
     std::string filename;
+/*
     for (int i = 0; i < numsteps; i++){
         filename = "octree" + std::to_string(i) + ".dat";
         octree_files.emplace_back(filename, std::ofstream::out);
     }
+*/
     std::ofstream p_output("pout.dat", std::ofstream::out);
 
     // Creating the octree
@@ -44,9 +46,10 @@ int main(){
     divide_octree(root, 1);
 
     for (int i = 0; i < numsteps; ++i){
+        std::cout << i << '\n';
         node *root = make_octree(p_vec, 1000);
         divide_octree(root, 1);
-        if (i % 100 || i == 0){
+        if (i % 100 == 0 || i == 0){
             particle_output(root, p_output);
             p_output << "\n\n";
         }
@@ -236,7 +239,7 @@ void octree_output(node *curr, std::ostream &output){
            << llv.z + curr->box_length << '\n';
     output << '\n' << '\n';
 
-    // Recursively outputing internal boxes
+    // Recursively outputting internal boxes
     for (auto child : curr->children){
         octree_output(child, output);
     }
@@ -280,7 +283,7 @@ void force_integrate(node *root, double dt){
 
 }
 
-// Recursive function to find acceleration of particle in tree
+// Function to find acceleration of particle in tree
 void RKsearch(node *curr, particle *part){
 
     vec d = -part->p;
