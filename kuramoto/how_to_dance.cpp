@@ -22,7 +22,7 @@
 // Struct to hold oscillator data
 // Note: All oscillators in the group have the same phase / freq
 struct oscillator{
-    double pos, ppos, acc, phase, freq;
+    double pos, ppos, acc, phase, freq, vel, attr;
 
     oscillator() : pos(0.0), ppos(0.0), acc(0.0), phase(0.0), freq(0.0) {}
     oscillator(double p, double pp, double a, double ph, double f) :
@@ -58,6 +58,10 @@ void verlet(std::vector<oscillator> &group, double dt);
 void output_pos(std::vector<oscillator> &group, oscillator &steve, 
                 std::ofstream &file);
 
+// Function to return sign of double
+double sign(double variable);
+
+
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
@@ -71,7 +75,7 @@ int main(){
 
     std::ofstream file("particle_output.dat", std::ofstream::out);
 
-    synchronize(group, steve, 0.1, 10, file);
+    synchronize(group, steve, 0.1, .0000000001, file);
 
     file.close();
 }
@@ -90,10 +94,13 @@ std::vector<oscillator> init_group(int groupnum, double freq,
     static std::mt19937 gen(rd());
     std::uniform_real_distribution<double>
         dance_floor_dist(-dance_floor * 0.5, dance_floor * 0.5);
+    std::uniform_real_distribution<double>
+        attractiveness_dist(0,1.0);
 
     for (int i = 0; i < groupnum; i++){
         group[i] = oscillator(dance_floor_dist(gen), 0.0, 0.0, freq, 0.0);
         group[i].ppos = group[i].pos;
+        group[i].attr = attractiveness_dist(gen);
         //std::cout << group[i].pos << '\n';
     }
 
@@ -136,12 +143,15 @@ void synchronize(std::vector<oscillator> &group, oscillator &steve, double dt,
     // Now we need to synchronize steve to the group
     // Note: everyone is oscillating at the same phaseuency except for steve
     std::cout << steve.freq - group[0].freq << '\n';
-    while ((steve.freq - group[0].freq) > 0.01){
+    //while ((steve.freq - group[0].freq) > 0.01){
+    for (int i = 0; i < 2000; i++){
         update_phase(group, steve, dt);
 
         // Note that all frequencies of members in the group are the same
-        sum = sin(group[0].phase - steve.phase);
-        steve.freq = nat_freq + sum;
+        if (i > 100){
+            sum = sin(group[0].phase - steve.phase);
+            steve.freq = nat_freq + sum;
+        }
 
         // Update positions for members in the group
         find_acc(group, steve, cutoff);
@@ -157,7 +167,7 @@ void verlet(std::vector<oscillator> &group, double dt){
 
     // changing the position of all dancers in simulation
     for (auto& member : group){
-        std::cout << member.acc << '\n';
+        //std::cout << member.acc << '\n';
         double temp_x = member.pos;
         member.pos = 2 * member.pos - member.ppos + member.acc * dt*dt;
         member.ppos = temp_x;
@@ -167,24 +177,27 @@ void verlet(std::vector<oscillator> &group, double dt){
         if (member.pos < -10){
             member.pos = -10;
         }
+
+        member.vel = (member.pos - member.ppos) / (2 * dt);
     }
 }
 
 // Find acceleration of all dancers on the dancefloor
 void find_acc(std::vector<oscillator> &group, oscillator &steve, double cutoff){
 
-    double x_diff;
+    double x_diff, freq_diff;
 
     // checking how far off steve is
     for (auto& member : group){
         x_diff = member.pos - steve.pos;
+        freq_diff = member.freq - steve.freq;
         // Repulsive force
-        if ((steve.freq - member.freq) > cutoff){
-            member.acc = 0.1 / (x_diff * x_diff);
+        if ((freq_diff*freq_diff) > cutoff){
+            member.acc = member.attr * 0.1 / (x_diff);
         }
         // Attractive force
         else{
-            member.acc = 0.1 * x_diff;
+            member.acc = - member.attr * 0.1 * x_diff - member.vel * 0.5;
         }
 
         //std::cout << member.acc << '\n';
@@ -228,4 +241,17 @@ void output_pos(std::vector<oscillator> &group, oscillator &steve,
     }
 
     file << '\n' << '\n';
+}
+
+// Function to return sign of double
+double sign(double variable){
+    if (variable < 0){
+        return -1.0;
+    }
+    else if (variable == 0){
+        return 0.0;
+    }
+    else{
+        return 1.0;
+    }
 }
