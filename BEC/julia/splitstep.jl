@@ -88,8 +88,6 @@ function splitstep(stepnum, dt)
             norm_const += abs2(wave[i]) * xmax / res
         end
 
-        #println(norm_const)
-
         for i = 1:res
             wave[i] *= 1/norm_const
         end
@@ -100,9 +98,10 @@ function splitstep(stepnum, dt)
         end
 
         # Output
-        if j % 1000 == 0 || j == 1
+        if j % 10 == 0 || j == 1
             for i = 1:res
                 println(output, density[i])
+                #println(PE[i], '\t', KE[i])
             end
 
             print(output, '\n', '\n')
