@@ -9,7 +9,8 @@
 *          Now, viewers may watch the same videos over gain, check affinity
 *          Compile with "g++ viral_video.cpp -std=c++11"
 *
-*          Sort the videos to find the videos to provide.
+*          25% chance to share if they liked the video
+*          Don't forget to call "find_affinities" after watch_videos
 *
 *-----------------------------------------------------------------------------*/
 
@@ -18,6 +19,7 @@
 #include <random>
 #include <algorithm>
 #include <unordered_map>
+#include <fstream>
 
 // Struct for videos
 struct video{
@@ -36,11 +38,15 @@ struct viewer{
     //std::vector<video> videos_seen;
     std::unordered_map<int, double> videos_seen;
     std::vector<double> affinities;
+    int next_video = -1;
+    int curr_video = -1;
+    bool has_seen_0 = 0;
     int index;
 };
 
 // Function to initialize all the people in the simulation
-std::vector<viewer> init_viewers(int viewer_num, int num_videos);
+std::vector<viewer> init_viewers(int viewer_num, int num_videos, 
+                                 int subscribers);
 
 // Function to find affinity with all other people 
 std::vector<double> find_affinities(int individual,
@@ -49,8 +55,10 @@ std::vector<double> find_affinities(int individual,
 // Function to provide videos to all viewers
 void provide_videos(std::vector<viewer> &viewers, int cutoff, int num_videos);
 
-// Function for each individual to choose a video from their video_list and 
-// rate it randomly between 0, 1, and 2
+// Function for choosing videos
+void choose_video(std::vector<viewer> &viewers);
+
+// Function to watch each individual's next video
 void watch_video(std::vector<viewer> &viewers);
 
 // Function to share videos with other people randomly in the network
@@ -59,6 +67,9 @@ void watch_video(std::vector<viewer> &viewers);
 void share(std::vector<viewer> &viewers, std::vector<int> &network, 
            int video_id);
 
+// Function to output which videos are being watched to a file.
+void output_viewers(std::vector<viewer> &viewers, std::ofstream &file);
+
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
@@ -66,15 +77,32 @@ void share(std::vector<viewer> &viewers, std::vector<int> &network,
 int main(){
 
     std::vector<viewer> viewers;
-    int num_videos = 10;
-    viewers = init_viewers(100, num_videos);
+    int num_videos = 1000;
+    viewers = init_viewers(100, num_videos, 10);
 
+    // Creating file for outputting curr_video later.
+    std::ofstream output("out.dat", std::ofstream::out);
+
+/*
     for (int i = 0; i < viewers.size(); i++){
         std::cout << i << '\t' << viewers[i].videos_seen[0] << '\t' 
                   << viewers[i].affinities[0] << '\n';
     }
+*/
 
     provide_videos(viewers, 10, num_videos);
+
+    for (int i = 0; i < 100; i++){
+        provide_videos(viewers, 10, num_videos);
+        choose_video(viewers);
+        output_viewers(viewers, output);
+        watch_video(viewers);
+        for (int j = 0; j < viewers.size(); j++){
+            find_affinities(j, viewers);
+        }
+    }
+
+    output.close();
 }
 
 /*----------------------------------------------------------------------------//
@@ -82,7 +110,8 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // Function to initialize all the people in the simulation
-std::vector<viewer> init_viewers(int viewer_num, int num_videos){
+std::vector<viewer> init_viewers(int viewer_num, int num_videos, 
+                                 int subscribers){
 
     int history = 10;
     video chosen_video;
@@ -93,6 +122,9 @@ std::vector<viewer> init_viewers(int viewer_num, int num_videos){
     std::uniform_int_distribution<int>
         chosen_videos_dist(1, num_videos-1);
 
+    std::uniform_int_distribution<int>
+        viewer_dist(0, viewer_num-1);
+
     std::vector<viewer> viewers(viewer_num);
 
     // Defining videos seen by each person
@@ -102,15 +134,20 @@ std::vector<viewer> init_viewers(int viewer_num, int num_videos){
         viewers[i].index = i;
         for (int j = 0; j < history; j++){
             chosen_video.id = chosen_videos_dist(gen);
-            //viewers[i].videos_seen.push_back(chosen_video);
             viewers[i].videos_seen[chosen_video.id] = 1.0;
         }
     }
 
     // Denfining all the initial affinities
     for (int i = 0; i < viewer_num; i++){
-        std::cout << i << '\n';
         viewers[i].affinities = find_affinities(i, viewers);
+    }
+
+    // Selecting certain people to watch video 0 at the start of the simulation
+    int sub;
+    for (int i = 0; i < subscribers; i++){
+        sub = viewer_dist(gen);   
+        viewers[sub].next_video = 0;
     }
 
     return viewers;
@@ -127,7 +164,6 @@ std::vector<double> find_affinities(int individual,
 
     // Searching through all the other viewers to find videos in common
     for (int i = 0; i < viewers.size(); i++){
-        std::cout << i << '\n';
         shared = 0;
         if (individual != i){
             // Naive method to find all videos shared between to folks
@@ -186,6 +222,7 @@ void provide_videos(std::vector<viewer> &viewers, int cutoff, int num_videos){
         for (int j = 0; j < cutoff; j++){
             // Going through people's video history
             for (auto &k : similarity_list[j].videos_seen){
+                //std::cout << k.first << '\n';
                 video_values[k.first].val +=  
                     viewers[i].affinities[similarity_list[j].index]
                     * k.second;
@@ -194,6 +231,13 @@ void provide_videos(std::vector<viewer> &viewers, int cutoff, int num_videos){
 
         std::sort(video_values.begin(), video_values.end(), 
                   [](const video& a, const video& b){return a.val > b.val;});
+
+/*
+        for (int i = 0; i < video_values.size(); i++){
+            std::cout << video_values[i].id << '\t' << video_values[i].val 
+                      << '\n';
+        }
+*/
 
         viewers[i].video_list.clear();
         for (int j = 0; j < 10; j++){
@@ -204,19 +248,105 @@ void provide_videos(std::vector<viewer> &viewers, int cutoff, int num_videos){
         similarity_list = viewers;
     }
 
+/*
     for (int i = 0; i < viewers.size(); i++){
         std::cout << viewers[i].video_list[5].id << '\n';
+    }
+*/
+}
+
+// Function for each individual to choose a video from their video_list and 
+// rate it randomly between 0, 1, and 2
+void choose_video(std::vector<viewer> &viewers){
+
+    // Defining a second distribution for the choice of videos
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<int>
+        choice_dist(0, viewers[0].video_list.size() - 1);
+
+    // Going through our list of individuals and forcing them to watch videos
+    for (int i = 0; i < viewers.size(); i++){
+        if (viewers[i].next_video < 0){
+            viewers[i].curr_video = viewers[i].video_list[choice_dist(gen)].id;
+        }
+        else{
+            viewers[i].curr_video = viewers[i].next_video;
+            viewers[i].next_video = -1;
+        }
+        if (viewers[i].curr_video == 0){
+            viewers[i].has_seen_0 = 1;
+        }
     }
 }
 
 // Function for each individual to choose a video from their video_list and 
 // rate it randomly between 0, 1, and 2
 void watch_video(std::vector<viewer> &viewers){
+
+    // Defining random distribution for how much people like vides
+    // Cast to double when storing.
+    // Three possible values for video feedback: 0 -- dislike
+    //                                           1 -- nothing
+    //                                           2 -- like
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<int>
+        like_dist(0, 2);
+
+    // Distribution for setting each individual's network
+    std::uniform_int_distribution<int>
+        network_dist(0, viewers.size()-1);
+
+    // Distribution for random chance to share
+    std::uniform_real_distribution<double>
+        share_dist(0,1);
+
+    int video_choice, like_choice;
+    double share_chance;
+
+    // Going through our list of individuals and forcing them to watch videos
+    // They then tell us how much they like the video.
+    for (int i = 0; i < viewers.size(); i++){
+        video_choice = viewers[i].curr_video;
+        like_choice = like_dist(gen);
+        viewers[i].curr_video = -1;
+ 
+        viewers[i].videos_seen[video_choice] = (double)like_choice;
+        if (like_choice > 1){
+            share_chance = share_dist(gen);
+            if (share_chance > 0.50){
+
+                // Creating this person's network
+                std::vector <int> network;
+                network.reserve(network_dist(gen));
+                for (int i = 0; i < network.size(); i++){
+                    network.push_back(network_dist(gen));
+                }
+                share(viewers, network, video_choice);
+            }
+        }
+    }
 }
 
 // Function to share videos with other people randomly in the network
 // Note that this simply forces the individuals to watch a particular video 
 // next timestep
 void share(std::vector<viewer> &viewers, std::vector<int> &network, 
-           int video_id);
+           int video_id){
+    for (int i = 0; i < network.size(); i++){
+        viewers[i].next_video = network[i];
+    }
+}
+
+// Function to output which videos are being watched to a file.
+void output_viewers(std::vector<viewer> &viewers, std::ofstream &file){
+
+    for (int i = 0; i < viewers.size(); i++){
+        file << i << '\t' << viewers[i].has_seen_0 << '\n';
+        //file << i << '\t' << viewers[i].curr_video << '\n';
+    }
+
+    file << '\n' << '\n';
+}
 
