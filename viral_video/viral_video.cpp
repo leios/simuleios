@@ -12,63 +12,11 @@
 *          25% chance to share if they liked the video
 *          Don't forget to call "find_affinities" after watch_videos
 *
+*          the -fsanatize=address faile at creating random device rd
+*
 *-----------------------------------------------------------------------------*/
 
-#include <iostream>
-#include <vector>
-#include <random>
-#include <algorithm>
-#include <unordered_map>
-#include <fstream>
-
-// Struct for videos
-struct video{
-    int id;
-    double val = 1.0;
-};
-
-// equality operator for videos
-bool operator==(const video& a, const video& b){
-    return (a.id == b.id);
-}
-
-// Struct to hold all information for each individual viewer
-struct viewer{
-    std::vector<video> video_list;
-    //std::vector<video> videos_seen;
-    std::unordered_map<int, double> videos_seen;
-    std::vector<double> affinities;
-    int next_video = -1;
-    int curr_video = -1;
-    bool has_seen_0 = 0;
-    int index;
-};
-
-// Function to initialize all the people in the simulation
-std::vector<viewer> init_viewers(int viewer_num, int num_videos, 
-                                 int subscribers);
-
-// Function to find affinity with all other people 
-std::vector<double> find_affinities(int individual,
-                                    std::vector<viewer> &viewers);
-
-// Function to provide videos to all viewers
-void provide_videos(std::vector<viewer> &viewers, int cutoff, int num_videos);
-
-// Function for choosing videos
-void choose_video(std::vector<viewer> &viewers);
-
-// Function to watch each individual's next video
-void watch_video(std::vector<viewer> &viewers);
-
-// Function to share videos with other people randomly in the network
-// Note that this simply forces the individuals to watch a particular video 
-// next timestep
-void share(std::vector<viewer> &viewers, std::vector<int> &network, 
-           int video_id);
-
-// Function to output which videos are being watched to a file.
-void output_viewers(std::vector<viewer> &viewers, std::ofstream &file);
+#include "viral_video.h"
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -76,9 +24,17 @@ void output_viewers(std::vector<viewer> &viewers, std::ofstream &file);
 
 int main(){
 
+    // Defining necessary information for visualization
+    frame anim;
+    anim.create_frame(400,300,30,"/tmp/image");
+    anim.init();
+    anim.curr_frame = 1;
+
+    create_bg(anim, 0, 0, 0);
+
     std::vector<viewer> viewers;
     int num_videos = 1000;
-    viewers = init_viewers(100, num_videos, 10);
+    viewers = init_viewers(anim, 100, num_videos, 10);
 
     // Creating file for outputting curr_video later.
     std::ofstream output("out.dat", std::ofstream::out);
@@ -110,11 +66,14 @@ int main(){
 *-----------------------------------------------------------------------------*/
 
 // Function to initialize all the people in the simulation
-std::vector<viewer> init_viewers(int viewer_num, int num_videos, 
+std::vector<viewer> init_viewers(frame &anim, int viewer_num, int num_videos, 
                                  int subscribers){
 
     int history = 10;
     video chosen_video;
+
+    // if sqrt(viewer_num) != int, make squarable
+    viewer_num = ceil(sqrt(viewer_num)*sqrt(viewer_num));
 
     // Defining random distribution for videos seen by people
     static std::random_device rd;
@@ -138,7 +97,7 @@ std::vector<viewer> init_viewers(int viewer_num, int num_videos,
         }
     }
 
-    // Denfining all the initial affinities
+    // Defining all the initial affinities
     for (int i = 0; i < viewer_num; i++){
         viewers[i].affinities = find_affinities(i, viewers);
     }
@@ -148,6 +107,18 @@ std::vector<viewer> init_viewers(int viewer_num, int num_videos,
     for (int i = 0; i < subscribers; i++){
         sub = viewer_dist(gen);   
         viewers[sub].next_video = 0;
+    }
+
+    // Providing all people an initial position
+    // Checking to see if we can easily put everyone in a square
+    double box_size = sqrt((double)viewer_num);
+    int j = 0;
+    for (int i = 0; i < viewer_num; i++){
+        viewers[i].p.x = (anim.res_x / box_size) * (i - j*floor(box_size));
+        viewers[i].p.y = (anim.res_y / box_size) * j;
+        if (i == floor(box_size)){
+            j++;
+        }
     }
 
     return viewers;
@@ -348,5 +319,13 @@ void output_viewers(std::vector<viewer> &viewers, std::ofstream &file){
     }
 
     file << '\n' << '\n';
+}
+
+// Function to place viewers in a frame for visualization
+void draw_viewers(frame &anim, std::vector<viewer> &viewers){
+    color white = {1,1,1,1};
+    for (int i = 0; i < viewers.size(); i++){
+        draw_human(anim, viewers[i].p, 10, white);
+    }    
 }
 
