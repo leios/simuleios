@@ -39,6 +39,21 @@ struct viewer{
     vec p, pp, vel, acc;
 };
 
+// Function to visualize a pull network
+void visualize_pull(int viewer_num);
+
+// Function to visualize a push network
+void visualize_push(int viewer_num);
+
+// Function to visualize a small network of viewers
+void visualize_small_network(int viewer_num);
+
+// Function to visualize lage network -- size of canvas
+void visualize_large_network();
+
+// Function to visualize a small, moving network of viewers
+void visualize_moving_network(int viewer_num);
+
 // Function to initialize all the people in the simulation
 std::vector<viewer> init_viewers(frame &anim, int viewer_num, int num_videos, 
                                  int subscribers);
@@ -67,3 +82,21 @@ void output_viewers(std::vector<viewer> &viewers, std::ofstream &file);
 
 // Function to place viewers in a frame for visualization
 void draw_viewers(frame &anim, std::vector<viewer> &viewers);
+
+// Function to draw viewers as pixels in an image
+void draw_pixel_viewers(frame &anim, std::vector<viewer> &viewers);
+
+// Function to draw all viewers successively
+void animate_viewers(frame &anim, std::vector<viewer> &viewers);
+
+// Function to find all the accelerations for all the folks
+void find_acc(int individual, std::vector<viewer> &viewers);
+
+// Function for the verlet agorithm / position change
+void verlet(viewer &individual, double dt);
+
+// Function to update positions every timestep
+void update_pos(std::vector<viewer> &viewers, double dt);
+
+// Return the sign of a double
+double sign(double x);

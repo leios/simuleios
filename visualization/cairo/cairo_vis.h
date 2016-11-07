@@ -12,8 +12,10 @@
 #include <cairo.h>
 #include <sstream>
 #include <math.h>
+#include <vector>
+#include <string>
 
-#define num_frames 5
+#define num_frames 1200
 
 // Struct for colors
 struct color{
@@ -53,8 +55,26 @@ struct frame{
 // Function to create basic colored background
 void create_bg(frame &anim, int r, int g, int b);
 
-// Function to plot sinunoidal 
+// Function to draw human stuff
 void draw_human(frame &anim, double pos, double phase, double freq, color clr);
 void draw_human(frame &anim, vec pos, double height, color clr);
+void animate_human(frame &anim, vec pos, double height, color clr, double time);
+void write_text(frame &anim, vec head_pos, vec text_pos, double head_radius,
+                double font_size, std::string text);
+
+// Function to grow a circle at a provided point
+void grow_circle(frame &anim, double time, vec &ori, double radius, 
+                 double weight);
+
+// Function to animate a line from two points
+void animate_line(frame &anim, int start_frame, double time, 
+                  vec &ori_1, vec &ori_2, color &clr);
+
+// Function to draw layers
+void draw_layers(std::vector<frame> &layer);
+
+// Function to draw an animated circle
+void animate_circle(frame &anim, double time, double radius, vec ori, 
+                    color &clr);
 
 #endif
