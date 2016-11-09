@@ -19,6 +19,7 @@ class point:
     x = 0
     y = 0
     z = 0
+    w = 0
     def __init__(self, rx, ry, rz):
         x = rx
         y = ry
@@ -344,7 +345,7 @@ def render_movie(scene):
     bpy.ops.render.render( animation=True ) 
 
 # Function for creating a tesseract with connected points
-def define_tesseract(box_length):
+def define_tesseract(box_length, w):
  
     # Find locations of all the points
     # setting locations for unit cube
@@ -353,9 +354,9 @@ def define_tesseract(box_length):
     for i in range(0,2):
         for j in range(0,2):
             for k in range(0,2):
-                cube[count].x = (float(i) - 0.5) * box_length
-                cube[count].y = (float(j) - 0.5) * box_length
-                cube[count].z = (float(k) - 0.5) * box_length
+                cube[count].x = (float(i) - 0.5) * (box_length - w)
+                cube[count].y = (float(j) - 0.5) * (box_length - w)
+                cube[count].z = (float(k) - 0.5) * (box_length - w)
                 print(cube[count].x)
                 count += 1
     return cube
@@ -392,14 +393,28 @@ def create_tesseract_connectome(res):
     print("length of the connectome is: ", len(connectome))
     return connectome
 
+#defining single rotation along
+def single_rotation_xy(pt, theta):
+    location = np.array([pt.x, pt.y, pt.z, pt.w])
+    rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0, 0],
+                                [np.sin(theta), np.cos(theta), 0, 0],
+                                [0,0,1,0],
+                                [0,0,0,1]])
+    out_matrix = np.matmul(rotation_matrix, location)
+    print(out_matrix)
+    pt.x = out_matrix[0]
+    pt.y = out_matrix[1]
+    pt.z = out_matrix[2]
+    pt.w = out_matrix[3]
+    return pt
 
 # Function to plot all the points and create the connectome
 def visualize_fourth_dimension(res):
     # defining sphere material for copying
     new_sphere(0.05, 0, 0, 0, 1, 0, 0, "original")
     # define small cube first
-    init_cube = define_tesseract(0.5)
-    final_cube = define_tesseract(1.5)
+    init_cube = define_tesseract(1, -0.5)
+    final_cube = define_tesseract(1, -0.5)
     count = 0
     for i in init_cube:
         place_duplicates(i.x, i.y, i.z, count, "original");
@@ -411,11 +426,34 @@ def visualize_fourth_dimension(res):
 
     connectome = create_tesseract_connectome(2)
     add_lines(connectome)
-    '''
     for i in range(0,res):
-        box_length = 0.5 + (float(i) / res)
-        curr_cube = define_tesseract(box_length)
-    '''
+        box_length = 1
+        w = -0.5 + (float(i) / res)
+        curr_cube = define_tesseract(box_length, w)
+
+        # Setting all of the points to their appropriate locations
+        for j in range(0,8):
+            #curr_cube[j] = single_rotation_xy(curr_cube[j], np.pi * (j) / 8)
+            #init_cube[j] = single_rotation_xy(init_cube[j], np.pi * (j) / 8)
+ 
+            # updating current cube
+            mat = bpy.data.objects[str(j+8)]
+            mat.keyframe_insert(data_path="location", \
+                frame=(i), index=-1)
+            bpy.context.scene.objects[str(j+8)].location =  \
+                (curr_cube[j].x,curr_cube[j].y,curr_cube[j].z)
+            bpy.context.scene.objects[str(j+8)].keyframe_insert(
+                data_path='location', frame=(i))
+
+            # updating initial cube
+            mat = bpy.data.objects[str(j)]
+            mat.keyframe_insert(data_path="location", \
+                frame=(i), index=-1)
+            bpy.context.scene.objects[str(j)].location =  \
+                (init_cube[j].x,init_cube[j].y,init_cube[j].z)
+            bpy.context.scene.objects[str(j)].keyframe_insert(
+                data_path='location', frame=(i))
+            move_lines(connectome, i)
 
 num = 10
 scene = bpy.context.scene
