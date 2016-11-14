@@ -28,10 +28,10 @@ class point:
         y = ry
         z = rz
 
-def project(point):
+def project(point, val):
     cutoff = 0.001
     vec = np.array([point.x, point.y, point.z, point.w])
-    temp_w = 1 / (1-point.w)
+    temp_w = 1 / (val-point.w)
     #proj_matrix = np.array([[1, 0, 1, 1], [0.5,1,0.5,1], [0,0,1,1]])
     #proj_matrix = np.array([[1, 0, 0, 0], [0,1,0,0], [0,0,1,0]])
     #proj_matrix = np.array([[1, 0, 0, 1], [0,1,0,0], [0,0,1,1]])
@@ -380,7 +380,7 @@ def define_tesseract(box_length, w):
                 cube[count].w = w;
 
                 cube[count].projx, cube[count].projy, cube[count].projz = \
-                    project(cube[count])
+                    project(cube[count], 1)
                 #print(cube[count].x)
                 count += 1
     return cube
@@ -437,11 +437,11 @@ def single_rotation_xy(pt, theta):
     pt.z = out_matrix[2]
     pt.w = out_matrix[3]
 
-    pt.projx, pt.projy, pt.projz = project(pt) 
+    pt.projx, pt.projy, pt.projz = project(pt, 1) 
     return pt
 
 #defining single rotation along wz
-def single_rotation_zw(pt, theta):
+def single_rotation_zw(pt, theta, val):
     location = np.array([pt.x, pt.y, pt.z, pt.w])
     rotation_matrix = np.array([[1,0,0,0],
                                 [0,1,0,0],
@@ -452,11 +452,11 @@ def single_rotation_zw(pt, theta):
     pt.y = out_matrix[1]
     pt.z = out_matrix[2]
     pt.w = out_matrix[3]
-    pt.projx, pt.projy, pt.projz = project(pt) 
+    pt.projx, pt.projy, pt.projz = project(pt, val) 
     return pt
 
 #defining single rotation along xz
-def single_rotation_xw(pt, theta):
+def single_rotation_xw(pt, theta, val):
     location = np.array([pt.x, pt.y, pt.z, pt.w])
     rotation_matrix = np.array([[np.cos(theta), 0,0,-np.sin(theta)],
                                 [0,1,0,0],
@@ -467,11 +467,11 @@ def single_rotation_xw(pt, theta):
     pt.y = out_matrix[1]
     pt.z = out_matrix[2]
     pt.w = out_matrix[3]
-    pt.projx, pt.projy, pt.projz = project(pt) 
+    pt.projx, pt.projy, pt.projz = project(pt, val) 
     return pt
 
 #defining double rotation along xy and wz
-def double_rotation(pt, theta):
+def double_rotation(pt, theta, val):
     location = np.array([pt.x, pt.y, pt.z, pt.w])
     rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0, 0],
                                 [np.sin(theta), np.cos(theta), 0, 0],
@@ -488,7 +488,7 @@ def double_rotation(pt, theta):
     pt.y = out_matrix[1]
     pt.z = out_matrix[2]
     pt.w = out_matrix[3]
-    pt.projx, pt.projy, pt.projz = project(pt) 
+    pt.projx, pt.projy, pt.projz = project(pt, val) 
     return pt
 
 # Function to plot all the points and create the connectome
@@ -498,7 +498,7 @@ def visualize_fourth_dimension(res1, res2, rot_res):
 
     # define small cube first
     init_cube = define_tesseract(1, -0.5)
-    final_cube = define_tesseract(1, -0.5)
+    final_cube = define_tesseract(1, 0.5)
     count = 0
     for i in init_cube:
         place_duplicates(i.projx, i.projy, i.projz, count, "original");
@@ -513,6 +513,8 @@ def visualize_fourth_dimension(res1, res2, rot_res):
 
     connectome = create_tesseract_connectome(2)
     add_lines(connectome)
+
+    '''
     for i in range(0,res1):
         box_length = 1
         w = -0.5 + (float(i) / (res1 - 1))
@@ -542,12 +544,20 @@ def visualize_fourth_dimension(res1, res2, rot_res):
                 data_path='location', frame=(i))
             move_lines(connectome, i)
 
+    '''
+    curr_cube = final_cube
+    val = 1
+
     for i in range(res1,res1+res2):
         for j in range(0,8):
-            #final_cube[j] = single_rotation_zw(curr_cube[j], np.pi / rot_res)
-            #init_cube[j] = single_rotation_zw(init_cube[j], np.pi / rot_res)
-            final_cube[j] = double_rotation(curr_cube[j], np.pi / rot_res)
-            init_cube[j] = double_rotation(init_cube[j], np.pi / rot_res)
+            if i < (res2 - res1)*0.5:
+                val = 5 - 4 * (i - res1) / ((res2 - res1)*0.5)
+            else:
+                val = 1 + 4 * (i-res1-((res2 - res1)*0.5)) / ((res2 - res1)*0.5)
+            #final_cube[j] = single_rotation_xy(curr_cube[j], np.pi/rot_res,val)
+            #init_cube[j] = single_rotation_xy(init_cube[j], np.pi/rot_res, val)
+            final_cube[j] = double_rotation(curr_cube[j], np.pi / rot_res, val)
+            init_cube[j] = double_rotation(init_cube[j], np.pi / rot_res, val)
 
             # updating current cube
             mat = bpy.data.objects[str(j+8)]
@@ -599,27 +609,68 @@ def cube_slice(res):
     connectome = create_connectome(2)
     add_lines(connectome)
 
-    for i in range (0,res):
+    for i in range (0, res):
         # updating plane pos
         mat = bpy.data.objects["Plane"]
         mat.keyframe_insert(data_path="location", \
             frame=(i), index=-1)
         bpy.context.scene.objects["Plane"].location =  \
-            (0,0,-1 + 2*i / (res-1))
+            (0, 0, -1 + 2*i / (res-1))
         bpy.context.scene.objects["Plane"].keyframe_insert(
             data_path='location', frame=(i))
 
+# Function to project the cube onto a standard plan
+def project_cube(res):
+    # Defining the initial cube
+    cube = define_tesseract(1, 0.5)
 
-num = 50
+    # defining sphere material for copying
+    new_sphere(0.05, 0, 0, 0, 1, 0, 0, "original")
+
+    count = 0
+    for i in cube:
+        place_duplicates(i.projx, i.projy, i.projz, count, "original");
+        count += 1
+
+    bpy.data.objects["original"].hide = True
+    bpy.data.objects["original"].hide_render = True
+
+    plane = bpy.ops.mesh.primitive_plane_add(location=(0,0,-2),
+                                             radius = 10)
+
+    #mat = bpy.data.materials.new("Plane")
+    #ob = bpy.context.object
+    #me = ob.data
+
+    mat = create_new_material("Plane", (1,1,1))
+    bpy.data.objects["Plane"].data.materials.append(mat)
+
+    connectome = create_connectome(2)
+    add_lines(connectome)
+
+    for i in range (0,res):
+        # updating plane pos
+        mat = bpy.data.objects["Lamp"]
+        mat.keyframe_insert(data_path="location", \
+            frame=(i), index=-1)
+        bpy.context.scene.objects["Lamp"].location =  \
+            (0,0,5 - 3*i / (res-1))
+        bpy.context.scene.objects["Lamp"].keyframe_insert(
+            data_path='location', frame=(i))
+
+
+
+num = 100
 scene = bpy.context.scene
 scene = def_scene(10,scene)
 remove_obj(scene)
-#cube_slice(50)
-visualize_fourth_dimension(30, 150, 50)
+#cube_slice(100)
+project_cube(100)
+#visualize_fourth_dimension(1, 1000, 1000)
 
 # Adding in extra function for determinant visualization
 #num = vis_determinant(6.0, num)
 bpy.data.scenes["Scene"].frame_end = num
 scene.update()
-#render_movie(scene)
+render_movie(scene)
 #print (array)
