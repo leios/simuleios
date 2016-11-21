@@ -8,7 +8,7 @@ using PyPlot
 
 # For now, we will evaluate (x-1)^2
 function evaluate(x::Float64)
-    return -(x-1)*(x-1)
+    return (x-1)*(x-1)
 end
 
 # Initialize num positions centered around origin
@@ -24,7 +24,7 @@ function tournament(population::Vector{Float64}, size::Int64)
     # Choosing best from random selection of others
     for j = 2:size
         candidate = rand(population)
-        if (evaluate(candidate) > evaluate(best))
+        if (evaluate(candidate) < evaluate(best))
             best = candidate
         end
     end
@@ -64,6 +64,8 @@ function crossover(parents::Vector{Float64}, res::Int64, cross_rate::Float64)
 
     # We are selecting two parents and creating two children
     for i = 1:2:length(parents)
+        child1 = 0
+        child2 = 0
         # splitting each parent into segments based on location
         for j = 1:res
            index = rand()
@@ -76,7 +78,7 @@ function crossover(parents::Vector{Float64}, res::Int64, cross_rate::Float64)
            end
         end
         offspring[i] = child1
-        offspring[i] = child2
+        offspring[i+1] = child2
     end
 
     return offspring
@@ -87,17 +89,17 @@ function repopulate(population::Vector{Float64}, parents::Vector{Float64},
                     offspring::Vector{Float64}, elite::Int64, box_size::Float64)
 
     # grabbing the elite from the previous population
-    population = sort(population)
+    sort!(population; lt = (a, b) -> evaluate(a) < evaluate(b))
 
     # Randomizing all elements that are not elite or children
     leftover_num = length(population) - length(offspring) - elite + 1
     if leftover_num < 0
         println("More offspring / elite than in population")
     end
+    leftovers = init(abs(leftover_num), box_size)
+
     println(length(parents), '\t', length(offspring), '\t',
             length(population), '\t', elite, '\t', leftover_num)
-
-    leftovers = init(leftover_num, box_size)
 
     j = 1
     for i = elite:length(population)
@@ -107,7 +109,6 @@ function repopulate(population::Vector{Float64}, parents::Vector{Float64},
             population[i] = leftovers[j - length(offspring)]
         end
         j += 1
-        
     end
 
     return population
@@ -129,16 +130,20 @@ function mutation(offspring::Vector{Float64}, mutation_rate::Float64,
 end
 
 # main function
-function main()
+function main(timesteps::Int64)
     num = 100
     box_length = 5.0
     population::Vector{Float64} = init(num, box_length)
     plot(population)
-    parents::Vector{Float64} = selection(population, 10, 6)
-    offspring::Vector{Float64} = crossover(parents, 10, .5)
-    offspring = mutation(offspring, 0.1, box_length)
-    population = repopulate(population, parents, offspring, 10, box_length)
-    plot(population)
+
+    for i =1:timesteps
+        parents::Vector{Float64} = selection(population, 10, num)
+        offspring::Vector{Float64} = crossover(parents, 10, .5)
+        #offspring = mutation(offspring, 0.1, box_length)
+        population = repopulate(population, parents, offspring, 10, box_length)
+        plot(population)
+        sleep(0.5)
+    end
 end
 
-main()
+main(10)
