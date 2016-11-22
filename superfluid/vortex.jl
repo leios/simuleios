@@ -1,0 +1,123 @@
+#-------------vortex.jl--------------------------------------------------------#
+#
+# Purpose: Find a field on the outside of a superfluid vortex
+#
+#------------------------------------------------------------------------------#
+
+# Field type will be used for velocity field around vortex
+type Field
+   xDim::Int64
+   yDim::Int64
+   zDim::Int64
+
+   dx::Float64
+   dy::Float64
+   dz::Float64
+
+   # x, y, and z are all of size xDim*yDim*zDim
+   x::Array{Float64, 1}
+   y::Array{Float64, 1}
+   z::Array{Float64, 1}
+   
+end
+
+# position type will be used to find the location of vortices
+type Position
+    x::Float64
+    y::Float64
+    z::Float64
+end
+
+# function to initialize our field
+function init_field(xDim::Int64, yDim::Int64, zDim::Int64, 
+                    dx::Float64, dy::Float64, dz::Float64)
+    gsize = xDim * yDim * zDim
+    empty_array = fill(0.0, gsize)
+    return Field(xDim, yDim, zDim, dx, dy, dz, 
+                 empty_array, empty_array, empty_array)
+end
+
+# Function to find distance between two positions
+function distance(loc1::Position, loc2::Position)
+    x = loc1.x - loc2.x
+    y = loc1.y - loc2.y
+    z = loc1.z - loc2.z
+
+    return sqrt(x*x + y*y + z*z)
+end
+
+# Function to find the angle between two positions
+function anglexy(loc1::Position, loc2::Position)
+    x = loc1.x - loc2.x
+    y = loc1.y - loc2.y
+    return atan(y/x)
+end
+
+# Function to find velocity around vortex in 2D
+function find_field2d(location::Vector{Position}, xDim::Int64, yDim::Int64, 
+                      dx::Float64, dy::Float64)
+
+    # initialize the field
+    vel = init_field(xDim, yDim, 1, dx, dy, 0.0)
+
+    # index is for internal keeping of the indices
+    index = 0
+
+    for i = 0:xDim - 1
+        for j = 1:yDim
+            index = j + i * yDim
+
+            # Going through all vortex locations to find velocity field
+            for k = 1:length(location)
+                # First find the distance and angle to the vortex center
+                point = Position(Float64((i+1)) * dx, Float64(j)*dy, 0)
+                radius = distance(point, location[k])
+                theta = anglexy(point, location[k])
+                vel.x[index] = (1/(2pi * radius)) * cos(theta)
+                vel.y[index] = (1/(2pi * radius)) * sin(theta)
+            end
+        end
+    end
+
+    return vel
+end
+
+# function to output data in a gnuplot fashion
+function output2d(vel::Field)
+
+    # opening files
+    xfile = open("x.dat", "w")
+    yfile = open("y.dat", "w")
+
+    for i = 0:vel.xDim - 1
+        for j = 1:vel.yDim
+            index = j + i * vel.yDim
+            x = Float64((i+1)) * vel.dx
+            y = Float64(j) * vel.dy
+            write(xfile, "$x\t$y\t$(vel.x[index])\n")
+            write(yfile, "$x\t$y\t$(vel.y[index])\n")
+        end
+    end
+
+    close(xfile)
+    close(yfile)
+end
+
+# main function
+function main()
+    xDim = 16
+    yDim = 16
+    zDim = 1
+
+    dx = 0.1
+    dy = 0.1
+    dz = 0.0
+
+    vortices = [Position(0,0,0)]
+
+    vel = find_field2d(vortices, xDim, yDim, dx, dy)
+
+    output2d(vel,)
+end
+
+main()
