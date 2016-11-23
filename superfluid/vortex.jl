@@ -32,9 +32,11 @@ end
 function init_field(xDim::Int64, yDim::Int64, zDim::Int64, 
                     dx::Float64, dy::Float64, dz::Float64)
     gsize = xDim * yDim * zDim
-    empty_array = fill(0.0, gsize)
+    empty_x = fill(0.0, gsize)
+    empty_y = fill(0.0, gsize)
+    empty_z = fill(0.0, gsize)
     return Field(xDim, yDim, zDim, dx, dy, dz, 
-                 empty_array, empty_array, empty_array)
+                 empty_x, empty_y, empty_z)
 end
 
 # Function to find distance between two positions
@@ -46,11 +48,34 @@ function distance(loc1::Position, loc2::Position)
     return sqrt(x*x + y*y + z*z)
 end
 
+# Function for the dot product between two positions
+function dot(loc1::Position, loc2::Position)
+    return loc1.x*loc2.x + loc1.y*loc2.y + loc1.z*loc2.z
+end
+
+# Function to find the magnitude of a position
+function mag(loc::Position)
+    return sqrt(loc.x*loc.x + loc.y*loc.y + loc.z*loc.z)
+end
+
 # Function to find the angle between two positions
-function anglexy(loc1::Position, loc2::Position)
-    x = loc1.x - loc2.x
-    y = loc1.y - loc2.y
-    return atan(y/x)
+function anglexy(loc1::Position, loc2::Position, radius)
+    x = loc2.x - loc1.x
+    y = loc2.y - loc1.y
+    #return acos(dot(loc1,loc2)/(mag(loc1)*mag(loc2)))
+
+    angle = 0
+    if (sign(x) <= 0 && sign(y) > 0)
+        angle = atan(-x/y) + 0.5*pi
+    elseif (sign(x) < 0 && sign(y) <= 0)
+        angle = atan(y/x) + pi
+    elseif (sign(x) >= 0 && sign(y) < 0)
+        angle = atan(-x/y) + 1.5 * pi
+    else
+        angle = atan(y/x)
+    end
+    return angle
+
 end
 
 # Function to find velocity around vortex in 2D
@@ -70,9 +95,10 @@ function find_field2d(location::Vector{Position}, xDim::Int64, yDim::Int64,
             # Going through all vortex locations to find velocity field
             for k = 1:length(location)
                 # First find the distance and angle to the vortex center
-                point = Position(Float64((i+1)) * dx, Float64(j)*dy, 0)
+                point = Position(Float64((i)) * dx, Float64(j - 1)*dy, 0)
                 radius = distance(point, location[k])
-                theta = anglexy(point, location[k])
+                theta = anglexy(point, location[k], radius)
+                println(theta)
                 vel.x[index] = (1/(2pi * radius)) * cos(theta)
                 vel.y[index] = (1/(2pi * radius)) * sin(theta)
             end
@@ -105,15 +131,15 @@ end
 
 # main function
 function main()
-    xDim = 16
-    yDim = 16
+    xDim = 64
+    yDim = 64
     zDim = 1
 
-    dx = 0.1
-    dy = 0.1
+    dx = 1 / xDim
+    dy = 1 / yDim
     dz = 0.0
 
-    vortices = [Position(0,0,0)]
+    vortices = [Position(0.5,0.5,0)]
 
     vel = find_field2d(vortices, xDim, yDim, dx, dy)
 
