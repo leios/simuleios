@@ -1,0 +1,10 @@
+GENETIC VORTEX PROJECT
+
+This is a superfluid vortex locator using genetic algorithms
+
+The idea here is that we use a genetic algorithm to find areas where 
+circulation is quantized. We basically draw circles and move them around 
+until the velocity vectors add up to 0.
+
+This is done in julia, and is run with:
+    julia genetic.jl

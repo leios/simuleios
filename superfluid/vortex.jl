@@ -98,7 +98,7 @@ function find_field2d(location::Vector{Position}, xDim::Int64, yDim::Int64,
                 point = Position(Float64((i)) * dx, Float64(j - 1)*dy, 0)
                 radius = distance(point, location[k])
                 theta = anglexy(point, location[k], radius)
-                println(theta)
+                #println(theta)
                 vel.x[index] = (1/(2pi * radius)) * cos(theta)
                 vel.y[index] = (1/(2pi * radius)) * sin(theta)
             end
@@ -129,6 +129,7 @@ function output2d(vel::Field)
     close(yfile)
 end
 
+'''
 # main function
 function main()
     xDim = 64
@@ -143,7 +144,8 @@ function main()
 
     vel = find_field2d(vortices, xDim, yDim, dx, dy)
 
-    output2d(vel,)
+    output2d(vel)
 end
 
 main()
+'''
