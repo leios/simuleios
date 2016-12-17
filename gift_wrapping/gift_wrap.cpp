@@ -32,7 +32,11 @@ int main(){
     }
     std::cout << par.hull[0].x << '\t' << par.hull[0].y << '\n';
 */
-    gift_wrap(par, layers);
+    //jarvis(par, layers);
+    //graham(par, layers);
+    chan(par, 4, layers);
+
+    std::cout << "drawing out..." << '\n';
 
     draw_layers(layers);
 }
@@ -59,23 +63,15 @@ parameter init(int num){
         par.points.push_back(tmp);
     }
 
-    // Find the far left point 
-    std::vector<vec> temp = par.points;
-    std::sort(temp.begin(), temp.end(), 
-              [](const vec a, const vec b){return a.x < b.x;});
-    par.hull.push_back(temp[0]);
     return par;
 }
 
-// Function to wrap the points with a hull
-void gift_wrap(parameter &par, std::vector<frame> &layers){
+// Function to draw random distribution with grow_circle command
+void grow_dist(parameter &par, std::vector<frame> &layers, 
+               double x_range, double y_range){
 
     // First, we need to draw the random distribution of points
     vec ori;
-
-    // Arbitrarily cutting 10% of the resolution so circles can fit.
-    double x_range = layers[0].res_x * 0.90;
-    double y_range = layers[0].res_y * 0.90;
 
     // grow _circle command from ../visualization/cairo/cairo_vis.*
     for (size_t i = 0; i < par.points.size(); i++){
@@ -88,7 +84,26 @@ void gift_wrap(parameter &par, std::vector<frame> &layers){
     // Resetting the frames
     layers[0].curr_frame = layers[2].curr_frame;
     layers[1].curr_frame = layers[2].curr_frame;
- 
+}
+
+// Function to wrap the points with a hull
+void jarvis(parameter &par, std::vector<frame> &layers){
+
+    // Find the far left point 
+    std::vector<vec> temp = par.points;
+    std::sort(temp.begin(), temp.end(), 
+              [](const vec a, const vec b){return a.x < b.x;});
+    par.hull.push_back(temp[0]);
+
+
+    // Arbitrarily cutting 10% of the resolution so circles can fit.
+    double x_range = layers[0].res_x * 0.90;
+    double y_range = layers[0].res_y * 0.90;
+
+    if (!par.chan){
+        grow_dist(par, layers, x_range, y_range);
+    }
+
     // expand the hull
     vec curr_hull, prev_hull, next_hull;
     prev_hull.x = 0.0;
@@ -96,8 +111,6 @@ void gift_wrap(parameter &par, std::vector<frame> &layers){
     curr_hull = prev_hull;
     double threshold = 0.001, angle_tmp, final_angle;
     int i = 0;
-    color line_clr = {1, 1, 1, 1};
-    color wrap_clr = {0, 0, 1, 1};
 
     // a is curr_hull point, b is chek_point, c is new_hull line
     vec a, b, c;
@@ -124,8 +137,8 @@ void gift_wrap(parameter &par, std::vector<frame> &layers){
             cairo_line_to(layers[0].frame_ctx[layers[0].curr_frame], 
                           b.x, b.y);
             cairo_set_source_rgba(layers[0].frame_ctx[layers[0].curr_frame],
-                                  line_clr.r, line_clr.g, line_clr.b, 
-                                  line_clr.a);
+                                  par.wrap_clr2.r, par.wrap_clr2.g, 
+                                  par.wrap_clr2.b, par.wrap_clr2.a);
             cairo_stroke(layers[0].frame_ctx[layers[0].curr_frame]);
 
             // Increase frame number
@@ -140,7 +153,7 @@ void gift_wrap(parameter &par, std::vector<frame> &layers){
         // Drawing the wrapping paper or next hull
         c.x = next_hull.x*x_range + 0.05 * layers[0].res_x;
         c.y = (1-next_hull.y)*y_range + 0.05 * layers[0].res_y;
-        animate_line(layers[1], layers[1].curr_frame, 0, a, c, wrap_clr);
+        animate_line(layers[1], layers[1].curr_frame, 0, a, c, par.wrap_clr);
         par.hull.push_back(next_hull);
         prev_hull = curr_hull;
         curr_hull = next_hull;
@@ -150,20 +163,86 @@ void gift_wrap(parameter &par, std::vector<frame> &layers){
     }
 
     // Drawing outside hull
-/*
-    int curr_frame = layers[0].curr_frame;
-    color wrap_clr = {0, 0, 1, 1};
-    vec a, b;
-    double draw_time = 0.1;
-    for (size_t i = 0; i < par.hull.size() - 1; i++){
-        a.x = par.hull[i].x*x_range + 0.05 * layers[0].res_x;
-        a.y = (1-par.hull[i].y)*y_range + 0.05 * layers[0].res_y;
-        b.x = par.hull[i+1].x*x_range + 0.05 * layers[0].res_x;
-        b.y = (1-par.hull[i+1].y)*y_range + 0.05 * layers[0].res_y;
-        animate_line(layers[0], curr_frame+i*4, 0.1, a, b, wrap_clr);
-    }
-*/
 }
+
+// function to draw an array (or vector of vec's)
+void draw_array(frame &anim, std::vector<vec> &array, 
+                double x_range, double y_range, color wrap_clr){
+    int curr_frame = anim.curr_frame;
+    vec a, b;
+    for (size_t i = 0; i < array.size() - 1; i++){
+        a.x = array[i].x*x_range + 0.05 * anim.res_x;
+        a.y = (1-array[i].y)*y_range + 0.05 * anim.res_y;
+        b.x = array[i+1].x*x_range + 0.05 * anim.res_x;
+        b.y = (1-array[i+1].y)*y_range + 0.05 * anim.res_y;
+        animate_line(anim, curr_frame+i*4, 0.1, a, b, wrap_clr);
+    }
+
+}
+
+// Function to return sign of value
+double sign(double value){
+    double ret_val = 0;
+    if (value < 0){
+        ret_val = -1;
+    }
+    else if (value > 0){
+        ret_val = 1;
+    }
+    return ret_val;
+}
+
+// Function to find angle if casting along origin
+double cast_angle(vec v){
+
+    double ret_angle = 0;
+    if (sign(v.x) <= 0 && sign(v.y) > 0){
+        ret_angle = atan(v.x/v.y) + 0.5*M_PI;
+    }
+    else if (sign(v.x) < 0 && sign(v.y) <= 0){
+        ret_angle = atan(v.y/v.x) + M_PI;
+    }
+    else if (sign(v.x) >= 0 && sign(v.y) < 0){
+        ret_angle = atan(-v.x/v.y) + 1.5 * M_PI;
+    }
+    else{
+        ret_angle = atan(v.y/v.x);
+    }
+
+    return ret_angle;
+
+}
+
+// Finding the angle between 3 points
+double angle(vec A, vec B, vec C){
+
+/*
+    vec v1;
+    vec v2;
+    v1.x = B.x - A.x;
+    v1.y = B.y - A.y;
+    v2.x = C.x - A.x;
+    v2.y = C.y - A.y;
+
+    double angle1 = cast_angle(v1);
+    double angle2 = cast_angle(v2);
+    double ret_angle = abs(angle1 - angle2);
+    return ret_angle;
+*/
+
+    double a = dist(B,C);
+    double b = dist(A,C);
+    double c = dist(A,B);
+
+    double ret_angle = acos((b*b - a*a - c*c)/(2*a*c));
+
+    // Checking for obtuse angle
+    if (sign(A.x - B.x) != sign(A.x - C.x)){
+        ret_angle += 0.5*M_PI;
+    }
+    return ret_angle;
+}
+
 
 // Function to test the angle function
 void test_angle(){
@@ -180,4 +259,127 @@ void test_angle(){
 
     double check_angle = angle(a,b,c);
     std::cout << check_angle << '\n';
+}
+
+// Function to find CCW rotation
+double ccw(vec a, vec b, vec c){
+    return (b.x - a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x);
+}
+
+// Function to test the ccw function
+void ccw_test(){
+    vec a = {0.5, 0};
+    vec b = {0.5, 0.5};
+    vec d = {0.75, 0.25};
+
+    std::cout << ccw(a, b, d) << '\t' << ccw(d, b, a) << '\n';
+}
+
+// Function to wrap points in hull (GRAHAM SCAN EDITION)
+void graham(parameter &par, std::vector<frame>& layers){
+
+    // Defining the ranges and drawing distribution
+    double x_range = layers[0].res_x * 0.90;
+    double y_range = layers[0].res_y * 0.90;
+
+    if (!par.chan){
+        grow_dist(par, layers, x_range, y_range);
+    }
+
+    // creating hull by sorting according to polar angle from lower-most point.
+
+    // finding the bottom-most point
+    std::sort(par.points.begin(), par.points.end(), 
+              [](const vec a, const vec b){return a.y < b.y;});
+
+    // Creating a temporary point for finding the polar angle
+    vec right = {1,par.points[0].y};
+
+    std::sort(par.points.begin() + 1, par.points.end(),
+              [&](const vec a, const vec b)
+                {return angle(right, par.points[0], a) 
+                      > angle(right, par.points[0], b);});
+
+    par.points.push_back(par.points[0]);
+
+    draw_array(layers[1], par.points, x_range, y_range, par.wrap_clr);
+
+    int M = 1;
+    vec temp;
+    for (size_t i = 2; i < par.points.size() - 1; i++){
+        while (ccw(par.points[M-1], par.points[M], par.points[i]) <= 0){
+            if (M > 1){
+                M--;
+            }
+            else if (i == par.points.size()){
+                break;
+            }
+            else{
+                i++;
+            }
+        }
+        M++;
+
+        //par.hull.push_back(par.points[M]);
+        // Swapping the values
+        temp = par.points[i];
+        par.points[i] = par.points[M];
+        par.points[M] = temp;
+
+    }
+
+    std::vector<vec>::const_iterator first = par.points.begin();
+    std::vector<vec>::const_iterator last = par.points.begin() + M+1;
+    par.hull = std::vector<vec>(first, last);
+
+    par.hull.push_back(par.hull[0]);
+
+    draw_array(layers[1], par.hull, x_range, y_range, par.wrap_clr2);
+    for (size_t i = 0; i < layers.size(); ++i){
+        layers[i].curr_frame = layers[1].curr_frame;
+    }
+    
+}
+
+// Function for Chan's algorithm
+void chan(parameter &par, int subhull, std::vector<frame>& layers){
+
+/*
+    // finding the bottom-most point
+    std::sort(par.points.begin(), par.points.end(), 
+              [](const vec a, const vec b){return a.x < b.x;});
+*/
+
+
+    // Defining the ranges and drawing distribution
+    double x_range = layers[0].res_x * 0.90;
+    double y_range = layers[0].res_y * 0.90;
+
+    grow_dist(par, layers, x_range, y_range);
+    par.chan = true;
+
+    par.wrap_clr = {0, 0, 1, 0.25};
+    par.wrap_clr2 = {1, 0, 0, 0.5};
+
+    // Split up par.points into the appropriate subhull
+    std::vector<vec> graham_points;
+    std::vector<vec> tmp_points = par.points;
+    int res = par.points.size() / subhull;
+    for (int i = 0; i < subhull; ++i){
+        // first, create a subarray to work with
+        std::vector<vec>::const_iterator first = tmp_points.begin() + i*res;
+        std::vector<vec>::const_iterator last = tmp_points.begin() + (i+1)*res;
+        par.points = std::vector<vec>(first, last);
+        graham(par, layers);
+        graham_points.insert(graham_points.end(), par.hull.begin(), 
+                             par.hull.end());
+    }
+
+    par.wrap_clr = {0, 1, 0, 1};
+    par.wrap_clr2 = {1, 1, 1, 1};
+
+    par.points = graham_points;
+    par.hull = std::vector<vec>();
+    jarvis(par, layers);
+
 }
