@@ -18,13 +18,13 @@ int main(){
     // Initialize visualization stuff
     std::vector<frame> layers(3);
     for (size_t i = 0; i < layers.size(); i++){
-        layers[i].create_frame(400,300,30,"/tmp/image");
+        layers[i].create_frame(400, 300,30,"/tmp/image");
         layers[i].init();
         layers[i].curr_frame = 1;
     }
     create_bg(layers[0], 0, 0, 0);
 
-    parameter par = init(100);
+    parameter par = init(10);
 
 /*
     for (size_t i = 0; i < par.points.size(); i++){
@@ -32,9 +32,23 @@ int main(){
     }
     std::cout << par.hull[0].x << '\t' << par.hull[0].y << '\n';
 */
+    //par.wrap_clr = {0, 1, 0, 1};
+    //par.wrap_clr2 = {1, 1, 1, 1};
+
     //jarvis(par, layers);
-    //graham(par, layers);
-    chan(par, 4, layers);
+
+    par.wrap_clr = {0, 0, 1, 1};
+    par.wrap_clr2 = {1, 0, 0, 1};
+
+    graham(par, layers);
+    //chan(par, 4, layers);
+
+    // Arbitrarily cutting 10% of the resolution so circles can fit.
+    //double x_range = layers[0].res_x * 0.90;
+    //double y_range = layers[0].res_y * 0.90;
+
+    //grow_dist(par, layers, x_range, y_range);
+
 
     std::cout << "drawing out..." << '\n';
 
@@ -78,7 +92,7 @@ void grow_dist(parameter &par, std::vector<frame> &layers,
         ori.x = par.points[i].x*x_range + 0.05 * layers[2].res_x;
         ori.y = (1-par.points[i].y)*y_range + 0.05 * layers[2].res_y;
         grow_circle(layers[2], 1/(double)layers[2].fps,
-                    ori, 5, (double)i / par.points.size());
+                    ori, 10, (double)i / par.points.size());
     }
 
     // Resetting the frames
@@ -163,21 +177,6 @@ void jarvis(parameter &par, std::vector<frame> &layers){
     }
 
     // Drawing outside hull
-}
-
-// function to draw an array (or vector of vec's)
-void draw_array(frame &anim, std::vector<vec> &array, 
-                double x_range, double y_range, color wrap_clr){
-    int curr_frame = anim.curr_frame;
-    vec a, b;
-    for (size_t i = 0; i < array.size() - 1; i++){
-        a.x = array[i].x*x_range + 0.05 * anim.res_x;
-        a.y = (1-array[i].y)*y_range + 0.05 * anim.res_y;
-        b.x = array[i+1].x*x_range + 0.05 * anim.res_x;
-        b.y = (1-array[i+1].y)*y_range + 0.05 * anim.res_y;
-        animate_line(anim, curr_frame+i*4, 0.1, a, b, wrap_clr);
-    }
-
 }
 
 // Function to return sign of value
@@ -344,19 +343,15 @@ void graham(parameter &par, std::vector<frame>& layers){
 // Function for Chan's algorithm
 void chan(parameter &par, int subhull, std::vector<frame>& layers){
 
-/*
-    // finding the bottom-most point
-    std::sort(par.points.begin(), par.points.end(), 
-              [](const vec a, const vec b){return a.x < b.x;});
-*/
-
-
     // Defining the ranges and drawing distribution
     double x_range = layers[0].res_x * 0.90;
     double y_range = layers[0].res_y * 0.90;
 
     grow_dist(par, layers, x_range, y_range);
     par.chan = true;
+    // finding the bottom-most point
+    std::sort(par.points.begin(), par.points.end(), 
+              [](const vec a, const vec b){return a.x < b.x;});
 
     par.wrap_clr = {0, 0, 1, 0.25};
     par.wrap_clr2 = {1, 0, 0, 0.5};

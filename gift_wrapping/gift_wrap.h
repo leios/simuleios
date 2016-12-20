@@ -32,10 +32,6 @@ double cast_angle(vec v);
 // Finding the angle between 3 points
 double angle(vec A, vec B, vec C);
 
-// function to draw an array (or vector of vec's)
-void draw_array(frame &anim, std::vector<vec> &array,
-                double x_range, double y_range, color wrap_clr);
-
 // Function to test the angle function
 void test_angle();
 

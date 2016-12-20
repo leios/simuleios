@@ -8,7 +8,7 @@
 
 // Function to initialize the frame struct
 void frame::init(){
-    int line_width = 3;
+    int line_width = 5;
     for (size_t i = 0; i < num_frames; ++i){
         frame_surface[i] = 
             cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
@@ -42,6 +42,16 @@ void create_bg(frame &anim, int r, int g, int b){
     }
 }
 
+// Creating basic colored background
+void color_bg(frame &anim, int start_layer, int r, int g, int b){
+    for (int i = start_layer; i < num_frames; ++i){
+        cairo_set_source_rgb(anim.frame_ctx[i],(double)r, (double)g, (double)b);
+        cairo_rectangle(anim.frame_ctx[i],0,0,anim.res_x,anim.res_y);
+        cairo_fill(anim.frame_ctx[i]);
+    }
+}
+
+
 // Function to draw all frames in the frame struct
 void frame::draw_frames(){
     std::string pngid, number;
@@ -71,9 +81,14 @@ void frame::create_frame(int x, int y, int ps, std::string pngname){
     origin.y = (double)y / 2.0;
 }
 
-// Function to grow a circle at a provided point
 void grow_circle(frame &anim, double time, vec &ori, double radius, 
                  double weight){
+    grow_circle(anim, time, anim.curr_frame, num_frames, ori, radius, weight);
+}
+
+// Function to grow a circle at a provided point
+void grow_circle(frame &anim, double time, int start_frame, int end_frame, 
+                 vec &ori, double radius, double weight){
 
     // Number of frames 
     int draw_frames = time * anim.fps;
@@ -85,10 +100,10 @@ void grow_circle(frame &anim, double time, vec &ori, double radius,
 
     double temp_weight;
 
-    for (int i = anim.curr_frame; i < num_frames; ++i){
-        if (i < anim.curr_frame + draw_frames){
+    for (int i = start_frame; i < end_frame; ++i){
+        if (i < start_frame + draw_frames){
             //expansion step
-            if (i < anim.curr_frame + ceil(draw_frames * 0.5)){
+            if (i < start_frame + ceil(draw_frames * 0.5)){
                 j++;
                 curr_radius = (double)j * (radius * 1.25) 
                               / (double)ceil(draw_frames * 0.5);
@@ -135,12 +150,19 @@ void grow_circle(frame &anim, double time, vec &ori, double radius,
     }
 
     //std::cout << "finished loop" << '\n';
-    anim.curr_frame += draw_frames;
+    if (start_frame + draw_frames > anim.curr_frame){
+        anim.curr_frame = draw_frames + start_frame;
+    }
     std::cout << anim.curr_frame << '\n';
 }
 
-// Function to animate a line from two points
 void animate_line(frame &anim, int start_frame, double time,  
+                  vec &ori_1, vec &ori_2, color &clr){
+    animate_line(anim, start_frame, num_frames, time, ori_1, ori_2, clr);
+}
+
+// Function to animate a line from two points
+void animate_line(frame &anim, int start_frame, int end_frame, double time,  
                   vec &ori_1, vec &ori_2, color &clr){
 
     // Finding number of frames
@@ -151,7 +173,7 @@ void animate_line(frame &anim, int start_frame, double time,
 
     double curr_x, curr_y;
 
-    for (int i = start_frame; i < num_frames; ++i){
+    for (int i = start_frame; i < end_frame; ++i){
         cairo_move_to(anim.frame_ctx[i], ori_1.x, ori_1.y);
         if (i < start_frame + draw_frames){
             j++;
@@ -180,7 +202,7 @@ void animate_line(frame &anim, int start_frame, double time,
 void draw_layers(std::vector<frame> &layer){
     std::string pngid, number;
     for (size_t i = 0; i < num_frames; ++i){
-        for (size_t j = layer.size() - 1; j > 0; --j){
+        for (size_t j = 1; j < layer.size(); ++j){
             cairo_set_source_surface(layer[0].frame_ctx[i], 
                                      layer[j].frame_surface[i], 0, 0);
             cairo_paint(layer[0].frame_ctx[i]);
@@ -346,4 +368,29 @@ void write_text(frame &anim, vec head_pos, vec text_pos, double head_radius,
 
     cairo_stroke(anim.frame_ctx[anim.curr_frame]);
 
+}
+
+// function to draw an array (or vector of vec's)
+void draw_array(frame &anim, std::vector<vec> &array, 
+                double x_range, double y_range, color wrap_clr){
+    int curr_frame = anim.curr_frame;
+    vec a, b;
+    for (size_t i = 0; i < array.size() - 1; i++){
+        a.x = array[i].x*x_range + 0.05 * anim.res_x;
+        a.y = (1-array[i].y)*y_range + 0.05 * anim.res_y;
+        b.x = array[i+1].x*x_range + 0.05 * anim.res_x;
+        b.y = (1-array[i+1].y)*y_range + 0.05 * anim.res_y;
+        animate_line(anim, curr_frame+i*4, 0.1, a, b, wrap_clr);
+    }
+
+}
+
+// Function to clear a context -- BETA
+void clear_ctx(cairo_t* ctx){
+    // Set surface to translucent color (r, g, b, a)
+    cairo_save (ctx);
+    cairo_set_source_rgba (ctx, 0, 0, 0, 0);
+    cairo_set_operator (ctx, CAIRO_OPERATOR_SOURCE);
+    cairo_paint (ctx);
+    cairo_restore (ctx);
 }

@@ -15,7 +15,7 @@
 #include <vector>
 #include <string>
 
-#define num_frames 1200
+#define num_frames 500
 
 // Struct for colors
 struct color{
@@ -55,6 +55,9 @@ struct frame{
 // Function to create basic colored background
 void create_bg(frame &anim, int r, int g, int b);
 
+// Creating basic colored background
+void color_bg(frame &anim, int start_layer, int r, int g, int b);
+
 // Function to draw human stuff
 void draw_human(frame &anim, double pos, double phase, double freq, color clr);
 void draw_human(frame &anim, vec pos, double height, color clr);
@@ -63,10 +66,14 @@ void write_text(frame &anim, vec head_pos, vec text_pos, double head_radius,
                 double font_size, std::string text);
 
 // Function to grow a circle at a provided point
+void grow_circle(frame &anim, double time, int start_frame, int end_frame,
+                 vec &ori, double radius, double weight);
 void grow_circle(frame &anim, double time, vec &ori, double radius, 
                  double weight);
 
 // Function to animate a line from two points
+void animate_line(frame &anim, int start_frame, int end_frame, double time, 
+                  vec &ori_1, vec &ori_2, color &clr);
 void animate_line(frame &anim, int start_frame, double time, 
                   vec &ori_1, vec &ori_2, color &clr);
 
@@ -76,5 +83,11 @@ void draw_layers(std::vector<frame> &layer);
 // Function to draw an animated circle
 void animate_circle(frame &anim, double time, double radius, vec ori, 
                     color &clr);
+
+// Function to clear a context
+void clear_ctx(cairo_t* ctx);
+
+void draw_array(frame &anim, std::vector<vec> &array,
+                double x_range, double y_range, color wrap_clr);
 
 #endif
