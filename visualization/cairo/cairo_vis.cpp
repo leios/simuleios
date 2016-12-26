@@ -8,7 +8,7 @@
 
 // Function to initialize the frame struct
 void frame::init(){
-    int line_width = 5;
+    int line_width = 1;
     for (size_t i = 0; i < num_frames; ++i){
         frame_surface[i] = 
             cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
@@ -16,6 +16,8 @@ void frame::init(){
         //cairo_set_line_cap(frame_ctx[i], CAIRO_LINE_CAP_ROUND);
         cairo_set_line_width(frame_ctx[i], line_width);
         cairo_set_font_size(frame_ctx[i], 50.0);
+        cairo_set_line_join(frame_ctx[i], CAIRO_LINE_JOIN_BEVEL); 
+        cairo_set_line_cap(frame_ctx[i], CAIRO_LINE_CAP_ROUND);
     }
     bg_surface = 
         cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
@@ -107,8 +109,6 @@ void grow_circle(frame &anim, double time, int start_frame, int end_frame,
                 j++;
                 curr_radius = (double)j * (radius * 1.25) 
                               / (double)ceil(draw_frames * 0.5);
-                //std::cout << "j is: " << j << '\t' << "curr_radius is: "
-                //          << curr_radius << '\n';
 
             }
             // Relaxation step
@@ -116,8 +116,6 @@ void grow_circle(frame &anim, double time, int start_frame, int end_frame,
                 k++;
                 curr_radius = (radius * 1.25) + radius*((double)k * (1.0 - 1.25)
                               / (double)ceil(draw_frames * 0.5));
-                //std::cout << "k is: " << k << '\t' << "curr_radius is: "
-                //          << curr_radius << '\n';
             }
             cairo_arc(anim.frame_ctx[i], ori.x, ori.y, 
                       curr_radius, 0, 2*M_PI);
@@ -145,11 +143,68 @@ void grow_circle(frame &anim, double time, int start_frame, int end_frame,
         cairo_fill(anim.frame_ctx[i]);
 
         cairo_stroke(anim.frame_ctx[i]);
-
         
     }
 
-    //std::cout << "finished loop" << '\n';
+    if (start_frame + draw_frames > anim.curr_frame){
+        anim.curr_frame = draw_frames + start_frame;
+    }
+    std::cout << anim.curr_frame << '\n';
+}
+
+// Functions to grow a line with a relaxation step
+void grow_line(frame &anim, double time, vec &ori_1, vec &ori_2,
+                color line_clr){
+    grow_line(anim, time, anim.curr_frame, num_frames, ori_1, ori_2, line_clr);
+}
+
+
+void grow_line(frame &anim, double time, int start_frame, int end_frame, 
+                 vec &ori_1, vec &ori_2, color line_clr){
+
+    // Number of frames 
+    int draw_frames = time * anim.fps;
+
+    vec curr_pos = ori_1;
+    vec dist = {ori_2.x - ori_1.x, ori_2.y - ori_1.y};
+
+    // internal counts that definitely start at 0
+    int j = 0, k = 0;
+
+    for (int i = start_frame; i < end_frame; ++i){
+        if (i < start_frame + draw_frames){
+            //expansion step
+            if (i < start_frame + ceil(draw_frames * 0.75)){
+                j++;
+                curr_pos.x += (dist.x * 1.1) 
+                              / (double)ceil(draw_frames * 0.75);
+                curr_pos.y += (dist.y * 1.1) 
+                              / (double)ceil(draw_frames * 0.75);
+
+            }
+            // Relaxation step
+            else{
+                k++;
+                curr_pos.x = ori_1.x + (dist.x * 1.1) - dist.x*((double)k * (.1)
+                              / (double)ceil(draw_frames * 0.25));
+                curr_pos.y = ori_1.y + (dist.y * 1.1) - dist.y*((double)k * (.1)
+                              / (double)ceil(draw_frames * 0.25));
+            }
+            cairo_move_to(anim.frame_ctx[i], ori_1.x, ori_1.y);
+            cairo_line_to(anim.frame_ctx[i], curr_pos.x, curr_pos.y);
+
+        }
+        else{
+            cairo_move_to(anim.frame_ctx[i], ori_1.x, ori_1.y);
+            cairo_line_to(anim.frame_ctx[i], ori_2.x, ori_2.y);
+        }
+
+        cairo_set_source_rgb(anim.frame_ctx[i], 
+                             line_clr.r, line_clr.g, line_clr.b);
+        cairo_stroke(anim.frame_ctx[i]);
+        
+    }
+
     if (start_frame + draw_frames > anim.curr_frame){
         anim.curr_frame = draw_frames + start_frame;
     }
@@ -371,7 +426,7 @@ void write_text(frame &anim, vec head_pos, vec text_pos, double head_radius,
 }
 
 // function to draw an array (or vector of vec's)
-void draw_array(frame &anim, std::vector<vec> &array, 
+void draw_array(frame &anim, double time, std::vector<vec> &array, 
                 double x_range, double y_range, color wrap_clr){
     int curr_frame = anim.curr_frame;
     vec a, b;
@@ -380,10 +435,22 @@ void draw_array(frame &anim, std::vector<vec> &array,
         a.y = (1-array[i].y)*y_range + 0.05 * anim.res_y;
         b.x = array[i+1].x*x_range + 0.05 * anim.res_x;
         b.y = (1-array[i+1].y)*y_range + 0.05 * anim.res_y;
-        animate_line(anim, curr_frame+i*4, 0.1, a, b, wrap_clr);
+        if (time > 0){
+            animate_line(anim, curr_frame+i*4, time, a, b, wrap_clr);
+        }
+        else{
+            animate_line(anim, curr_frame, time, a, b, wrap_clr);
+        }
     }
 
 }
+
+void draw_array(frame &anim, std::vector<vec> &array, 
+                double x_range, double y_range, color wrap_clr){
+
+    draw_array(anim, 0.1, array, x_range, y_range, wrap_clr);
+}
+
 
 // Function to clear a context -- BETA
 void clear_ctx(cairo_t* ctx){
@@ -394,3 +461,45 @@ void clear_ctx(cairo_t* ctx){
     cairo_paint (ctx);
     cairo_restore (ctx);
 }
+
+// Function to draw a bar graph of input data
+void bar_graph(frame &anim, double time, std::vector<int> &array, 
+               double x_range, double y_range, color line_clr){
+
+    // Finding the maximum element
+    int max = *std::max_element(array.begin(), array.end());
+
+    int draw_frames = time * anim.fps;
+
+    // bar_step is the number of timesteps in-between the drawing of each bar
+    int bar_step = draw_frames / array.size(); 
+    if (bar_step < 1){
+        std::cout << "Increase time for plotting bar graph!" << '\n';
+        std::cout << "Not enough time for each bar!" << '\n';
+        assert(bar_step >= 1);
+    }
+    int curr_bar = 0;
+    vec bot, top;
+    for (int i = 0; i < draw_frames; i++){
+        if (i % bar_step == 0){
+            // Finding the starting and ending positions
+            bot.x = curr_bar*x_range/array.size() + (x_range - anim.res_x)*0.5;
+            bot.y = anim.res_y - (anim.res_y - y_range) * 0.5;
+
+            top.x = bot.x;
+            top.y = bot.y - y_range * array[curr_bar] / max;
+
+            // Growing the line for the bar
+            grow_line(anim, time / array.size(), anim.curr_frame, num_frames,
+                      bot, top, line_clr);
+            curr_bar++;
+        }
+    }
+}
+
+// Function to highlight a single bar in the bar graph
+void highlight_bar(frame &anim, std::vector<int> &array, 
+                   double x_range, double y_range, color highlight_clr, 
+                   int element){
+}
+
