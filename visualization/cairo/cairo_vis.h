@@ -102,12 +102,13 @@ void draw_array(frame &anim, std::vector<vec> &array,
                 double x_range, double y_range, color wrap_clr);
 
 // Function to draw a bar graph of input data
-void bar_graph(frame &anim, double time, std::vector<int> &array, 
+void bar_graph(frame &anim, double time, int start_frame, int end_frame, 
+               std::vector<int> &array, 
                double x_range, double y_range, color line_clr);
 
 // Function to highlight a single bar in the bar graph
-void highlight_bar(frame &anim, std::vector<int> &array, 
-                   double x_range, double y_range, color highlight_clr, 
-                   int element);
+void highlight_bar(frame &anim, int start_frame, int end_frame, 
+                   std::vector<int> &array, double x_range, double y_range, 
+                   color highlight_clr, int element);
 
 #endif

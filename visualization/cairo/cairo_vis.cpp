@@ -463,7 +463,8 @@ void clear_ctx(cairo_t* ctx){
 }
 
 // Function to draw a bar graph of input data
-void bar_graph(frame &anim, double time, std::vector<int> &array, 
+void bar_graph(frame &anim, double time, int start_frame, int end_frame,
+               std::vector<int> &array, 
                double x_range, double y_range, color line_clr){
 
     // Finding the maximum element
@@ -471,35 +472,63 @@ void bar_graph(frame &anim, double time, std::vector<int> &array,
 
     int draw_frames = time * anim.fps;
 
+    int curr_bar = 0;
+    vec bot, top;
+
     // bar_step is the number of timesteps in-between the drawing of each bar
     int bar_step = draw_frames / array.size(); 
     if (bar_step < 1){
-        std::cout << "Increase time for plotting bar graph!" << '\n';
-        std::cout << "Not enough time for each bar!" << '\n';
-        assert(bar_step >= 1);
-    }
-    int curr_bar = 0;
-    vec bot, top;
-    for (int i = 0; i < draw_frames; i++){
-        if (i % bar_step == 0){
-            // Finding the starting and ending positions
-            bot.x = curr_bar*x_range/array.size() + (x_range - anim.res_x)*0.5;
+        for (size_t i = 0; i < array.size(); i++){
+            bot.x = i*x_range/array.size() + (x_range - anim.res_x)*0.5;
             bot.y = anim.res_y - (anim.res_y - y_range) * 0.5;
 
             top.x = bot.x;
-            top.y = bot.y - y_range * array[curr_bar] / max;
+            top.y = bot.y - y_range * array[i] / max;
 
             // Growing the line for the bar
-            grow_line(anim, time / array.size(), anim.curr_frame, num_frames,
+            grow_line(anim, 0, start_frame, end_frame,
                       bot, top, line_clr);
-            curr_bar++;
+
+        }
+    }
+    else{
+        for (int i = 0; i < draw_frames; i++){
+            if (i % bar_step == 0){
+                // Finding the starting and ending positions
+                bot.x = curr_bar*x_range/array.size() 
+                        + (x_range - anim.res_x)*0.5;
+                bot.y = anim.res_y - (anim.res_y - y_range) * 0.5;
+    
+                top.x = bot.x;
+                top.y = bot.y - y_range * array[curr_bar] / max;
+    
+                // Growing the line for the bar
+                grow_line(anim, time / array.size(), anim.curr_frame,
+                          end_frame, bot, top, line_clr);
+                curr_bar++;
+            }
         }
     }
 }
 
 // Function to highlight a single bar in the bar graph
-void highlight_bar(frame &anim, std::vector<int> &array, 
-                   double x_range, double y_range, color highlight_clr, 
-                   int element){
+void highlight_bar(frame &anim, int start_frame, int end_frame,
+                   std::vector<int> &array, double x_range, double y_range,
+                   color highlight_clr, int element){
+
+    // Finding the maximum element in our array
+    int max = *std::max_element(array.begin(), array.end());
+
+    vec top, bot;
+
+    bot.x = element*x_range/array.size() + (x_range - anim.res_x)*0.5;
+    bot.y = anim.res_y - (anim.res_y - y_range) * 0.5;
+
+    top.x = bot.x;
+    top.y = bot.y - y_range * array[element] / max;
+
+    grow_line(anim, 0, start_frame, end_frame, bot, top, highlight_clr);
+
+
 }
 

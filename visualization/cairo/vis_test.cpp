@@ -24,16 +24,21 @@ int main(){
     // Defining color to use for lines
     color line_clr = {1, 1, 1, 1};
 
-    vec ori = {50, 50};
+    //vec ori = {50, 50};
 
     //grow_circle(layers[1], 1, 100, 200, ori, 10, 1); 
 
-    std::vector<int> array(100);
-    for (int i = 0; i < 100; i++){
+    std::vector<int> array(1000);
+    for (int i = 0; i < 1000; i++){
         array[i] = i;
     }
 
-    bar_graph(layers[1], 10, array, 400, 300, line_clr);
+    bar_graph(layers[1], 0, 50, 100, array, 400, 300, line_clr);
+
+    color highlight_clr = {1, 0, 0, 1};
+
+    highlight_bar(layers[1], 51, 80, array, 400, 300, highlight_clr, 
+                  100);
 
     draw_layers(layers);
 }
