@@ -73,6 +73,18 @@ void grow_circle(frame &anim, double time, int start_frame, int end_frame,
 void grow_circle(frame &anim, double time, vec &ori, double radius, 
                  double weight);
 
+// Function to grow a square at the provided point.
+void grow_square(frame &anim, double time, int start_frame, int end_frame,
+                 vec &ori, double radius, color square_clr);
+void grow_square(frame &anim, double time,
+                 vec &ori, double radius, color square_clr);
+
+// Functions to grow rectangles
+void grow_rect(frame &anim, double time, int start_frame, int end_frame,
+               vec &ori, vec &dim, color rect_clr);
+void grow_rect(frame &anim, double time,
+               vec &ori, vec &dim, color rect_clr);
+
 // Function to grow a line with a relaxation step at the end
 void grow_line(frame &anim, double time, int start_frame, int end_frame,
                vec &ori_1, vec &ori_2, color line_clr);
@@ -105,10 +117,22 @@ void draw_array(frame &anim, std::vector<vec> &array,
 void bar_graph(frame &anim, double time, int start_frame, int end_frame, 
                std::vector<int> &array, 
                double x_range, double y_range, color line_clr);
+void bar_graph(frame &anim, double time, int start_frame, int end_frame, 
+               std::vector<int> &array, vec ori, 
+               double x_range, double y_range, color line_clr);
 
 // Function to highlight a single bar in the bar graph
 void highlight_bar(frame &anim, int start_frame, int end_frame, 
                    std::vector<int> &array, double x_range, double y_range, 
                    color highlight_clr, int element);
+void highlight_bar(frame &anim, int start_frame, int end_frame, 
+                   std::vector<int> &array, vec ori, 
+                   double x_range, double y_range, 
+                   color highlight_clr, int element);
 
+// Function to visualize a vector of vectors of ints
+void draw_permutations(frame &anim, int start_frame, int end_frame, 
+                       std::vector<std::vector<int>> perms, vec ori,
+                       double x_range, double y_range, color line_clr1,
+                       color line_clr2);
 #endif

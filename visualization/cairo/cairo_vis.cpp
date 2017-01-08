@@ -8,7 +8,7 @@
 
 // Function to initialize the frame struct
 void frame::init(){
-    int line_width = 1;
+    int line_width = 3;
     for (size_t i = 0; i < num_frames; ++i){
         frame_surface[i] = 
             cairo_image_surface_create(CAIRO_FORMAT_ARGB32, res_x, res_y);
@@ -152,6 +152,83 @@ void grow_circle(frame &anim, double time, int start_frame, int end_frame,
     std::cout << anim.curr_frame << '\n';
 }
 
+// Function to grow a square at the provided point.
+void grow_square(frame &anim, double time, int start_frame, int end_frame,
+                 vec &ori, double radius, color square_clr){
+    vec dim = {radius, radius};
+    grow_rect(anim, time, start_frame, end_frame, ori, dim, square_clr);
+}
+void grow_square(frame &anim, double time,
+                 vec &ori, double radius, color square_clr){
+    vec dim = {radius, radius};
+    grow_rect(anim, time, anim.curr_frame, num_frames, ori, dim, square_clr);
+}
+
+// Functions to grow rectangles
+void grow_rect(frame &anim, double time, int start_frame, int end_frame,
+               vec &ori, vec &dim, color rect_clr){
+
+    // Number of frames 
+    int draw_frames = time * anim.fps;
+
+    vec curr_dim;
+
+    // internal counts that definitely start at 0
+    int j = 0, k = 0;
+
+    double temp_weight;
+
+    for (int i = start_frame; i < end_frame; ++i){
+        if (i < start_frame + draw_frames){
+            //expansion step
+            if (i < start_frame + ceil(draw_frames * 0.5)){
+                j++;
+                curr_dim.x = (double)j * (dim.x * 1.25) 
+                             / (double)ceil(draw_frames * 0.5);
+                curr_dim.y = (double)j * (dim.y * 1.25) 
+                             / (double)ceil(draw_frames * 0.5);
+
+            }
+            // Relaxation step
+            else{
+                k++;
+                curr_dim.x = (dim.x * 1.25) + dim.x*((double)k * (1.0 - 1.25)
+                              / (double)ceil(draw_frames * 0.5));
+                curr_dim.y = (dim.y * 1.25) + dim.y*((double)k * (1.0 - 1.25)
+                              / (double)ceil(draw_frames * 0.5));
+            }
+            cairo_rectangle(anim.frame_ctx[i], ori.x - curr_dim.x*0.5, 
+                            ori.y - curr_dim.y * 0.5, curr_dim.x,
+                            curr_dim.y);
+
+        }
+        else{
+            cairo_rectangle(anim.frame_ctx[i], ori.x - curr_dim.x*0.5, 
+                            ori.y - curr_dim.y * 0.5, curr_dim.x,
+                            curr_dim.y);
+        }
+
+        cairo_set_source_rgb(anim.frame_ctx[i], 
+                             rect_clr.r, rect_clr.g, rect_clr.b);
+        cairo_fill(anim.frame_ctx[i]);
+
+        cairo_stroke(anim.frame_ctx[i]);
+        
+    }
+
+    if (start_frame + draw_frames > anim.curr_frame){
+        anim.curr_frame = draw_frames + start_frame;
+    }
+    std::cout << anim.curr_frame << '\n';
+
+}
+void grow_rect(frame &anim, double time, 
+               vec &ori, vec &dim, color rect_clr){
+
+    grow_rect(anim, time, anim.curr_frame, num_frames, ori, dim, rect_clr);
+}
+
+
 // Functions to grow a line with a relaxation step
 void grow_line(frame &anim, double time, vec &ori_1, vec &ori_2,
                 color line_clr){
@@ -208,7 +285,7 @@ void grow_line(frame &anim, double time, int start_frame, int end_frame,
     if (start_frame + draw_frames > anim.curr_frame){
         anim.curr_frame = draw_frames + start_frame;
     }
-    std::cout << anim.curr_frame << '\n';
+    //std::cout << anim.curr_frame << '\n';
 }
 
 void animate_line(frame &anim, int start_frame, double time,  
@@ -466,6 +543,13 @@ void clear_ctx(cairo_t* ctx){
 void bar_graph(frame &anim, double time, int start_frame, int end_frame,
                std::vector<int> &array, 
                double x_range, double y_range, color line_clr){
+    vec ori = {0,0};
+    bar_graph(anim, time, start_frame, end_frame, array, ori, x_range,
+              y_range, line_clr);
+}
+void bar_graph(frame &anim, double time, int start_frame, int end_frame,
+               std::vector<int> &array, vec ori,
+               double x_range, double y_range, color line_clr){
 
     // Finding the maximum element
     int max = *std::max_element(array.begin(), array.end());
@@ -479,8 +563,8 @@ void bar_graph(frame &anim, double time, int start_frame, int end_frame,
     int bar_step = draw_frames / array.size(); 
     if (bar_step < 1){
         for (size_t i = 0; i < array.size(); i++){
-            bot.x = i*x_range/array.size() + (x_range - anim.res_x)*0.5;
-            bot.y = anim.res_y - (anim.res_y - y_range) * 0.5;
+            bot.x = i*x_range/array.size() + (anim.res_x - x_range)*0.5 + ori.x;
+            bot.y = anim.res_y - (anim.res_y - y_range) * 0.5 - ori.y;
 
             top.x = bot.x;
             top.y = bot.y - y_range * array[i] / max;
@@ -496,8 +580,8 @@ void bar_graph(frame &anim, double time, int start_frame, int end_frame,
             if (i % bar_step == 0){
                 // Finding the starting and ending positions
                 bot.x = curr_bar*x_range/array.size() 
-                        + (x_range - anim.res_x)*0.5;
-                bot.y = anim.res_y - (anim.res_y - y_range) * 0.5;
+                        + (anim.res_x - x_range)*0.5 + ori.x;
+                bot.y = anim.res_y - (anim.res_y - y_range) * 0.5 - ori.y;
     
                 top.x = bot.x;
                 top.y = bot.y - y_range * array[curr_bar] / max;
@@ -515,14 +599,22 @@ void bar_graph(frame &anim, double time, int start_frame, int end_frame,
 void highlight_bar(frame &anim, int start_frame, int end_frame,
                    std::vector<int> &array, double x_range, double y_range,
                    color highlight_clr, int element){
+    vec ori = {0,0};
+    highlight_bar(anim, start_frame, end_frame, array, ori, x_range, y_range,
+                  highlight_clr, element);
+}
+void highlight_bar(frame &anim, int start_frame, int end_frame,
+                   std::vector<int> &array, vec ori, 
+                   double x_range, double y_range,
+                   color highlight_clr, int element){
 
     // Finding the maximum element in our array
     int max = *std::max_element(array.begin(), array.end());
 
     vec top, bot;
 
-    bot.x = element*x_range/array.size() + (x_range - anim.res_x)*0.5;
-    bot.y = anim.res_y - (anim.res_y - y_range) * 0.5;
+    bot.x = element*x_range/array.size() + (anim.res_x - x_range)*0.5 + ori.x;
+    bot.y = anim.res_y - (anim.res_y - y_range) * 0.5 - ori.y;
 
     top.x = bot.x;
     top.y = bot.y - y_range * array[element] / max;
@@ -532,3 +624,48 @@ void highlight_bar(frame &anim, int start_frame, int end_frame,
 
 }
 
+// Function to visualize a vector of vectors of ints
+void draw_permutations(frame &anim, int start_frame, int end_frame, 
+                       std::vector<std::vector<int>> perms, vec ori,
+                       double x_range, double y_range, color line_clr1,
+                       color line_clr2){
+
+    color line_clr;
+    //int x_index = perms.size()/2;
+    //int y_index = perms.size()/2;
+    int x_index = ceil(sqrt((double)perms.size()));
+    int y_index = ceil(sqrt((double)perms.size()));
+    double dx = x_range / x_index;
+    double dy = y_range / y_index;
+    vec ori_1;
+    vec range = {dx, dy};
+    int start = start_frame;
+    int index;
+
+    std::cout << x_index << '\t' << y_index << '\t' << dx << '\t' << dy << '\n';
+    std::cout << perms.size() << '\n';;
+
+    for (int i = 0; i < y_index; i++){
+        for (int j = 0; j < x_index; j++){
+            index = j + i * x_index;
+            if (index < perms.size()){
+                if (index % 2 == 0){
+                    line_clr = line_clr2;
+                }
+                else{
+                    line_clr = line_clr1;
+                }
+                std::cout << "index is: " << index << '\n';
+                std::cout << "start is: " << start << '\n';
+                ori_1.x = dx * (j + 0.5) + ori.x - x_range * 0.5;
+                ori_1.y = y_range - (dy * (i +0.5) + ori.y + y_range * 0.5);
+                //ori_1.y = y_range * 0.5;
+                bar_graph(anim, 0, start, end_frame, perms[index], ori_1,
+                          range.x * 0.5, range.y * 0.5, line_clr);
+                if (start+1 < end_frame){
+                    start++;
+                }
+            }
+        }
+    }
+}
