@@ -512,9 +512,9 @@ void draw_array(frame &anim, double time, std::vector<vec> &array,
     vec a, b;
     for (size_t i = 0; i < array.size() - 1; i++){
         a.x = array[i].x*x_range + 0.05 * anim.res_x;
-        a.y = (1-array[i].y)*y_range + 0.05 * anim.res_y;
+        a.y = (1-array[i].y)*y_range - 0.05 * anim.res_y;
         b.x = array[i+1].x*x_range + 0.05 * anim.res_x;
-        b.y = (1-array[i+1].y)*y_range + 0.05 * anim.res_y;
+        b.y = (1-array[i+1].y)*y_range - 0.05 * anim.res_y;
         if (time > 0){
             animate_line(anim, curr_frame+i*4, time, a, b, wrap_clr);
         }
