@@ -55,7 +55,8 @@ struct frame{
 };
 
 // Function to create basic colored background
-void create_bg(frame &anim, int r, int g, int b);
+void create_bg(frame &anim, double r, double g, double b);
+void create_bg(frame &anim, double r, double g, double b, double a);
 
 // Creating basic colored background
 void color_bg(frame &anim, int start_layer, int r, int g, int b);
@@ -135,4 +136,7 @@ void draw_permutations(frame &anim, int start_frame, int end_frame,
                        std::vector<std::vector<int>> perms, vec ori,
                        double x_range, double y_range, color line_clr1,
                        color line_clr2);
+
+// Function to initialize a vector of frames (layers)
+std::vector<frame> init_layers(int layer_num, vec res, int fps, color bg_clr);
 #endif

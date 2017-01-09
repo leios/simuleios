@@ -36,9 +36,12 @@ void frame::destroy_all(){
 }
 
 // Creating basic colored background
-void create_bg(frame &anim, int r, int g, int b){
+void create_bg(frame &anim, double r, double g, double b){
+    create_bg(anim, r, g, b, 1);
+}
+void create_bg(frame &anim, double r, double g, double b, double a){
     for (int i = 0; i < num_frames; ++i){
-        cairo_set_source_rgb(anim.frame_ctx[i],(double)r, (double)g, (double)b);
+        cairo_set_source_rgba(anim.frame_ctx[i], r, g, b, a);
         cairo_rectangle(anim.frame_ctx[i],0,0,anim.res_x,anim.res_y);
         cairo_fill(anim.frame_ctx[i]);
     }
@@ -669,3 +672,16 @@ void draw_permutations(frame &anim, int start_frame, int end_frame,
         }
     }
 }
+
+std::vector<frame> init_layers(int layer_num, vec res, int fps, color bg_clr){
+    std::vector<frame> layers(layer_num);
+    for (size_t i = 0; i < layers.size(); i++){
+        layers[i].create_frame(res.x, res.y,fps,"/tmp/image");
+        layers[i].init();
+        layers[i].curr_frame = 1;
+    }
+    create_bg(layers[0], bg_clr.r, bg_clr.g, bg_clr.b, bg_clr.a);
+
+    return layers;
+}
+
