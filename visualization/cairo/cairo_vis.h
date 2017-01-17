@@ -16,17 +16,13 @@
 #include <string>
 #include <algorithm>
 #include <assert.h>
+#include "vec.h"
 
 #define num_frames 500
 
 // Struct for colors
 struct color{
     double r, g, b, a;
-};
-
-// struct for x and y on the cairo grid
-struct vec{
-    double x, y;
 };
 
 struct frame{
