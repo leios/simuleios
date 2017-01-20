@@ -86,14 +86,51 @@ void frame::create_frame(int x, int y, int ps, std::string pngname){
     origin.y = (double)y / 2.0;
 }
 
+void grow_circle(frame &anim, double time, int start_frame, int end_frame,
+                 vec &ori, double radius, double weight){
+
+    // Adding in a color ramp
+    // Note: Ramp is arbitrarily set
+    color cir_clr;
+    double temp_weight;
+    if (weight < 0.25){
+        temp_weight = weight * 4.0;
+        cir_clr = {.25 + 0.75 * temp_weight, 1, .25, 1};
+    }
+    else{
+        temp_weight = (weight - 0.25) * 1.333333;
+        cir_clr = {1, 1 - (0.75 * temp_weight), .25, 1};
+    }
+
+    grow_circle(anim, time, start_frame, end_frame, ori, radius, cir_clr);
+}
+void grow_circle(frame &anim, double time, vec &ori, double radius, 
+                 color cir_clr){
+    grow_circle(anim, time, anim.curr_frame, num_frames, ori, radius, cir_clr);
+}
+
+
 void grow_circle(frame &anim, double time, vec &ori, double radius, 
                  double weight){
-    grow_circle(anim, time, anim.curr_frame, num_frames, ori, radius, weight);
+    // Adding in a color ramp
+    // Note: Ramp is arbitrarily set
+    color cir_clr;
+    double temp_weight;
+    if (weight < 0.25){
+        temp_weight = weight * 4.0;
+        cir_clr = {.25 + 0.75 * temp_weight, 1, .25, 1};
+    }
+    else{
+        temp_weight = (weight - 0.25) * 1.333333;
+        cir_clr = {1, 1 - (0.75 * temp_weight), .25, 1};
+    }
+
+    grow_circle(anim, time, anim.curr_frame, num_frames, ori, radius, cir_clr);
 }
 
 // Function to grow a circle at a provided point
 void grow_circle(frame &anim, double time, int start_frame, int end_frame, 
-                 vec &ori, double radius, double weight){
+                 vec &ori, double radius, color cir_clr){
 
     // Number of frames 
     int draw_frames = time * anim.fps;
@@ -129,19 +166,8 @@ void grow_circle(frame &anim, double time, int start_frame, int end_frame,
                       radius, 0, 2*M_PI);
         }
 
-        // Adding in a color ramp
-        // Note: Ramp is arbitrarily set
-        if (weight < 0.25){
-            temp_weight = weight * 4.0;
-            cairo_set_source_rgb(anim.frame_ctx[i], .25 + 0.75 * temp_weight, 
-                                 1, .25);
-        }
-        else{
-            temp_weight = (weight - 0.25) * 1.333333;
-            cairo_set_source_rgb(anim.frame_ctx[i], 1, 
-                                 1 - (0.75 * temp_weight), .25);
-
-        }
+        cairo_set_source_rgba(anim.frame_ctx[i], cir_clr.r, cir_clr.g, 
+                              cir_clr.b, cir_clr.a);
 
         cairo_fill(anim.frame_ctx[i]);
 

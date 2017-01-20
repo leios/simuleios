@@ -40,7 +40,7 @@ int main(){
     grow_rect(layers[1], 1, 100, 200, ori, dim, line_clr);
     grow_rect(layers[1], 1, ori, dim, line_clr_2);
     grow_square(layers[1], 1, 200, 300, ori, 200, line_clr);
-    grow_square(layers[1], 1, ori, 200, line_clr_2);
+    grow_circle(layers[1], 1, ori, 200, line_clr_2);
 /*
 
     std::vector<int> array(100);

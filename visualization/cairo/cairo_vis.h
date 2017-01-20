@@ -69,6 +69,10 @@ void grow_circle(frame &anim, double time, int start_frame, int end_frame,
                  vec &ori, double radius, double weight);
 void grow_circle(frame &anim, double time, vec &ori, double radius, 
                  double weight);
+void grow_circle(frame &anim, double time, int start_frame, int end_frame,
+                 vec &ori, double radius, color cir_clr);
+void grow_circle(frame &anim, double time, vec &ori, double radius, 
+                 color cir_clr);
 
 // Function to grow a square at the provided point.
 void grow_square(frame &anim, double time, int start_frame, int end_frame,
