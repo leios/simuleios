@@ -20,16 +20,16 @@ int main(){
 
     // Creating scene and frames and stuff
     int fps = 30;
-    double res_x = 400;
-    double res_y = 400;
+    double res_x = 1000;
+    double res_y = 1000;
     vec res = {res_x, res_y};
     color bg_clr = {0, 0, 0, 1};
-    color on_clr = {0, 1, 0, 1};
-    color off_clr = {1, 0, 0, 1};
+    color on_clr = {1, 1, 1, 1};
+    color off_clr = {0, 0, 0, 1};
 
     std::vector<frame> layers = init_layers(3, res, fps, bg_clr);
 
-    euclid_orchard(layers[1], 10, on_clr, off_clr);
+    euclid_orchard(layers[1], 100, on_clr, off_clr);
     draw_layers(layers);
 
 }
@@ -80,7 +80,8 @@ void euclid_orchard(frame &anim, int size, color on_clr, color off_clr){
             }
 
             // grow_circle here
-            grow_circle(anim, 0.1, loc, 10, use_clr);
+            //grow_square(anim, 0.1, 1, num_frames, loc, 10, use_clr);
+            grow_square(anim, 0, loc, 10, use_clr);
 
         }
     }

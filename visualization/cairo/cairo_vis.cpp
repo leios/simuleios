@@ -230,6 +230,7 @@ void grow_rect(frame &anim, double time, int start_frame, int end_frame,
 
         }
         else{
+            curr_dim = dim;
             cairo_rectangle(anim.frame_ctx[i], ori.x - curr_dim.x*0.5, 
                             ori.y - curr_dim.y * 0.5, curr_dim.x,
                             curr_dim.y);
