@@ -140,8 +140,6 @@ void grow_circle(frame &anim, double time, int start_frame, int end_frame,
     // internal counts that definitely start at 0
     int j = 0, k = 0;
 
-    double temp_weight;
-
     for (int i = start_frame; i < end_frame; ++i){
         if (i < start_frame + draw_frames){
             //expansion step
