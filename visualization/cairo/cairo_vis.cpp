@@ -528,6 +528,47 @@ void write_text(frame &anim, vec head_pos, vec text_pos, double head_radius,
 
 }
 
+void write_fraction(frame &anim, vec frac_pos, int num, int den,
+                    double font_size, color font_color){
+    // Setting initial parameters
+    cairo_set_font_size(anim.frame_ctx[anim.curr_frame], font_size);
+    cairo_set_source_rgba(anim.frame_ctx[anim.curr_frame], font_color.r,
+                          font_color.g, font_color.b, font_color.a);
+
+    // Now drawing fraction
+    cairo_text_extents_t num_box, den_box, under_box;
+
+    // Numerator first
+    char num_char[256];
+    sprintf(num_char,"%d",num);
+    cairo_text_extents(anim.frame_ctx[anim.curr_frame],
+                       num_char, &num_box);
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                 frac_pos.x - num_box.width *0.5, frac_pos.y);
+    cairo_show_text(anim.frame_ctx[anim.curr_frame], num_char);
+
+    // Now drawing underscore for underline
+    cairo_text_extents(anim.frame_ctx[anim.curr_frame],
+                       "__", &under_box);
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                 frac_pos.x - under_box.width *0.4, frac_pos.y);
+    cairo_show_text(anim.frame_ctx[anim.curr_frame], "__");
+
+    // Now for the denominator
+    char den_char[256];
+    sprintf(den_char,"%d",den);
+    cairo_text_extents(anim.frame_ctx[anim.curr_frame],
+                       den_char, &den_box);
+
+    cairo_move_to(anim.frame_ctx[anim.curr_frame], 
+                 frac_pos.x - den_box.width *0.5, frac_pos.y + font_size*1.15);
+    cairo_show_text(anim.frame_ctx[anim.curr_frame], den_char);
+
+    cairo_stroke(anim.frame_ctx[anim.curr_frame]);
+    
+}
+
 // function to draw an array (or vector of vec's)
 void draw_array(frame &anim, double time, std::vector<vec> &array, 
                 double x_range, double y_range, color wrap_clr){

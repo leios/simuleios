@@ -41,6 +41,8 @@ int main(){
     grow_rect(layers[1], 1, ori, dim, line_clr_2);
     grow_square(layers[1], 1, 200, 300, ori, 200, line_clr);
     grow_circle(layers[1], 1, ori, 200, line_clr_2);
+
+    write_fraction(layers[1], ori, 1,20,100, line_clr);
 /*
 
     std::vector<int> array(100);

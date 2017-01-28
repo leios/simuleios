@@ -18,7 +18,7 @@
 #include <assert.h>
 #include "vec.h"
 
-#define num_frames 500
+#define num_frames 1000
 
 // Struct for colors
 struct color{
@@ -63,6 +63,9 @@ void draw_human(frame &anim, vec pos, double height, color clr);
 void animate_human(frame &anim, vec pos, double height, color clr, double time);
 void write_text(frame &anim, vec head_pos, vec text_pos, double head_radius,
                 double font_size, std::string text);
+
+void write_fraction(frame &anim, vec frac_pos, int num, int den,
+                    double font_size, color font_color);
 
 // Function to grow a circle at a provided point
 void grow_circle(frame &anim, double time, int start_frame, int end_frame,
