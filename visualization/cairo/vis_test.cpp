@@ -27,6 +27,15 @@ int main(){
     }
     //create_bg(layers[0], 0, 0, 0);
 */
+/*
+
+    color human_clr = {1, 1, 1, 1};
+
+    vec ori = {500, 500};
+
+    animate_human(layers[1], ori, 1000, human_clr, 4);
+
+*/
 
     // Defining color to use for lines
     color line_clr = {1, 1, 1, 1};

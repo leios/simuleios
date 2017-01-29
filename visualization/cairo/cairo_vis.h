@@ -18,7 +18,7 @@
 #include <assert.h>
 #include "vec.h"
 
-#define num_frames 1000
+#define num_frames 500
 
 // Struct for colors
 struct color{
