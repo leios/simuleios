@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++11 -g -Wall -march=native -fopenmp -O2 -fno-omit-frame-pointer -flto -Wno-sign-compare
+CXXFLAGS = -std=c++11 -g -Wall -march=native -fopenmp -O2 -fno-omit-frame-pointer -flto -Wno-sign-compare #-fsanitize=address
 
 CAIROFLAGS = `pkg-config --cflags --libs cairo`
 BINS = relationship
