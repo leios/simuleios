@@ -147,6 +147,8 @@ int main(){
 
     }
 
+    layers[0].curr_frame += 10;
+
     // Now let's draw a human at the right position
     vec A_pos;
     A_pos.x = cities[0].loc.x * res_x;
@@ -155,7 +157,7 @@ int main(){
     animate_human(layers[0], A_pos, 40, white, start_frame,
                   start_frame + 50, 1);
 
-    layers[0].curr_frame += 50;
+    layers[0].curr_frame = start_frame+50;
 
     // now we need to create a Chromosome that goes ABCDEFG
     Chromosome test;
@@ -487,7 +489,8 @@ void move(frame &anim, Chromosome &individual, int start_frame, int end_frame,
                              ((double)j/(res-1))*(individual.path[i+1]->loc.y -
                                               individual.path[i]->loc.y));
                 curr_pos.x *= anim.res_x;
-                curr_pos.y *= anim.res_y - 40;
+                curr_pos.y *= anim.res_y;
+                curr_pos.y -= 40;
             }
             else{
                 curr_pos.x = individual.path[i]->loc.x + 
@@ -497,9 +500,12 @@ void move(frame &anim, Chromosome &individual, int start_frame, int end_frame,
                              ((double)j/(res-1))*(individual.path[0]->loc.y -
                                               individual.path[i]->loc.y));
                 curr_pos.x *= anim.res_x;
-                curr_pos.y *= anim.res_y - 40;
+                curr_pos.y *= anim.res_y;
+                curr_pos.y -= 40;
             }
             draw_human(anim, curr_pos, 40, human_clr);
+            //animate_human(anim, curr_pos, 40, human_clr, anim.curr_frame,
+                          //anim.curr_frame+1, 0);
             anim.curr_frame++;
         }
     }
