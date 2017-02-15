@@ -61,11 +61,48 @@ void output_path(Chromosome &ch);
 // Function to implement mutation
 void mutate(std::vector<Chromosome> &population, double mut_rate);
 
+// Visualization functions
+// Function to take individual along every town in their path
+void move(frame &anim, Chromosome &individual, int start_frame, int end_frame,
+          color &human_clr);
+
 /*----------------------------------------------------------------------------//
 * MAIN
 *-----------------------------------------------------------------------------*/
 
 int main(){
+
+    // Initialize all visualization components
+    int fps = 30;
+    double res_x = 1000;
+    double res_y = 1000;
+    vec res = {res_x, res_y};
+    color bg_clr = {0, 0, 0, 1};
+    color line_clr = {1, 0, 0, 1};
+    color white = {1, 1, 1, 1};
+    color cir_clr = {0, 0, 0, 1};
+
+    std::vector<frame> layers = init_layers(1, res, fps, bg_clr);
+
+    // now we need to draw the exterior region of BetaBrook
+
+    // Let's start by defining an exterior region
+    std::vector<vec> bb_region(13);
+    bb_region[0] = {0.05,0.05};
+    bb_region[1] = {0.25,0.10};
+    bb_region[2] = {0.75,0.03};
+    bb_region[3] = {0.95,0.05};
+    bb_region[4] = {0.95,0.25};
+    bb_region[5] = {0.85,0.65};
+    bb_region[6] = {0.95,0.95};
+    bb_region[7] = {0.55,0.9};
+    bb_region[8] = {0.45,0.95};
+    bb_region[9] = {0.05,0.95};
+    bb_region[10] = {0.05,0.95};
+    bb_region[11] = {0.10,0.5};
+    bb_region[12] = {0.05,0.05};
+
+    draw_array(layers[0], 0.1, bb_region, res_x, res_y, line_clr);
 
     int generations = 100;
     int pop_size = 100;
@@ -73,6 +110,64 @@ int main(){
     // Now we just need to put it all together!
     std::vector<City> cities = init_cities();
 
+    // Now we need to draw the cities
+
+    vec cir_loc = {0,0};
+    std::string text;
+    for (int i = 0; i < cities.size(); i++){
+        cir_clr = {(double)i/cities.size(),0,
+                   (double)(cities.size()-i)/cities.size(),1};
+
+        cir_loc.x = cities[i].loc.x * res_x;
+        cir_loc.y = (1-cities[i].loc.y) * res_y;
+        grow_circle(layers[0], 0.1, cir_loc, 20, cir_clr);
+
+        // writing single letter name on all subsequent frames
+        for (int j = layers[0].curr_frame; j < num_frames; ++j){
+
+            text = cities[i].name;
+            cairo_set_font_size(layers[0].frame_ctx[j], 30);
+            cairo_set_source_rgba(layers[0].frame_ctx[j],
+                                  white.r, white.g, white.b, white.a);
+
+            // Determining where to move to
+            cairo_text_extents_t textbox;
+            cairo_text_extents(layers[0].frame_ctx[j], 
+                               text.c_str(), &textbox);
+            cairo_move_to(layers[0].frame_ctx[j], 
+                          cir_loc.x - textbox.width / 2.0, 
+                          cir_loc.y + textbox.height * 0.5);
+            cairo_show_text(layers[0].frame_ctx[j], 
+                            text.c_str());
+        
+            cairo_stroke(layers[0].frame_ctx[layers[0].curr_frame]);
+
+
+        }
+
+    }
+
+    // Now let's draw a human at the right position
+    vec A_pos;
+    A_pos.x = cities[0].loc.x * res_x;
+    A_pos.y = (1-cities[0].loc.y) * res_y - 40;
+    int start_frame = layers[0].curr_frame;
+    animate_human(layers[0], A_pos, 40, white, start_frame,
+                  start_frame + 50, 1);
+
+    layers[0].curr_frame += 50;
+
+    // now we need to create a Chromosome that goes ABCDEFG
+    Chromosome test;
+
+    for (int i = 0; i < cities.size(); ++i){
+        test.path.push_back(&cities[i]);
+    }
+
+    // testing move
+    move(layers[0], test, layers[0].curr_frame, num_frames, white);
+
+/*
     std::vector<Chromosome> population = init(cities, pop_size);
     std::vector<Chromosome> offspring, parents, elite;
     for (int i = 0; i < generations; ++i){
@@ -92,6 +187,15 @@ int main(){
         }
         std::cout << '\n';
     }
+*/
+
+    // We need to test them all here
+
+    draw_layers(layers);
+    for (int i = 0; i < layers.size(); ++i){
+        layers[i].destroy_all();
+    }
+
 }
 
 /*----------------------------------------------------------------------------//
@@ -103,12 +207,12 @@ std::vector<City> init_cities(){
 
     std::vector<City> cities = {
 
-        City("A", {0.75, 0.25}),
+        City("A", {0.5, 0.75}),
         City("B", {0.25, 0.75}),
         City("C", {0.5, 0.5}),
         City("D", {0.75, 0.75}),
         City("E", {0.25, 0.25}),
-        City("F", {0.125, 0.625}),
+        City("F", {0.75, 0.25}),
         City("G", {0.25, 0.5})
     };
 
@@ -136,7 +240,7 @@ std::vector<Chromosome> init(std::vector<City> &cities, int size){
     // We will do this by shuffling our path / genes
     for (int i = 0; i < size; i++){
 
-        std::shuffle(genes.begin(), genes.end(), gen);
+        std::shuffle(genes.begin()+1, genes.end(), gen);
         population[i].path = genes;
     }
 
@@ -195,7 +299,7 @@ std::vector<Chromosome> crossover(std::vector<Chromosome> &parents,
     static std::mt19937 gen(rd());
 
     static std::uniform_int_distribution<int>
-        cross_pt_dist(0,parents[0].path.size() - 1);
+        cross_pt_dist(1,parents[0].path.size() - 1);
 
     Chromosome child1;
     Chromosome child2;
@@ -340,7 +444,7 @@ void mutate(std::vector<Chromosome> &population, double mut_rate){
     static std::mt19937 gen(rd());
 
     static std::uniform_int_distribution<int>
-        cross_pt_dist(0,population[0].path.size() - 1);
+        cross_pt_dist(1,population[0].path.size() - 1);
     
     int cross_pt1;
     int cross_pt2;
@@ -355,4 +459,49 @@ void mutate(std::vector<Chromosome> &population, double mut_rate){
         }
         
     }
+}
+
+// Visualization functions
+// Function to take individual along every town in their path
+void move(frame &anim, Chromosome &individual, int start_frame, int end_frame,
+          color &human_clr){
+
+    // The trick here is figuring out how to interpolate
+
+    int draw_frames = end_frame - start_frame;
+
+    int res = floor(draw_frames / individual.path.size());
+
+    std::cout << "res is: " << res << '\n';
+
+    // this is a counter for which leg of the race we are on
+    vec curr_pos = {0,0};
+
+    for (int i = 0; i < individual.path.size(); ++i){
+        for (int j = 0; j < res; ++j){
+            if (i+1 < individual.path.size()){
+                curr_pos.x = individual.path[i]->loc.x + 
+                             ((double)j/(res-1))*(individual.path[i+1]->loc.x -
+                                              individual.path[i]->loc.x);
+                curr_pos.y = 1-(individual.path[i]->loc.y + 
+                             ((double)j/(res-1))*(individual.path[i+1]->loc.y -
+                                              individual.path[i]->loc.y));
+                curr_pos.x *= anim.res_x;
+                curr_pos.y *= anim.res_y - 40;
+            }
+            else{
+                curr_pos.x = individual.path[i]->loc.x + 
+                             ((double)j/(res-1))*(individual.path[0]->loc.x -
+                                              individual.path[i]->loc.x);
+                curr_pos.y = 1-(individual.path[i]->loc.y + 
+                             ((double)j/(res-1))*(individual.path[0]->loc.y -
+                                              individual.path[i]->loc.y));
+                curr_pos.x *= anim.res_x;
+                curr_pos.y *= anim.res_y - 40;
+            }
+            draw_human(anim, curr_pos, 40, human_clr);
+            anim.curr_frame++;
+        }
+    }
+
 }

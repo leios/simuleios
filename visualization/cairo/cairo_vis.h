@@ -60,6 +60,8 @@ void color_bg(frame &anim, int start_layer, int r, int g, int b);
 // Function to draw human stuff
 void draw_human(frame &anim, double pos, double phase, double freq, color clr);
 void draw_human(frame &anim, vec pos, double height, color clr);
+void animate_human(frame &anim, vec pos, double height, color clr, 
+                   int start_frame, int end_frame, double time);
 void animate_human(frame &anim, vec pos, double height, color clr, double time);
 void write_text(frame &anim, vec head_pos, vec text_pos, double head_radius,
                 double font_size, std::string text);
@@ -108,6 +110,8 @@ void draw_layers(std::vector<frame> &layer);
 // Function to draw an animated circle
 void animate_circle(frame &anim, double time, double radius, vec ori, 
                     color &clr);
+void animate_circle(frame &anim, int start_frame, int end_frame, double time,
+                    double radius, vec ori, color &clr);
 
 // Function to clear a context
 void clear_ctx(cairo_t* ctx);
@@ -142,4 +146,7 @@ void draw_permutations(frame &anim, int start_frame, int end_frame,
 
 // Function to initialize a vector of frames (layers)
 std::vector<frame> init_layers(int layer_num, vec res, int fps, color bg_clr);
+
+// Function to draw everything with standard parameters
+void draw(std::vector<vec> &array);
 #endif

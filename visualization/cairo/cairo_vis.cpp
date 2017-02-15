@@ -377,6 +377,37 @@ void draw_layers(std::vector<frame> &layer){
     }
 
 }
+// Function to draw an animated circle
+void animate_circle(frame &anim, int start_frame, int end_frame, double time,
+                    double radius, vec ori, color &clr){
+
+    int j = 0;
+
+    int draw_frames = time * anim.fps;
+
+    // drawing a white circle
+    for (int i = start_frame; i < end_frame; ++i){
+        j += 1;
+
+        cairo_set_source_rgb(anim.frame_ctx[i], clr.r, clr.g, clr.b);
+        if (i <= anim.curr_frame + draw_frames){
+            cairo_move_to(anim.frame_ctx[i], ori.x, ori.y - radius);
+            cairo_arc(anim.frame_ctx[i], ori.x, ori.y, radius, 
+                      1.5 * M_PI,(1.5 *  M_PI + (j)*2*M_PI/draw_frames));
+        }
+        else{
+            cairo_move_to(anim.frame_ctx[i], ori.x + radius, ori.y);
+            cairo_arc(anim.frame_ctx[i], ori.x, ori.y, radius, 0, 2*M_PI);
+        }
+
+        cairo_stroke(anim.frame_ctx[i]);
+        
+    }
+
+    anim.curr_frame += draw_frames;
+
+}
+
 
 // Function to draw an animated circle
 void animate_circle(frame &anim, double time, double radius, vec ori, 
@@ -475,6 +506,28 @@ void draw_human(frame &anim, vec pos, double height, color clr){
     cairo_line_to(anim.frame_ctx[anim.curr_frame], foot_pos.x, foot_pos.y);
 
     cairo_stroke(anim.frame_ctx[anim.curr_frame]);
+}
+
+// Function to animate human, but stop at a particular frame
+void animate_human(frame &anim, vec pos, double height, color clr, 
+                   int start_frame, int end_frame, double time){
+    //double body_height;
+    cairo_set_source_rgb(anim.frame_ctx[anim.curr_frame],
+                         clr.r, clr.g, clr.b);
+    double radius = height * 0.33333333;
+    animate_circle(anim, start_frame, end_frame, time * 2/3, radius, pos, clr);
+    vec head_pos;
+    head_pos.x = pos.x;
+    head_pos.y = pos.y + radius;
+    vec foot_pos;
+    foot_pos.x = pos.x;
+    // Check foot position y.
+    foot_pos.y = pos.y + height;
+
+    //body_height = head_pos.y - foot_pos.y;
+
+    animate_line(anim, anim.curr_frame, end_frame, time/3, 
+                 head_pos, foot_pos, clr);  
 }
 
 // Function to animate the drawing of a human
@@ -752,3 +805,56 @@ std::vector<frame> init_layers(int layer_num, vec res, int fps, color bg_clr){
     return layers;
 }
 
+void draw(std::vector<vec> &array){
+    // Initialize all visualization components
+    int fps = 30;
+    double res_x = 1000;
+    double res_y = 1000;
+    vec res = {res_x, res_y};
+    color bg_clr = {0, 0, 0, 0};
+    color line_clr = {1, 0, 1, 1};
+
+    std::vector<frame> layers = init_layers(1, res, fps, bg_clr);
+
+    // shift the array to be in range 0->1 from -1->1
+
+    vec maximum = {1, 1};
+    vec minimum = {-1, -1};
+    vec temp;
+
+    temp = *std::max_element(std::begin(array), std::end(array), 
+                             [](const vec &i, const vec &j){
+                                 return i.x < j.x;});
+    maximum.x = temp.x;
+    temp = *std::max_element(std::begin(array), std::end(array), 
+                             [](const vec &i, const vec &j){
+                                 return i.y < j.y;});
+    maximum.y = temp.y;
+
+    temp = *std::min_element(std::begin(array), std::end(array), 
+                             [](const vec &i, const vec &j){
+                                 return i.x < j.x;});
+    minimum.x = temp.x;
+    temp = *std::min_element(std::begin(array), std::end(array), 
+                             [](const vec &i, const vec &j){
+                                 return i.y < j.y;});
+    minimum.y = temp.y;
+
+    //std::cout << maximum.x << '\t' << maximum.y << '\n';
+    //std::cout << minimum.x << '\t' << minimum.y << '\n';
+
+
+    for (int i = 0; i < array.size(); i++){
+        array[i].x = (array[i].x - minimum.x)/ (maximum.x - minimum.x);
+        array[i].y = (array[i].y - minimum.y)/ (maximum.y - minimum.y);
+    }
+
+    draw_array(layers[0], array, res_x, res_y, line_clr);
+
+    draw_layers(layers);
+
+    for (int i = 0; i < layers.size(); ++i){
+        layers[i].destroy_all();
+    }
+
+}
