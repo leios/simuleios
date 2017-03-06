@@ -11,6 +11,7 @@
 #include <iostream>
 #include <vector>
 #include <utility>
+#include "../../../visualization/cairo/cairo_vis.h"
 
 // Function to swap individual rows of our matrix
 void swap_rows(std::vector<double> &matrix, int row1, int row2, 
@@ -32,6 +33,9 @@ void swap_elements(std::vector<double> &matrix, int ind1, int ind2);
 // function to solve for our values with back-substitution
 std::vector<double> backsubstitution(std::vector<double> matrix, 
                                      int rows, int cols);
+
+// Function to visualize gaussian elimination algorithm of a matrix
+void vis_matrix(frame &anim, std::vector<double> &matrix, int rows, int cols);
 
 /*----------------------------------------------------------------------------//
 * MAIN
@@ -115,6 +119,9 @@ void gaussian_elimination(std::vector<double> &matrix, int rows, int cols){
 
     for (int k = 0; k < std::min(rows,cols); ++k){
 
+        vis_matrix(layers[0], matrix, rows, cols);
+        std::cout << '\n';
+
         max_index = max_col_index(matrix, k, k, rows, cols);
         if (matrix[max_index * cols + k] == 0){
             std::cout << "Matrix is singular!" << '\n';
@@ -164,4 +171,24 @@ void swap_elements(std::vector<double> &matrix, int ind1, int ind2){
     double temp_val = matrix[ind1];
     matrix[ind1] = matrix[ind2];
     matrix[ind2] = temp_val;
+}
+
+// Function to visualize gaussian elimination algorithm of a matrix
+void vis_matrix(frame &anim, std::vector<double> &matrix, int rows, int cols){
+
+    vec pos;
+    double box_size = 100;
+    color square_clr;
+    for (int i = 0; i < rows; ++i){
+        for (int j = 0; j < cols; ++j){
+            pos.x = anim.res_x * 0.5 + (-0.5 * rows + i) * box_size;
+            pos.y = anim.res_y * 0.5 + (-0.5 * cols + j) * box_size;
+            square_clr = {matrix[i*cols +j] / 10, 0,
+                          1 - matrix[i*cols +j] / 10, 1};
+            grow_square(anim, 0, anim.curr_frame, num_frames, pos, 
+                        box_size, square_clr);
+        }
+    }
+
+    anim.curr_frame++;
 }
