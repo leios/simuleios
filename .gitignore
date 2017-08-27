@@ -67,3 +67,7 @@
 
 *.dat
 *.mp4
+
+# misc
+*.png
+*.gif
