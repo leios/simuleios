@@ -43,7 +43,7 @@ void create_tree(node* &root, int num_row, int num_child){
     root = new node;
     root->ID = num_row;
     root->num_children = num_child;
-    root->children = (node**)malloc(sizeof(node)*num_child);
+    root->children = new node*[num_child];
     if (num_row > 0){
         for (int i = 0; i < num_child; ++i){
             create_tree(root->children[i], num_row - 1, num_child);
