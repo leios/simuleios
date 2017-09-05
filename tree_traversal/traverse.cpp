@@ -33,8 +33,8 @@ int main(){
     create_tree(root, 3, 3);
     std::cout << "Tree created!" << '\n';
     //DFS_recursive(root);
-    //DFS_stack(root);
-    BFS_queue(root);
+    DFS_stack(root);
+    //BFS_queue(root);
 
 }
 
@@ -54,10 +54,10 @@ void create_tree(node& root, int num_row, int num_child){
 
 // Function to do a depth-first search recursively
 void DFS_recursive(const node& root){
+    std::cout << root.ID << '\n';
     if (root.children.size() == 0){
         return;
     }
-    std::cout << root.ID << '\n';
     for (int i = 0; i < root.children.size(); ++i){
         DFS_recursive(root.children[i]);
     }
@@ -71,12 +71,12 @@ void DFS_stack(const node& root){
     node temp;
 
     while (s.size() > 0){
-        std::cout << s.top().ID << '\n';
         temp = s.top();
         s.pop();
         for (int i = 0; i < temp.children.size(); ++i){
             s.push(temp.children[i]);
         }
+        std::cout << temp.ID << '\n';
     }
 }
 
