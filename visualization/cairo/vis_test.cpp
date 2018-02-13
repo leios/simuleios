@@ -19,15 +19,6 @@ int main(){
 
     std::vector<frame> layers = init_layers(3, res, fps, bg_clr);
 /*
-    std::vector<frame> layers(3);
-    for (size_t i = 0; i < layers.size(); i++){
-        layers[i].create_frame(400, 300,30,"/tmp/image");
-        layers[i].init();
-        layers[i].curr_frame = 1;
-    }
-    //create_bg(layers[0], 0, 0, 0);
-*/
-/*
 
     color human_clr = {1, 1, 1, 1};
 
@@ -76,7 +67,3 @@ int main(){
 
     draw_layers(layers);
 }
-
-/*----------------------------------------------------------------------------//
-* SUBROUTINES
-*-----------------------------------------------------------------------------*/
