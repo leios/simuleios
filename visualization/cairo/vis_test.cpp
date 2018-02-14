@@ -65,5 +65,19 @@ int main(){
     //highlight_bar(layers[1], 51, 80, array, ori, 200, 150, highlight_clr, 5);
 */
 
+    std::vector<double> temp_array(4);
+    temp_array[0] = 1;
+    temp_array[1] = -0.5;
+    temp_array[2] = 0.5;
+    temp_array[3] = 2;
+
+    vec origin = {layers[0].res_x*0.5,layers[0].res_y*0.5,0};
+    vec dimension = {150,100,0};
+
+    color white = {1, 1, 1, 1};
+    color grey = {0.5, 0.5, 0.5, 1};
+
+    plot(layers[1], temp_array, 1, 0, 100, origin, dimension, grey, white);
+
     draw_layers(layers);
 }

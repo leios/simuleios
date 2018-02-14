@@ -9,9 +9,14 @@
 #include "../visualization/cairo/vec.h"
 #include "../visualization/cairo/cairo_vis.h"
 
+// Simple struct to hold a moving particle
+struct Particle{
+    vec pos, vel, acc;
+};
+
 // Function to initialize the scene
 std::vector<frame> init_scene(){
-    vec res = {400, 300};
+    vec res = {600, 400};
     int fps = 30;
     color bg_clr = {0,0,0,1};
 
@@ -27,11 +32,6 @@ vec map_coordinates(vec pos, vec max, vec res){
             res.y * double_pos.y / max.y, 0};
     
 }
-
-// Simple struct to hold a moving particle
-struct Particle{
-    vec pos, vel, acc;
-};
 
 vec find_acc(Particle &planet, Particle &ball){
     vec distance = planet.pos - ball.pos;
@@ -50,20 +50,35 @@ void euler_ball(Particle &ball, double dt){
     ball.pos += ball.vel*dt;
 }
 
-int main(){
+void visualize_euler_ball(){
 
-    Particle planet, ball;
+    Particle planet;
 
     planet.acc = {0,0,0};
     planet.vel = {0,0,0};
     planet.pos = {0,0,0};
 
-    ball.acc = {0,0,0};
-    ball.vel = {0,0,0};
-    ball.pos = {5,0,0};
+    std::vector<Particle> balls(5);
+    for (Particle &ball : balls){
+        ball.acc = {0,0,0};
+        ball.vel = {0,1,0};
+        ball.pos = {5,0,0};
+    }
+
+    balls[1].vel = {1,0,0};
+    balls[1].pos = {0,5,0};
+
+    balls[2].vel = {0.5,-0.5,0};
+    balls[2].pos = {4,4,0};
+
+    balls[3].vel = {1.5,0,0};
+    balls[3].pos = {0,5,0};
+
+    balls[4].vel = {-0.5,0.5,0};
+    balls[4].pos = {-4,-4,0};
 
     double threshold = 0.1;
-    double dt = 0.01;
+    double dt = 0.1;
 
     std::vector<frame> layers = init_scene();
     color white = {1,1,1,1};
@@ -73,19 +88,26 @@ int main(){
     vec pos = map_coordinates(planet.pos, max, res);
     grow_circle(layers[1], 1, pos, 50, white);
 
-    pos = map_coordinates(ball.pos, max, res);
-    grow_circle(layers[1], 1, pos, 10, white);
+    for (Particle &ball : balls){
+        pos = map_coordinates(ball.pos, max, res);
+        grow_circle(layers[1], 1, 100, 200, pos, 10, white);
+    }
 
-    while (distance(planet.pos, ball.pos) > threshold){
-    //for(int i = 0; i < 100; ++i){
-        ball.acc = find_acc(planet, ball);
-        euler_ball(ball, dt);
-        print(ball.acc);
-        print(ball.vel);
-        print(ball.pos);
-        std::cout << distance(planet.pos, ball.pos) << '\n';
+    //while (distance(planet.pos, ball.pos) > threshold){
+    for(int i = 0; i < 800; ++i){
+        for (Particle &ball : balls){
+            ball.acc = find_acc(planet, ball);
+            euler_ball(ball, dt);
+            vec mapped_coord = map_coordinates(ball.pos, max, res);
+            draw_filled_circle(layers[1], mapped_coord, 10, 200 + i, white);
+            print(ball.pos);
+        }
         std::cout << '\n';
     }
 
     draw_layers(layers);
+}
+
+int main(){
+    visualize_euler_ball();
 }

@@ -179,6 +179,19 @@ void grow_circle(frame &anim, double time, int start_frame, int end_frame,
     std::cout << anim.curr_frame << '\n';
 }
 
+// Function to draw a filled circle
+void draw_filled_circle(frame &anim, vec ori, double radius, int draw_frame,
+                        color cir_clr){
+    cairo_arc(anim.frame_ctx[draw_frame], ori.x, ori.y, radius, 0, 2*M_PI);
+    cairo_set_source_rgba(anim.frame_ctx[draw_frame], cir_clr.r, cir_clr.g, 
+                              cir_clr.b, cir_clr.a);
+
+    cairo_fill(anim.frame_ctx[draw_frame]);
+
+    cairo_stroke(anim.frame_ctx[draw_frame]);
+
+}
+
 // Function to grow a square at the provided point.
 void grow_square(frame &anim, double time, int start_frame, int end_frame,
                  vec &ori, double radius, color square_clr){
@@ -857,4 +870,54 @@ void draw(std::vector<vec> &array){
         layers[i].destroy_all();
     }
 
+}
+
+// Functions to plot a basic array
+void plot(frame &anim, std::vector<double> array, double time, int start_frame,
+          int end_frame, vec &ori, vec &dim, color bar_clr, color arr_clr){
+
+    // Splitting the drawing time into drawing the bars, and plotting
+    double bar_time = time * 0.25;
+    double plot_time = time * 0.25;
+
+    // creating arrays for drawing the plot 
+    std::vector<vec> bar_loc(2);
+    bar_loc[0] = {ori.x - dim.x*0.45, ori.y + dim.y*0.5, 0};
+    bar_loc[1] = {ori.x - dim.x*0.45, ori.y - dim.y*0.5, 0};
+
+    animate_line(anim, start_frame, end_frame, 
+                 bar_time, bar_loc[0], bar_loc[1], bar_clr);
+
+    bar_loc[0] = {ori.x - dim.x*0.5, ori.y};
+    bar_loc[1] = {ori.x + dim.x*0.5, ori.y};
+
+    animate_line(anim, start_frame, end_frame, 
+                 bar_time, bar_loc[0], bar_loc[1], bar_clr);
+
+    //start_frame for array plotting
+    int start_frame_arr = start_frame + bar_time*anim.fps;
+
+    // creating the vector of vecs for plotting
+    std::vector<vec> vec_arr(array.size());
+    double max = *max_element(array.begin(), array.end());
+    double min = *min_element(array.begin(), array.end());
+
+    double dt = plot_time / array.size();
+
+    // Finding max and min of array
+    for (int i = 0; i < array.size();++i){
+        vec_arr[i] = {ori.x - 0.45*dim.x + i*0.95*dim.x / array.size(),
+                      ori.y + (array[i] / (max - min))* dim.y*0.5,
+                      0};
+    }
+
+    for (int i = 0; i < array.size(); ++i){
+        double curr_time = i*dt;
+        animate_line(anim, start_frame_arr, 
+                     start_frame_arr + curr_time * anim.fps,
+                     dt, vec_arr[i-1], vec_arr[i], arr_clr);
+    }
+
+    //draw_array(anim, plot_time, array, dim.x, dim.y, arr_clr);
+    
 }

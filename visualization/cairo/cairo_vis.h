@@ -18,7 +18,7 @@
 #include <assert.h>
 #include "vec.h"
 
-#define num_frames 400
+#define num_frames 300
 
 // Struct for colors
 struct color{
@@ -78,6 +78,10 @@ void grow_circle(frame &anim, double time, int start_frame, int end_frame,
                  vec &ori, double radius, color cir_clr);
 void grow_circle(frame &anim, double time, vec &ori, double radius, 
                  color cir_clr);
+
+//// Function to draw a filled circle
+void draw_filled_circle(frame &anim, vec ori, double radius, int draw_frame,
+                        color cir_clr);
 
 // Function to grow a square at the provided point.
 void grow_square(frame &anim, double time, int start_frame, int end_frame,
@@ -149,4 +153,7 @@ std::vector<frame> init_layers(int layer_num, vec res, int fps, color bg_clr);
 
 // Function to draw everything with standard parameters
 void draw(std::vector<vec> &array);
+
+void plot(frame &anim, std::vector<double> array, double time, int start_frame,
+          int end_frame, vec &ori, vec &dim, color bar_clr, color arr_clr);
 #endif
