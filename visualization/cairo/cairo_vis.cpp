@@ -907,14 +907,14 @@ void plot(frame &anim, std::vector<double> array, double time, int start_frame,
     // Finding max and min of array
     for (int i = 0; i < array.size();++i){
         vec_arr[i] = {ori.x - 0.45*dim.x + i*0.95*dim.x / array.size(),
-                      ori.y + (array[i] / (max - min))* dim.y*0.5,
+                      ori.y - (array[i] / (max - min))* dim.y*0.5,
                       0};
     }
 
-    for (int i = 0; i < array.size(); ++i){
+    for (int i = 1; i < array.size(); ++i){
         double curr_time = i*dt;
-        animate_line(anim, start_frame_arr, 
-                     start_frame_arr + curr_time * anim.fps,
+        animate_line(anim,
+                     start_frame_arr + curr_time * anim.fps, end_frame,
                      dt, vec_arr[i-1], vec_arr[i], arr_clr);
     }
 

@@ -108,6 +108,48 @@ void visualize_euler_ball(){
     draw_layers(layers);
 }
 
+std::vector<double> solve_euler(double step, double xmax){
+
+    int n = (int)(xmax / step);
+    std::vector<double> euler_output(n);
+
+    euler_output[0] = 0;
+    for (int i = 0; i < n; ++i){
+        double xval = i*step;
+
+        euler_output[i] = euler_output[i-1] +xval*step;
+    }
+
+    return euler_output;
+}
+
+// Function to visualize euler instability
+void visualize_instability(){
+    std::vector<frame> layers = init_scene();
+    int n = 100;
+    std::vector<double> array(n);
+    for (int i = 0; i < n; ++i){
+        array[i] = pow((i*2./n),2)/4;
+    }
+
+    std::vector<double> euler_array = solve_euler(0.5, 4);
+    std::vector<double> euler_array_2 = solve_euler(0.1, 4);
+
+    vec ori = {layers[0].res_x*0.5,layers[0].res_y*0.5,0};
+    vec dim = {300,200,0};
+    color bar_color = {1, 1, 1, 1};
+    color plot_color = {0.5, 0.5, 1, 1};
+    color plot_color_2 = {1, 0.5, 0.5, 1};
+    color plot_color_3 = {0.5, 1, 0.5, 1};
+    plot(layers[1], array, 10, 0, 500, ori, dim, bar_color, plot_color);
+    plot(layers[2], euler_array, 10, 0, 500, ori, dim, bar_color, plot_color_2);
+    plot(layers[2], euler_array_2, 10, 0, 500, ori, 
+         dim, bar_color, plot_color_3);
+
+    draw_layers(layers);
+}
+
 int main(){
     visualize_euler_ball();
+    //visualize_instability();
 }
