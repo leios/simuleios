@@ -901,13 +901,20 @@ void plot(frame &anim, std::vector<double> array, double time, int start_frame,
     std::vector<vec> vec_arr(array.size());
     double max = *max_element(array.begin(), array.end());
     double min = *min_element(array.begin(), array.end());
+    double diff;
+    if (max < 0){
+        diff = min;
+    }
+    else if (min > 0){
+        diff = max;
+    }
 
     double dt = plot_time / array.size();
 
     // Finding max and min of array
     for (int i = 0; i < array.size();++i){
         vec_arr[i] = {ori.x - 0.45*dim.x + i*0.95*dim.x / array.size(),
-                      ori.y - (array[i] / (max - min))* dim.y*0.5,
+                      ori.y - (array[i] / (diff))* dim.y*0.5,
                       0};
     }
 
