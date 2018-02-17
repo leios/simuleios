@@ -97,7 +97,7 @@ void visualize_euler_ball(){
     verlet_balls[4].pos = {-4,-4,0};
 
     double threshold = 0.1;
-    double dt = 0.1;
+    double dt = 1.0;
 
     std::vector<frame> layers = init_scene();
     color white = {1,1,1,1};
@@ -148,8 +148,9 @@ std::vector<double> solve_euler(double step, double xmax){
     for (int i = 1; i < n; ++i){
         double xval = i*step;
 
-        euler_output[i] = euler_output[i-1] +xval*step;
+        //euler_output[i] = euler_output[i-1] +xval*step;
         //euler_output[i] = (-2.3*exp(xval + step) -euler_output[i-1])/step;
+        euler_output[i] = euler_output[i-1] - 3.0*euler_output[i-1]*step;
     }
 
     return euler_output;
@@ -162,14 +163,14 @@ void visualize_instability(){
     double xmax = 10;
     std::vector<double> array(n);
     for (int i = 0; i < n; ++i){
-        array[i] = pow((i*xmax/n),2)/2;
-        //array[i] = exp(-2.3*(i*xmax/n));
+        //array[i] = pow((i*xmax/n),2)/2;
+        array[i] = exp(-3.0*(i*xmax/n));
     }
 
-    std::vector<double> euler_array = solve_euler(0.5, xmax);
-    std::vector<double> euler_array_2 = solve_euler(0.1, xmax);
-    //std::vector<double> euler_array = solve_euler(0.1, xmax);
-    //std::vector<double> euler_array_2 = solve_euler(2, xmax);
+    //std::vector<double> euler_array = solve_euler(0.5, xmax);
+    //std::vector<double> euler_array_2 = solve_euler(0.1, xmax);
+    std::vector<double> euler_array = solve_euler(0.1, xmax);
+    std::vector<double> euler_array_2 = solve_euler(0.5, xmax);
 
     for (double &val : euler_array){
         std::cout << val << '\n';
@@ -190,6 +191,6 @@ void visualize_instability(){
 }
 
 int main(){
-    //visualize_euler_ball();
-    visualize_instability();
+    visualize_euler_ball();
+    //visualize_instability();
 }
