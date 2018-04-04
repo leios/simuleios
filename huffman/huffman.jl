@@ -78,13 +78,28 @@ end
 function encode(codebook::Dict{Char, String}, phrase::String)
     final_bitstring = ""
     for i in phrase
-        final_bitstring = string(final_bitstring, codebook[i])
+        final_bitstring = final_bitstring * codebook[i]
     end
 
     return final_bitstring
 end
 
-function decode(codebook::Dict{Char, String}, bitstring::String)
+function decode(huffman_tree::Node, bitstring::String)
+    current = huffman_tree
+    final_string = ""
+    for i in bitstring
+        if (i == '0')
+            current = current.left
+        else
+            current = current.right
+        end
+        if(typeof(current.left) == Empty && typeof(current.right) == Empty)
+            final_string = final_string * current.key
+            current = huffman_tree
+        end
+    end
+
+    return final_string
 end
 
 function two_pass_huffman(phrase::String)
@@ -92,7 +107,9 @@ function two_pass_huffman(phrase::String)
     codebook = create_codebook(huffman_tree)
     println(codebook)
     bitstring = encode(codebook, phrase)
+    final_string = decode(huffman_tree, bitstring)
     println(bitstring)
+    println(final_string)
 end
 
-two_pass_huffman("hello")
+two_pass_huffman("aaaabbbccd")
