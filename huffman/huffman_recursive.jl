@@ -1,42 +1,39 @@
 # This is for the PriorityQueue
 using DataStructures
 
-# creating abstract type for binary trees
-abstract type BT end
-type Empty <: BT end
-
-type Node <: BT
-    right::BT
-    left::BT
+struct Leaf
     weight::Int64
-    key::String
-    bitstring::String
+    key::Char
 end
 
-# This will search through the tree to create bitstrings for each character
+struct Branch
+    right::Union{Leaf, Branch}
+    left::Union{Leaf, Branch}
+    weight::Int64
+end
+
+const Node = Union{Leaf, Branch}
+isbranch(branch::Branch) = true
+isbranch(other::T) where {T} = false
+
+function codebook_recurse(leaf::Leaf, code::String, 
+                          dict::Dict{Char,String})
+    dict[leaf.key] = code
+end
+
+function codebook_recurse(branch::Branch, code::String, 
+                          dict::Dict{Char,String})
+    codebook_recurse(branch.left, string(code, "0"), dict)
+    codebook_recurse(branch.right, string(code, "1"), dict)
+end
+
+# This will depth-first search through the tree 
+# to create bitstrings for each character.
+# Note: Any depth-first search method will work
 # This outputs encoding Dict to be used for encoding
 function create_codebook(n::Node)
-    s = Stack(Node)
-    push!(s, n)
-
-    codebook = Dict{Char, String}()
- 
-    while (length(s) > 0)
-        temp = pop!(s)
-        if (typeof(temp.left) != Empty)
-            temp.left.bitstring = temp.bitstring * "0"
-            push!(s, temp.left)
-        end
-        if (typeof(temp.right) != Empty)
-            temp.right.bitstring = temp.bitstring * "1"
-            push!(s, temp.right)
-        end
-        if (typeof(temp.right) == Empty &&
-            typeof(temp.left) == Empty)
-            codebook[temp.key[1]] = temp.bitstring
-        end
-    end
-
+    codebook = Dict{Char,String}()
+    codebook_recurse(n, "", codebook)
     return codebook
 end
 
@@ -58,15 +55,15 @@ function create_tree(phrase::String)
     nodes = PriorityQueue{Node, Int64}()
     while(length(weights) > 0)
         weight = peek(weights)[2]
-        key = dequeue!(weights)
-        temp_node = Node(Empty(), Empty(), weight, key, "")
+        key = dequeue!(weights)[1]
+        temp_node = Leaf(weight, key)
         enqueue!(nodes, temp_node, weight)
     end
 
     while(length(nodes) > 1)
         node1 = dequeue!(nodes)
         node2 = dequeue!(nodes)
-        temp_node = Node(node1, node2, node1.weight + node2.weight, "", "")
+        temp_node = Branch(node1, node2, node1.weight + node2.weight)
         enqueue!(nodes, temp_node, temp_node.weight)
     end
 
@@ -93,8 +90,8 @@ function decode(huffman_tree::Node, bitstring::String)
         else
             current = current.right
         end
-        if(typeof(current.left) == Empty && typeof(current.right) == Empty)
-            final_string = final_string * current.key
+        if (!isbranch(current))
+            final_string = final_string * string(current.key)
             current = huffman_tree
         end
     end
