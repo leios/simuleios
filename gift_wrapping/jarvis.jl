@@ -1,20 +1,14 @@
+# Struct to hold an x, y position. A tuple would also be fine.
 struct Pos
     x::Float64
     y::Float64
 end
 
-function jarvis_angle(point1::Pos, point2::Pos, point3::Pos)
+# This returns a measure of how far "left" the vector is with a cross product
+function cross(point1::Pos, point2::Pos, point3::Pos)
     vec1 = Pos(point2.x - point1.x, point2.y - point1.y)
     vec2 = Pos(point3.x - point2.x, point3.y - point2.y)
     ret_angle = vec1.x*vec2.y - vec1.y*vec2.x
-#=
-    mag1 = sqrt(vec1.x*vec1.x + vec1.y*vec1.y)
-    mag2 = sqrt(vec2.x*vec2.x + vec2.y*vec2.y)
-    ret_angle = acos((vec1.x*vec2.x + vec1.y*vec2.y)/(mag1*mag2))
-    if (vec2.y < 0)
-        ret_angle += pi
-    end
-=#
     return ret_angle*ret_angle
 end
 
@@ -29,33 +23,33 @@ function jarvis_march(points::Vector{Pos})
     curr_point = points[2]
 
     # Find angle between points
-    curr_theta = jarvis_angle(Pos(0,0), hull[1], curr_point)
-    #while (curr_point != hull[1])
-    while (length(hull) < 4)
-        println(hull)
+    curr_product = cross(Pos(0,0), hull[1], curr_point)
+
+    # We will hold a temp variable with the highest cross product as we iterate
+    # through all the points and move our hull vector forward.
+    while (curr_point != hull[1])
         for point in points
-                theta = 0.0
+            product = 0.0
+
+            # Special case for the first element when there is no hull[i-1]
             if (i == 1)
                 if (hull[i] != point)
-                    theta = jarvis_angle(Pos(0,0), hull[i], point)
+                    product = cross(Pos(0,0), hull[i], point)
                 end
             else
                 if (hull[i] != point && hull[i-1] != point)
-                    theta = jarvis_angle(hull[i-1], hull[i], point)
+                    product = cross(hull[i-1], hull[i], point)
                 end
             end
-            println(hull[i])
-            println(point)
-            println(curr_theta)
-            println(theta)
-            println()
-            if (theta > curr_theta)
+            if (product > curr_product)
                 curr_point = point
-                curr_theta = theta
+                curr_product = product
             end
         end
+
+        # Pushing to hull, moving simulation forward and resetting the product
         push!(hull, curr_point)
-        curr_theta = 0
+        curr_product = 0
         i += 1
     end
 
@@ -64,24 +58,12 @@ end
 
 function main()
 
-    points = [Pos(2,1.5), Pos(1, 1), Pos(2, 4), Pos(3, 1)]
+    # These points are chosen such that there is a clearly defined hull with
+    # several interior points. As a note, these will be generated either 
+    # randomly or via some mesh in practice.
+    points = [Pos(2,1.5), Pos(1, 1), Pos(2, 4), Pos(3, 1), Pos(2,2), Pos(2,0.5)]
     hull = jarvis_march(points)
     println(hull)
 end
-
-println("angle is:")
-println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(1,1)))
-println("angle is:")
-println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(1,-1)))
-println("angle is:")
-println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(2,0)))
-println("angle is:")
-println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(0,0)))
-println("angle is:")
-println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(2,1)))
-println("angle is:")
-println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(0,1)))
-println("angle is:")
-println(jarvis_angle(Pos(1,0), Pos(0,0), Pos(0,1)))
 
 main()
