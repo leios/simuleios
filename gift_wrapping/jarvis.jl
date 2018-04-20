@@ -6,10 +6,16 @@ end
 function jarvis_angle(point1::Pos, point2::Pos, point3::Pos)
     vec1 = Pos(point2.x - point1.x, point2.y - point1.y)
     vec2 = Pos(point3.x - point2.x, point3.y - point2.y)
+    ret_angle = vec1.x*vec2.y - vec1.y*vec2.x
+#=
     mag1 = sqrt(vec1.x*vec1.x + vec1.y*vec1.y)
     mag2 = sqrt(vec2.x*vec2.x + vec2.y*vec2.y)
     ret_angle = acos((vec1.x*vec2.x + vec1.y*vec2.y)/(mag1*mag2))
-    return ret_angle
+    if (vec2.y < 0)
+        ret_angle += pi
+    end
+=#
+    return ret_angle*ret_angle
 end
 
 function jarvis_march(points::Vector{Pos})
@@ -66,6 +72,16 @@ end
 println("angle is:")
 println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(1,1)))
 println("angle is:")
+println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(1,-1)))
+println("angle is:")
+println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(2,0)))
+println("angle is:")
+println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(0,0)))
+println("angle is:")
 println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(2,1)))
+println("angle is:")
+println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(0,1)))
+println("angle is:")
+println(jarvis_angle(Pos(1,0), Pos(0,0), Pos(0,1)))
 
 main()
