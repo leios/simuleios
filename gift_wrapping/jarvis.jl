@@ -24,10 +24,12 @@ function jarvis_march(points::Vector{Pos})
 
     # Find angle between points
     curr_theta = jarvis_angle(Pos(0,0), hull[1], curr_point)
-    while (curr_point != hull[1])
+    #while (curr_point != hull[1])
+    while (length(hull) < 4)
+        println(hull)
         for point in points
                 theta = 0.0
-            if (i > 1)
+            if (i == 1)
                 if (hull[i] != point)
                     theta = jarvis_angle(Pos(0,0), hull[i], point)
                 end
@@ -36,12 +38,18 @@ function jarvis_march(points::Vector{Pos})
                     theta = jarvis_angle(hull[i-1], hull[i], point)
                 end
             end
-            if (theta < curr_theta)
+            println(hull[i])
+            println(point)
+            println(curr_theta)
+            println(theta)
+            println()
+            if (theta > curr_theta)
                 curr_point = point
                 curr_theta = theta
             end
         end
         push!(hull, curr_point)
+        curr_theta = 0
         i += 1
     end
 
@@ -55,11 +63,9 @@ function main()
     println(hull)
 end
 
-#=
 println("angle is:")
-println(jarvis_angle(Pos(0,0), Pos(0,1), Pos(1,1)))
+println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(1,1)))
 println("angle is:")
-println(jarvis_angle(Pos(0,0), Pos(0,1), Pos(2,1)))
-=#
+println(jarvis_angle(Pos(0,0), Pos(1,0), Pos(2,1)))
 
 main()
