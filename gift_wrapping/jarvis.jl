@@ -4,31 +4,11 @@ struct Pos
 end
 
 function jarvis_angle(point1::Pos, point2::Pos, point3::Pos)
-    # Find distances between all points
-    a = sqrt((point2.x - point3.x)^2 + (point2.y - point3.y)^2)
-    b = sqrt((point3.x - point1.x)^2 + (point3.y - point1.y)^2)
-    c = sqrt((point1.x - point2.x)^2 + (point1.y - point2.y)^2)
-
-    println(point1)
-    println(point2)
-    println(point3)
-    println(a)
-    println(b)
-    println(c)
-    println(-(c*c - a*a - b*b)/(2*a*b))
-    println()
-    ret_angle = acos((b*b - a*a - c*c)/(2*a*c))
-    println(ret_angle)
-    println()
-
-    if(sign(point1.x - point2.x) != sign(point1.x - point3.x))
-        ret_angle += 0.5*pi
-    end
-
-    if (isnan(ret_angle))
-        exit(1)
-    end
-
+    vec1 = Pos(point2.x - point1.x, point2.y - point1.y)
+    vec2 = Pos(point3.x - point2.x, point3.y - point2.y)
+    mag1 = sqrt(vec1.x*vec1.x + vec1.y*vec1.y)
+    mag2 = sqrt(vec2.x*vec2.x + vec2.y*vec2.y)
+    ret_angle = acos((vec1.x*vec2.x + vec1.y*vec2.y)/(mag1*mag2))
     return ret_angle
 end
 
@@ -46,18 +26,19 @@ function jarvis_march(points::Vector{Pos})
     curr_theta = jarvis_angle(Pos(0,0), hull[1], curr_point)
     while (curr_point != hull[1])
         for point in points
-            if (hull[i] != point)
                 theta = 0.0
-                if (i > 1)
-                    theta = jarvis_angle(hull[i-1], hull[i], point)
-                else
+            if (i > 1)
+                if (hull[i] != point)
                     theta = jarvis_angle(Pos(0,0), hull[i], point)
                 end
-    
-                if (theta < curr_theta)
-                    curr_point = point
-                    curr_theta = theta
+            else
+                if (hull[i] != point && hull[i-1] != point)
+                    theta = jarvis_angle(hull[i-1], hull[i], point)
                 end
+            end
+            if (theta < curr_theta)
+                curr_point = point
+                curr_theta = theta
             end
         end
         push!(hull, curr_point)
