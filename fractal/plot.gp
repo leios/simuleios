@@ -1,3 +1,3 @@
 set view map
-set logscale cb
+#set logscale cb
 splot 'pixels.dat' matrix with image
