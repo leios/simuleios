@@ -1,3 +1,11 @@
+#-------------split_op.jl------------------------------------------------------#
+#
+# Purpose: To create a quick simulation of a quantum system
+#
+#   Notes: Incorporate imaginary time into simulation function
+#          Figure out why simulation is blank every other timestep
+#
+#------------------------------------------------------------------------------#
 using Plots
 pyplot()
 
@@ -11,15 +19,19 @@ struct Param
     x::Vector{Float64}
     dk::Float64
     k::Vector{Float64}
+    im_time::Bool
 
     Param() = new(10.0, 512, 0.05, 1000, 2 * 10.0/512,
                   Vector{Float64}(-10.0 + 10.0/512 : 20.0/512 : 10.0),
-                   pi / 10.0,
-                  Vector{Float64}(vcat(0:512/2 - 1, -512/2 : -1) * pi/10.0))
-    Param(xmax::Float64, res::Int64, dt::Float64, timesteps::Int64) = new(
+                  pi / 10.0,
+                  Vector{Float64}(vcat(0:512/2 - 1, -512/2 : -1) * pi/10.0),
+                  false)
+    Param(xmax::Float64, res::Int64, dt::Float64, timesteps::Int64,
+          im_val::Bool) = new(
               xmax, res, dt, timesteps,
               2*xmax/res, Vector{Float64}(-xmax+xmax/res:2*xmax/res:xmax),
-              pi/xmax, Vector{Float64}(vcat(0:res/2-1, -res/2:-1)*pi/xmax)
+              pi/xmax, Vector{Float64}(vcat(0:res/2-1, -res/2:-1)*pi/xmax),
+              im_val
           )
 end
 
@@ -40,7 +52,7 @@ end
 function update_V(par::Param, opr::Operators, voffset::Float64)
     thresh = 5
     V1 = 0.5 * (par.x - voffset).^2 + 4 
-    V2 = 2*(par.x + voffset).^2
+    V2 = 4*(2*(par.x + voffset)).^2
     for i = 1:length(V1)
         if (V1[i] > thresh)
             V1[i] = thresh
@@ -51,15 +63,23 @@ function update_V(par::Param, opr::Operators, voffset::Float64)
     end
 
     opr.V = V1 + V2
-    opr.PE = exp.(-0.5*im*opr.V*par.dt)
+    if (par.im_time)
+        opr.PE = exp.(-0.5*opr.V*par.dt)
+    else
+        opr.PE = exp.(-im*0.5*opr.V*par.dt)
+    end
 end
 
 # Function to initialize the wfc and potential
 function init(par::Param, voffset::Float64, wfcoffset::Float64)
     opr = Operators(length(par.x))
     update_V(par, opr, voffset)
-    opr.wfc = 3 * exp.(-(par.x - wfcoffset).^2/2)
-    opr.KE = exp.(-0.5*im*par.k.^2*par.dt)
+    opr.wfc = 5 * exp.(-(par.x - wfcoffset).^2/2)
+    if (par.im_time)
+        opr.KE = exp.(-0.5*par.k.^2*par.dt)
+    else
+        opr.KE = exp.(-im*0.5*par.k.^2*par.dt)
+    end
 
     return opr
 end
@@ -86,20 +106,48 @@ function split_op(par::Param, opr::Operators)
         # plotting density and potential
         density = abs2.(opr.wfc)
 
-        plot([density, real(opr.V)])
-        savefig("density" * string(lpad(i, 5, 0)) * ".png")
+        # renormalizing for imaginary time
+        if (par.im_time)
+            sum = 0
+            for element in density
+                sum += element
+            end
+            sum /= par.res
+            println(sum)
 
-        if (i <= 1000)
-            update_V(par, opr, -5 + 10*i/1000.)
+            for j = 1:length(opr.wfc)
+                density[j] /= sum
+                opr.wfc[j] /= sum
+            end
         end
-        println(i)
+
+#=
+        # outputting wavefunction to file
+        f = open("wfc" * string(i), "w")
+        for element in density
+            write(f, string(element)*'\n')
+        end
+        close(f)
+=#
+
+        if ((i-1) % div(par.timesteps, 100) == 0)
+            plot([density, real(opr.V)])
+            savefig("density" * string(lpad(i-1, 8, 0)) * ".png")
+            println(i)
+        end
+
+#=
+        if (i <= par.timesteps)
+            update_V(par, opr, -5 + 10*i/par.timesteps)
+        end
+=#
     end
 end
 
 # main function
 function main()
-    par = Param(10.0, 512, 0.05, 1000)
-    opr = init(par, -5.0, -5.0)
+    par = Param(10.0, 512, 0.05, 100, true)
+    opr = init(par, -1.00, -1.00)
     split_op(par, opr)
 end
 
