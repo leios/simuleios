@@ -91,10 +91,10 @@ function split_op(par::Param, opr::Operators)
         # Half-step in real space
         opr.wfc = opr.wfc .* opr.PE
 
-        # fft to phase space
+        # fft to momentum space
         opr.wfc = fft(opr.wfc)
 
-        # Full step in phase space
+        # Full step in momentum space
         opr.wfc = opr.wfc .* opr.KE
 
         # ifft back
@@ -103,7 +103,7 @@ function split_op(par::Param, opr::Operators)
         # final half-step in real space
         opr.wfc = opr.wfc .* opr.PE
 
-        # plotting density and potential
+        # density for plotting and potential
         density = abs2.(opr.wfc)
 
         # renormalizing for imaginary time
@@ -112,12 +112,11 @@ function split_op(par::Param, opr::Operators)
             for element in density
                 sum += element
             end
-            sum /= par.res
+            sum /= (par.res*2)
             println(sum)
 
             for j = 1:length(opr.wfc)
-                density[j] /= sum
-                opr.wfc[j] /= sum
+                opr.wfc[j] /= sqrt(sum)
             end
         end
 
