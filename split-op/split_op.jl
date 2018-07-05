@@ -50,6 +50,7 @@ end
 
 # Function to update V every timestep
 function update_V(par::Param, opr::Operators, voffset::Float64)
+#=
     thresh = 5
     V1 = 0.5 * (par.x - voffset).^2 + 4 
     V2 = 4*(2*(par.x + voffset)).^2
@@ -63,6 +64,8 @@ function update_V(par::Param, opr::Operators, voffset::Float64)
     end
 
     opr.V = V1 + V2
+=#
+    opr.V = 0.5 * (par.x - voffset).^2
     if (par.im_time)
         opr.PE = exp.(-0.5*opr.V*par.dt)
     else
@@ -113,12 +116,12 @@ function split_op(par::Param, opr::Operators)
                 sum += element
             end
             sum /= (par.res*2)
-            println(sum)
 
             for j = 1:length(opr.wfc)
                 opr.wfc[j] /= sqrt(sum)
             end
         end
+        println(calculate_energy(par, opr))
 
 #=
         # outputting wavefunction to file
@@ -129,11 +132,13 @@ function split_op(par::Param, opr::Operators)
         close(f)
 =#
 
+#=
         if ((i-1) % div(par.timesteps, 100) == 0)
             plot([density, real(opr.V)])
             savefig("density" * string(lpad(i-1, 8, 0)) * ".png")
             println(i)
         end
+=#
 
 #=
         if (i <= par.timesteps)
@@ -143,11 +148,33 @@ function split_op(par::Param, opr::Operators)
     end
 end
 
+# We are calculating the energy to check <Psi|H|Psi>
+function calculate_energy(par, opr)
+    # Creating real, momentum, and conjugate wavefunctions
+    wfc_r = opr.wfc
+    wfc_k = fft(wfc_r)
+    wfc_c = conj(wfc_r)
+
+    # Finding the momentum and real-space energy terms
+    energy_k = wfc_c.*ifft((par.k.^2) .* wfc_k)
+    energy_r = wfc_c.*opr.V .* wfc_r
+
+    # Integrating over all space
+    energy_final = 0
+    for i = 1:length(energy_k)
+        energy_final += real(energy_k[i] + energy_r[i])*par.dx
+    end 
+
+    return energy_final
+end
+
 # main function
 function main()
     par = Param(10.0, 512, 0.05, 100, true)
-    opr = init(par, -1.00, -1.00)
+    opr = init(par, 0.0, -1.00)
     split_op(par, opr)
+    energy = calculate_energy(par, opr)
+    println("Energy is:", energy)
 end
 
 main()
