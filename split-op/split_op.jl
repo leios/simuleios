@@ -30,7 +30,7 @@ struct Param
           im_val::Bool) = new(
               xmax, res, dt, timesteps,
               2*xmax/res, Vector{Float64}(-xmax+xmax/res:2*xmax/res:xmax),
-              pi/xmax, Vector{Float64}(vcat(0:res/2-1, -res/2:-1)*pi/xmax),
+              pi/xmax, Vector{Float64}(vcat(0:res/2-1, -res/2:-1)*pi/(xmax)),
               im_val
           )
 end
@@ -77,7 +77,7 @@ end
 function init(par::Param, voffset::Float64, wfcoffset::Float64)
     opr = Operators(length(par.x))
     update_V(par, opr, voffset)
-    opr.wfc = 5 * exp.(-(par.x - wfcoffset).^2/2)
+    opr.wfc = exp.(-(par.x - wfcoffset).^2/2)
     if (par.im_time)
         opr.KE = exp.(-0.5*par.k.^2*par.dt)
     else
@@ -115,13 +115,15 @@ function split_op(par::Param, opr::Operators)
             for element in density
                 sum += element
             end
-            sum /= (par.res*2)
+            #sum /= (par.res*2)
+            sum *= par.dx
+            println(sum)
 
             for j = 1:length(opr.wfc)
                 opr.wfc[j] /= sqrt(sum)
             end
         end
-        println(calculate_energy(par, opr))
+        #println(calculate_energy(par, opr))
 
 #=
         # outputting wavefunction to file
@@ -156,25 +158,27 @@ function calculate_energy(par, opr)
     wfc_c = conj(wfc_r)
 
     # Finding the momentum and real-space energy terms
-    energy_k = wfc_c.*ifft((par.k.^2) .* wfc_k)
+    energy_k = 0.5*wfc_c.*ifft((par.k.^2) .* wfc_k)
     energy_r = wfc_c.*opr.V .* wfc_r
 
     # Integrating over all space
     energy_final = 0
     for i = 1:length(energy_k)
-        energy_final += real(energy_k[i] + energy_r[i])*par.dx
+        energy_final += real(energy_k[i] + energy_r[i])
     end 
 
-    return energy_final
+    return energy_final*par.dx
 end
 
 # main function
 function main()
-    par = Param(10.0, 512, 0.05, 100, true)
+    par = Param(5.0, 256, 0.05, 100, true)
     opr = init(par, 0.0, -1.00)
     split_op(par, opr)
     energy = calculate_energy(par, opr)
     println("Energy is:", energy)
+
+    println(par.xmax, '\t', par.dx, '\t', par.dk, '\t', 2*pi/par.dx, '\t', par.dk*par.res)
 end
 
 main()
