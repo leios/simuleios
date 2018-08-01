@@ -21,6 +21,40 @@ if not dir in sys.path:
     sys.path.append(dir )
 from blender_render import *
 
+def gaussian_elimination(A):
+    rows = A.shape[0]
+    cols = A.shape[1]
+    print(cols)
+    print(rows)
+
+    # Row index
+    row = 0
+
+    for col in range(cols-2):
+        max_index = np.argmax(abs(A[:,col]))
+
+        if (A[max_index, col] == 0):
+            print("Matrix is singlular!")
+
+        A[[max_index,row]] = A[[row,max_index]]
+
+        for i in range(row+1, rows):
+            fraction = A[i, col]/A[row,col]
+            for j in range(col+1, cols):
+                A[i,j] -= A[row,j]*fraction
+            A[i,col] = 0
+        row += 1
+
+# defining matrix
+A = np.array([[2., 3, 4, 6],
+              [1, 2, 3, 4],
+              [3, -4, 0, 10]])
+print(A)
+gaussian_elimination(A)
+print(A)
+
+
+'''
 num = 10
 scene = bpy.context.scene
 scene = def_scene(10,scene)
@@ -36,3 +70,4 @@ new_plane(0,0,0, 0.5*np.pi,0,0, 0,1,0,0.5, 1,"plane3")
 bpy.data.scenes["Scene"].frame_end = num
 scene.update()
 render_movie(scene)
+'''
