@@ -24,8 +24,6 @@ from blender_render import *
 def gaussian_elimination(A):
     rows = A.shape[0]
     cols = A.shape[1]
-    print(cols)
-    print(rows)
 
     # Row index
     row = 0
@@ -45,12 +43,37 @@ def gaussian_elimination(A):
             A[i,col] = 0
         row += 1
 
+def gauss_jordan_elimination(A):
+
+    rows = A.shape[0]
+    cols = A.shape[1]
+
+    row = 0
+    for col in range(cols-1):
+        if (A[row, col] != 0):
+            for i in range(cols-1, col-1, -1):
+                A[row,i] /= A[row, col]
+
+        for i in range(row):
+            for j in range(cols-1, col-1, -1):
+                A[i,j] -= A[i,col]*A[row,j]
+
+        row += 1
+
+
 # defining matrix
 A = np.array([[2., 3, 4, 6],
               [1, 2, 3, 4],
               [3, -4, 0, 10]])
+print("Original Matrix")
 print(A)
+
 gaussian_elimination(A)
+print("Gaussian Elimination Matrix")
+print(A)
+
+gauss_jordan_elimination(A)
+print("Gauss Jordan Elimination Matrix")
 print(A)
 
 
