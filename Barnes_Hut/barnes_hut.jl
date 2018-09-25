@@ -4,8 +4,10 @@
 #
 #------------------------------------------------------------------------------#
 
+using DelimitedFiles
+
 # Type for particles later to be used with Verlet integration
-type Particle
+mutable struct Particle
     p::Vector{Float64}
     prev_p::Vector{Float64}
     vel::Vector{Float64}
@@ -19,21 +21,20 @@ type Particle
 end
 
 # type for node, to be used as an octree
-type Node
+mutable struct Node
     p::Vector{Float64}
     box_length::Float64
-    parent::Nullable{Node}
     children::Vector{Node}
     com::Particle
     p_vec::Vector{Particle}
-    Node(p::Vector{Float64}, box_length::Float64, parent::Nullable{Node}, 
+    Node(p::Vector{Float64}, box_length::Float64,
          children::Vector{Node}, com::Particle, p_vec::Vector{Particle}) =
-        new(p, box_length, parent, children, com, p_vec)
+        new(p, box_length, children, com, p_vec)
 end
 
 #------------------------------------------------------------------------------#
 # SUBROUTINES
-#------------------------------------------------------------------------------@
+#------------------------------------------------------------------------------#
 
 # Function to create random distribution
 function create_rand_dist(box_length::Float64, pnum::Int)
@@ -52,8 +53,8 @@ end
 # Function to initialize root node of octree
 function make_octree(p_vec::Vector{Particle}, box_length::Float64)
     com = Particle(zeros(3), zeros(3), zeros(3), zeros(3),1.0,1.0)
-    root = Node([0.0; 0.0; 0.0], box_length, Nullable{Node}(), 
-                Array(Node, 0), com, p_vec)
+    root = Node([0.0; 0.0; 0.0], box_length,
+                Vector{Node}(undef,0), com, p_vec)
     return root
 end
 
@@ -74,8 +75,8 @@ function make_octchild(curr::Node)
                 push!(curr.children, Node([curr.p[1] + k * quarter_box;
                                       curr.p[2] + j * quarter_box;
                                       curr.p[3] + i * quarter_box],
-                                      curr.box_length*.5, Nullable{Node}(curr), 
-                                      Array(Node, 0), com, 
+                                      curr.box_length*.5,
+                                      Vector{Node}(undef,0), com, 
                                       fill(com,0)))
             end
         end
@@ -164,7 +165,7 @@ end
 
 # Main function
 function main()
-    numsteps = 5
+    numsteps = 100
     p_output = open("pout_julia.dat", "w")
 
     vel = sqrt(10)
