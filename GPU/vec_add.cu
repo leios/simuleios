@@ -1,5 +1,6 @@
 #include <iostream>
 #include <math.h>
+#include <chrono>
 
 __global__ void vecAdd(double *a, double *b, double *c, int n){
 
@@ -14,7 +15,7 @@ __global__ void vecAdd(double *a, double *b, double *c, int n){
 
 int main(){
 
-    int n = 1024;
+    int n = 100000000;
 
     // Initializing host vectors
     double *a, *b, *c;
@@ -31,8 +32,8 @@ int main(){
 
     // Initializing a and b
     for (size_t i = 0; i < n; ++i){
-        a[i] = 1;
-        b[i] = 1;
+        a[i] = i;
+        b[i] = i;
         c[i] = 0;
     }
 
@@ -45,15 +46,15 @@ int main(){
     grid = {(unsigned int)ceil((float)n/threads.x), 1, 1};
     vecAdd<<<grid, threads>>>(d_a, d_b, d_c, n);
 
+    // Copying back to host
+    cudaMemcpy(c, d_c, sizeof(double)*n, cudaMemcpyDeviceToHost);
+
 /*
     // Vector Addition
     for (size_t i = 0; i < n; ++i){
         c[i] = a[i] + b[i];
     }
 */
-
-    // Copying back to host
-    cudaMemcpy(c, d_c, sizeof(double)*n, cudaMemcpyDeviceToHost);
 
     // Check to make sure everything works
     for (size_t i = 0; i < n; ++i){
