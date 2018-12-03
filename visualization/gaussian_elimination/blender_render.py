@@ -284,7 +284,7 @@ def def_scene(box_length, scene):
     x_cam = 0.43
     y_cam = 0.634
     z_cam = 0.24
-    r_camx = 70
+    r_camx = 75
     r_camy = 0
     r_camz = 145
 
@@ -304,10 +304,6 @@ def def_scene(box_length, scene):
 
     # change lamp position
     bpy.data.objects["Lamp"].location = (0,0,5)
-
-    # Scene resolution
-    scene.render.resolution_x = 1366
-    scene.render.resolution_y = 768
 
     # Remove lighting (for now)
     remove_obj( scene )
@@ -362,24 +358,27 @@ def create_connectome(res):
     return connectome
 
 # Renders movie
-def render_movie(scene):
+def set_render_options(scene, res_x, res_y):
+
+    # Scene resolution
+    scene.render.resolution_x = res_x
+    scene.render.resolution_y = res_y
+
     scene = bpy.context.scene
     bpy.data.scenes[0].render.image_settings.file_format="PNG"
-    #bpy.data.scenes[0].render.filepath = "images/image%.5d" %iteration
+    #bpy.data.scenes[0].render.filepath = "images/image%.5d" 
     bpy.ops.render.render( write_still=True )
-    print("rendering movie")
     scene.sequence_editor_create()
     bpy.data.scenes["Scene"].render.resolution_percentage = 100
     bpy.data.scenes["Scene"].render.fps = 60
     bpy.data.scenes["Scene"].render.image_settings.file_format = 'FFMPEG'
-    bpy.data.scenes["Scene"].render.ffmpeg.video_bitrate = 30000
-    bpy.data.scenes["Scene"].render.ffmpeg.format = 'MPEG4'
     #bpy.data.scenes["Scene"].render.ffmpeg.audio_codec = 'NONE'
-    bpy.data.scenes["Scene"].render.ffmpeg.minrate = 10000
-    bpy.data.scenes["Scene"].render.ffmpeg.maxrate = 30000
-    bpy.data.scenes["Scene"].render.ffmpeg.codec = 'H264'
-    bpy.data.scenes["Scene"].render.filepath = 'out.mp4'
+    bpy.data.scenes["Scene"].render.ffmpeg.constant_rate_factor='PERC_LOSSLESS'
+    bpy.data.scenes["Scene"].render.filepath = 'out.mkv'
     bpy.data.scenes["Scene"].render.use_file_extension = False
+
+def render_movie(scene):
+    print("rendering movie")
     bpy.ops.render.render( animation=True ) 
 
 # Function for visualization of slicing cube
