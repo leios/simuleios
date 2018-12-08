@@ -139,12 +139,49 @@ __global__ void reduce5(int *idata, int *odata){
     sdata[tid] = idata[i] +idata[i+blockDim.x];
     __syncthreads();
 
-    for (unsigned int s = blockDim.x/2; s > 32; s>>=1){ 
-        if (tid < s){
-            sdata[tid] += sdata[tid+s];
+    if (blockSize >= 512){
+        if (tid < 256) {
+            sdata[tid] += sdata[tid + 256];
         }
         __syncthreads();
     }
+    if (blockSize >= 256){
+        if (tid < 128) {
+            sdata[tid] += sdata[tid + 128];
+        }
+        __syncthreads();
+    }
+    if (blockSize >= 128){
+        if (tid < 64) {
+            sdata[tid] += sdata[tid + 64];
+        }
+        __syncthreads();
+    }
+
+    if (tid < 32){
+        warpReduce<blockSize>(sdata, tid);
+    }
+
+    if (tid == 0){
+        odata[blockIdx.x] = sdata[0];
+    }
+}
+
+template <unsigned int blockSize>
+__global__ void reduce6(int *idata, int *odata, unsigned int n){
+    extern __shared__ int sdata[];
+
+    unsigned int tid = threadIdx.x;
+    unsigned int i = blockIdx.x*(blockDim.x*2) + threadIdx.x;
+    unsigned int gridSize = blockSize*2*gridDim.x;
+    sdata[tid] = 0;
+
+    while (i < n){
+        sdata[tid] += idata[i] + idata[i+blockSize];
+        i += gridSize;
+    }
+
+    __syncthreads();
 
     if (blockSize >= 512){
         if (tid < 256) {
@@ -206,7 +243,8 @@ int main(){
     dim3 threads = {n, 1, 1};
     dim3 grid = {1, 1, 1};
     //reduce4<<<grid, threads, sizeof(int)*n>>>(din_a, dout_a);
-    reduce5<64><<<grid, threads, sizeof(int)*n>>>(din_a, dout_a);
+    //reduce5<64><<<grid, threads, sizeof(int)*n>>>(din_a, dout_a);
+    reduce6<128><<<grid, threads, sizeof(int)*n>>>(din_a, dout_a, n);
 
     cudaMemcpy(out_a, dout_a, sizeof(int)*n, cudaMemcpyDeviceToHost);
 
