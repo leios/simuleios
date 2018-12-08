@@ -1,5 +1,15 @@
 #include <iostream>
 
+template <unsigned int blockSize>
+__device__ void warpReduce(volatile int* sdata, int tid){
+    if (blockSize >= 64) sdata[tid] += sdata[tid+32];
+    if (blockSize >= 32) sdata[tid] += sdata[tid+16];
+    if (blockSize >= 16) sdata[tid] += sdata[tid+8];
+    if (blockSize >= 8) sdata[tid] += sdata[tid+4];
+    if (blockSize >= 4) sdata[tid] += sdata[tid+2];
+    if (blockSize >= 2) sdata[tid] += sdata[tid+1];
+}
+
 __device__ void warpReduce(volatile int* sdata, int tid){
     sdata[tid] += sdata[tid+32];
     sdata[tid] += sdata[tid+16];
@@ -119,6 +129,51 @@ __global__ void reduce4(int *idata, int *odata){
     }
 }
 
+template <unsigned int blockSize>
+__global__ void reduce5(int *idata, int *odata){
+    extern __shared__ int sdata[];
+
+    unsigned int tid = threadIdx.x;
+    unsigned int i = blockIdx.x*(blockDim.x*2) + threadIdx.x;
+
+    sdata[tid] = idata[i] +idata[i+blockDim.x];
+    __syncthreads();
+
+    for (unsigned int s = blockDim.x/2; s > 32; s>>=1){ 
+        if (tid < s){
+            sdata[tid] += sdata[tid+s];
+        }
+        __syncthreads();
+    }
+
+    if (blockSize >= 512){
+        if (tid < 256) {
+            sdata[tid] += sdata[tid + 256];
+        }
+        __syncthreads();
+    }
+    if (blockSize >= 256){
+        if (tid < 128) {
+            sdata[tid] += sdata[tid + 128];
+        }
+        __syncthreads();
+    }
+    if (blockSize >= 128){
+        if (tid < 64) {
+            sdata[tid] += sdata[tid + 64];
+        }
+        __syncthreads();
+    }
+
+    if (tid < 32){
+        warpReduce<blockSize>(sdata, tid);
+    }
+
+    if (tid == 0){
+        odata[blockIdx.x] = sdata[0];
+    }
+}
+
 double sum(int *a, int n){
     int output = 0;
     for (int i = 0; i < n; ++i){
@@ -150,7 +205,8 @@ int main(){
 
     dim3 threads = {n, 1, 1};
     dim3 grid = {1, 1, 1};
-    reduce4<<<grid, threads, sizeof(int)*n>>>(din_a, dout_a);
+    //reduce4<<<grid, threads, sizeof(int)*n>>>(din_a, dout_a);
+    reduce5<64><<<grid, threads, sizeof(int)*n>>>(din_a, dout_a);
 
     cudaMemcpy(out_a, dout_a, sizeof(int)*n, cudaMemcpyDeviceToHost);
 
