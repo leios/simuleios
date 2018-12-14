@@ -108,12 +108,12 @@ function barnsley_flame(point::Array{Float64, 1}, chosen_function::Int64)
 end
 
 function write_image(p::Array{Pixel,2})
-    a = Array{RGB{},2}(undef,size(p,1), size(p,2))
+    a = Array{RGB{Float64},2}(undef,size(p,1), size(p,2))
     for i = 1:length(pixels)
-        a[i] = RGB{N0f8}(pixels[i].color[1], pixels[i].color[2], 
-                         pixels[i].color[3])
+        a[i] = RGB{Float64}(pixels[i].color[1], pixels[i].color[2], 
+                            pixels[i].color[3])
     end
-    save("fractal.tiff", a)
+    save("fractal.png", a)
 end
 
 function barnsley_fern(n::Int64)
