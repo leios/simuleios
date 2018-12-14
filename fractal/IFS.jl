@@ -26,7 +26,7 @@ end
 function heart(point::Array{Float64, 1}, color::Array{Float64, 1})
     ret_point = zeros(5)
     r = sqrt(point[1]^2 + point[2]^2)
-    theta = atan2(point[2],point[1])
+    theta = atan(point[2],point[1])
     ret_point[1] = r*(sin(r*theta))
     ret_point[2] = -r*(cos(r*theta))
     ret_point[3] = color[1]
@@ -108,12 +108,12 @@ function barnsley_flame(point::Array{Float64, 1}, chosen_function::Int64)
 end
 
 function write_image(p::Array{Pixel,2})
-    a = Array{RGB{N0f8},2}(size(p,1), size(p,2))
+    a = Array{RGB{},2}(undef,size(p,1), size(p,2))
     for i = 1:length(pixels)
         a[i] = RGB{N0f8}(pixels[i].color[1], pixels[i].color[2], 
                          pixels[i].color[3])
     end
-    save("fractal.png", a)
+    save("fractal.tiff", a)
 end
 
 function barnsley_fern(n::Int64)
@@ -258,8 +258,8 @@ function flame(n::Int64, resx::Int64, resy::Int64,
 
 end
 
-pixels = flame(100000000, 1000, 1000, 4., 4., 1.0)
-#pixels = flame(1000000, 1000, 1000, 2., 2., 2.2)
+#pixels = flame(100000000, 1000, 1000, 4., 4., 1.0)
+pixels = flame(1000000, 1000, 1000, 2., 2., 2.2)
 write_image(pixels)
 #sierpensky(1000000)
 #barnsley_fern(100000)
