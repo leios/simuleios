@@ -130,6 +130,73 @@ function write_image(p::Array{Pixel,2})
     save("fractal.png", a)
 end
 
+function define_filter(sum::Float64, filter_size::Int64, fudge::Int64)
+
+    filter = zeros(filter_size, filter_size)
+    for i = 1:filter_size
+        x = -2.0 + 4.0 * i / filter_size
+        for j = 1:filter_size
+            y = -2.0 + 4.0 * j / filter_size
+            sigma2 = Float64(fudge)/(sum+1.0)
+            filter[i,j] = (1.0/sqrt(2*pi*sigma2))*exp((-x^2 -y^2)/(2*sigma2))
+        end
+    end
+    #println(filter)
+
+    return filter
+end
+
+# Here, we perform a convolution with a variable filter (of constant size, but
+# with varying gaussian widths) and trim the edges later.
+function density_estimation(p::Array{Pixel, 2}, filter_size::Int64,
+                            fudge::Int64)
+    p_temp = zeros(size(p)[1]+filter_size, size(p)[2]+filter_size)
+    for i = 1:size(p_temp)[1]
+        for j = 1:size(p_temp)[2]
+            start_pts = [i-div(filter_size,2); j-div(filter_size,2)]
+            end_pts = [i+div(filter_size,2)-1; j+div(filter_size,2)-1]
+            if (start_pts[1] < 1)
+                start_pts[1] = 1
+            end
+            if (start_pts[2] < 1)
+                start_pts[2] = 1
+            end
+            if (end_pts[1] > size(p)[1])
+                end_pts[1] = size(p)[1]
+            end
+            if (end_pts[2] > size(p)[2])
+                end_pts[2] = size(p)[2]
+            end
+
+            sum = 0.0
+            for l = start_pts[1]:end_pts[1]
+                for m = start_pts[2]:end_pts[2]
+                    sum += p[l,m].val
+                end
+            end
+
+            filter = define_filter(sum, filter_size, fudge)
+            element = 0
+            i2 = 1
+            for l = start_pts[1]:end_pts[1]
+                j2 = 1
+                for m = start_pts[2]:end_pts[2]
+                    element += p[l,m].val * filter[i2,j2]
+                    j2 += 1
+                end
+                i2 += 1
+            end
+            p_temp[i,j] = element
+        end
+    end 
+
+    for i = 1:size(p)[1]
+        for j = 1:size(p)[2]
+            p[i,j].val = p_temp[i+div(filter_size,2), j+div(filter_size,2)]
+        end
+    end 
+end
+
 function barnsley_fern(n::Int64)
     point = [0.0, 0.0]
     f = open("barnsley.dat", "w")
@@ -267,12 +334,14 @@ function flame(n::Int64, resx::Int64, resy::Int64,
         end
     end
 
+    #density_estimation(pixels, 50, 1)
+
     return pixels
 
 end
 
 #pixels = flame(100000000, 1000, 1000, 4., 4., 1.0)
-pixels = flame(1000000, 1000, 1000, 0.75, .75, 1.0)
+pixels = flame(1000000, 1000, 1000, 0.75, .75, 2.0)
 write_image(pixels)
 #sierpensky(1000000)
 #barnsley_fern(100000)
