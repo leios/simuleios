@@ -36,8 +36,8 @@ function barnsley_fern(n::Int64)
 end
 
 function sierpensky(n::Int64)
-    element_x = rand()*2 - 1
-    element_y = rand()*2 - 1
+    element_x = rand()
+    element_y = rand()
     point = [element_x element_y]
 
     f = open("sierpensky.dat", "w")
@@ -51,16 +51,17 @@ function sierpensky(n::Int64)
         if (rnd <= 0.33)
             point = 0.5*point
         elseif(rnd > 0.33 && rnd <= 0.66)
-            point[1] = (point[1] - 1)/2
-            point[2] = (point[2])/2
+            point[1] = (point[1]+0.5)/2
+            point[2] = (point[2]+1)/2
         else
-            point[1] = (point[1])/2
-            point[2] = (point[2]-1)/2
+            point[1] = (point[1]+1)/2
+            point[2] = (point[2])/2
         end
     end
 
     close(f)
 end
 
-random_dist(1000)
-barnsley_fern(1000000)
+#random_dist(1000)
+#barnsley_fern(1000000)
+sierpensky(10000)
