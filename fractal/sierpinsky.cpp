@@ -12,7 +12,7 @@
 #include <gathvl/camera.h>
 #include <gathvl/scene.h>
 
-void sierpensky(camera& cam, scene& world, int n){
+void sierpensky(camera& cam, scene& world, int n, int bin_size){
     color black = {0,0,0,1};
     color white = {1,1,1,1};
     color gray = {0.5,0.5,0.5,1};
@@ -27,7 +27,7 @@ void sierpensky(camera& cam, scene& world, int n){
         triangle[i] = std::make_shared<ellipse>(loc, vec{0,0}, 0, 1);
         triangle[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &triangle[i]->size,
-                                                vec{0,0}, vec{10,10});
+                                                vec{0,0}, vec{5,5});
     }
 
     // Adding elements to world
@@ -63,9 +63,12 @@ void sierpensky(camera& cam, scene& world, int n){
             vec loc = {world.size.x*0.5 - 400 + 800*pt.x,
                        world.size.y*0.5 + 400 - 800*pt.y};
 
-            auto ball = std::make_shared<ellipse>(gray, loc, vec{0,0}, 0, 1);
-            ball->add_animator<vec_animator>(30+floor(i*0.1)-20,
-                                             60+floor(i*0.1)-20, &ball->size,
+            color ball_color = {1-((double)n-i)/n,0,1-(double)i/n,1};
+            auto ball = std::make_shared<ellipse>(ball_color,
+                                                  loc, vec{0,0}, 0, 1);
+            ball->add_animator<vec_animator>(30+floor(i/bin_size)-20,
+                                             60+floor(i/bin_size)-20,
+                                             &ball->size,
                                              vec{0,0}, vec{2,2});
             world.add_object(ball,1);
         }
@@ -86,6 +89,6 @@ int main(){
     scene world = scene({1920, 1080}, {0, 0, 0, 1});
 
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
-    sierpensky(cam, world, 10000);
+    sierpensky(cam, world, 20000, 100);
     cam.clear_encoders();
 }
