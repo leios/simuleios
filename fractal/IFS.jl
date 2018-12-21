@@ -195,6 +195,8 @@ function density_estimation(p::Array{Pixel, 2}, filter_size::Int64,
             p[i,j].val = p_temp[i+div(filter_size,2), j+div(filter_size,2)]
         end
     end 
+
+    return p
 end
 
 function barnsley_fern(n::Int64)
@@ -334,7 +336,7 @@ function flame(n::Int64, resx::Int64, resy::Int64,
         end
     end
 
-    #density_estimation(pixels, 50, 1)
+    #pixels = density_estimation(pixels, 50, 1)
 
     return pixels
 

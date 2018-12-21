@@ -10,6 +10,35 @@ function random_dist(n::Int64)
     close(f)
 end
 
+function barnsley_tree(n::Int64)
+    point = [0.0, 0.0]
+    f = open("barnsley_tree.dat", "w")
+    for i = 1:n
+        rnd = rand()
+        if (rnd <= 0.02)
+            point = [0.03 0; 0 0.1]*point
+        elseif(rnd > 0.02 && rnd <= 0.62)
+            point = [0.85 0.0; 0.0 0.85]*point + [0, 1.50]
+        elseif(rnd > 0.62 && rnd <= 0.72)
+            point = [0.8 0; 0 0.8]*point + [0, 1.50]
+        elseif(rnd > 0.72 && rnd <= 0.79)
+            point = [0.2 -0.08; 0.15 0.22]*point + [0, 0.85]
+        elseif(rnd > 0.79 && rnd <= 0.86)
+            point = [-0.2 0.08; 0.15 0.22]*point + [0, 0.85]
+        elseif(rnd > 0.86 && rnd <= 0.93)
+            point = [0.25 -0.1; 0.12 0.25]*point + [0, 0.3]
+        else
+            point = [-0.2 0.1; 0.12 0.2]*point + [0, 0.4]
+        end
+
+        println(f, point[1], '\t', point[2])
+
+        if (i%10000==0)
+            println(f,"\n\n")
+        end
+    end
+    close(f)
+end
 
 function barnsley_fern(n::Int64)
     point = [0.0, 0.0]
@@ -64,4 +93,5 @@ end
 
 #random_dist(1000)
 #barnsley_fern(1000000)
-sierpensky(10000)
+barnsley_tree(1000000)
+#sierpensky(10000)
