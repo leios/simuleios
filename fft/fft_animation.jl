@@ -13,6 +13,9 @@ end
 
 function plot_fft(res, timesteps, max_freq)
     for i = 1:timesteps
+        time_name = "images/time_" * string(lpad(i-1, 4, "0")) * ".png"
+        freq_name = "images/freq_" * string(lpad(i-1, 4, "0")) * ".png"
+        comb_name = "images/comb_" * string(lpad(i-1, 4, "0")) * ".png"
         a = []
         if (i-1 <= div(timesteps,4))
             freq = (2+max_freq*(i-1)/(timesteps/4))
@@ -33,15 +36,20 @@ function plot_fft(res, timesteps, max_freq)
             c = [sin(4*freq*pi*Float64(j)/res) for j = 1:res]
             a = a+b+c
         end
-        plot(a, label="Time Domain", legend = :top, linewidth = 2)
-        savefig("images/time_" * string(lpad(i-1, 4, "0")) * ".png")
+        plot(a, label="Time Domain", legend = :top, linewidth = 2,
+             xlabel = "Time", ylabel = "Amplitude" )
+        savefig(time_name)
 
         b = abs2.(fft(a))
         b = norm(b)
-        plot((b)[1:div(res,4)], label="Frequency Domain",
-             legend = :top, linewidth = 2)
-        savefig("images/freq_" * string(lpad(i-1, 4, "0")) * ".png")
+        plot((b)[1:div(res,16)+2], label="Frequency Domain",
+             legend = :top, linewidth = 2, xlabel = "Frequency",
+             ylabel = "Normalized Amplitude")
+        savefig(freq_name)
+
+        run(`convert +append $time_name $freq_name $comb_name`)
+        
     end
 end
 
-plot_fft(2000, 80, 40)
+plot_fft(2000, 120, 60)
