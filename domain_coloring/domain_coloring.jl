@@ -20,9 +20,28 @@ function simple_domain(res::Int64, xmax::Float64, alpha::Float64,
             x = -xmax + 2*i*xmax/res
             xi = -xmax + 2*j*xmax/res
             r = sqrt(x*x + xi*xi)
-            theta = atan(xi,x)
-            a[i,j] = HSV(((theta+pi) / (2*pi))*360, 1-alpha^r, 1)
+            theta = atan(xi,x) + pi
+            a[i,j] = HSV((theta / (2*pi))*360, 1-alpha^r, 1)
         end 
     end 
     write_image(a, output_file)
 end
+
+function simple2_domain(res::Int64, xmax::Float64, alpha::Float64,
+                        output_file::String)
+    a = Array{HSV,2}(undef, res, res)
+    for i = 1:res
+        for j = 1:res
+            x = -xmax + 2*i*xmax/res
+            xi = -xmax + 2*j*xmax/res
+            r = x*x + xi*xi
+            arg = 2*(atan(xi,x)+pi)
+            while (arg > 2*pi)
+                arg -= 2*pi
+            end
+            a[i,j] = HSV((arg / (2*pi))*360, 1-alpha^r, 1)
+        end 
+    end 
+    write_image(a, output_file)
+end
+
