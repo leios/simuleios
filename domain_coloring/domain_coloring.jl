@@ -24,6 +24,21 @@ function f2(r::Float64, theta::Float64)
     return r*r + arg*im
 end
 
+function poly(r::Float64, theta::Float64)
+    input_arg = 3*theta
+    while (input_arg > 2pi)
+        input_arg -= 2*pi
+    end
+    complex_val = r*r*r*exp(input_arg*im) + 1
+    magnitude = sqrt(abs2(complex_val))
+    arg = atan(imag(complex_val), real(complex_val)) + pi
+    while (arg > 2pi)
+        arg -= 2*pi
+    end
+    return magnitude + arg*im
+end
+
+
 function draw_grid(pixel_color::HSV, z::Complex{Float64}, threshold::Float64)
     z = real(z)*exp(imag(z)*im)
     if (abs(real(z))%1 < threshold || abs(imag(z))%1 < threshold)
@@ -44,7 +59,7 @@ function simple_domain(res::Int64, xmax::Float64, alpha::Float64,
             theta = atan(xi,x) + pi
             z = f(r, theta)
             a[i,j] = HSV((imag(z) / (2*pi))*360, 1-alpha^(real(z)), 1)
-            a[i,j] = draw_grid(a[i,j], z, threshold)
+            #a[i,j] = draw_grid(a[i,j], z, threshold)
         end 
     end 
     write_image(a, output_file)
