@@ -30,17 +30,31 @@ function poly(x::Complex{Float64})
     r = sqrt(real(x)^2 + imag(x)^2)
     theta = atan(imag(x), real(x)) 
     complex_val = r*exp(theta*im)
-    return (complex_val)^3 + 3*complex_val
+    return (complex_val+1)^3 + complex_val^2
 end
 
-
+function inverse(x::Complex{Float64})
+    r = sqrt(real(x)^2 + imag(x)^2)
+    theta = atan(imag(x), real(x))
+    complex_val = r*exp(theta*im)
+    if abs(complex_val) < 0.005
+        complex_val = 0.004 + 0.003im
+    end 
+    return 1/complex_val
+end
 
 function draw_grid(pixel_color::HSV, z::Complex{Float64}, threshold::Float64)
-    if (abs(real(z))%1 < threshold || abs(imag(z))%1 < threshold)
+    if (abs(real(z))%1 <= threshold || abs(imag(z))%1 <= threshold)
         return HSV(0,0,0)
     else
         return pixel_color
     end
+end
+
+function contour(pixel_color::HSV, z::Complex{Float64})
+    factor = 1-((abs(z) % 1)*0.5)
+    pixel_color = HSV(pixel_color.h, pixel_color.s, pixel_color.v*factor)
+    return pixel_color
 end
 
 function simple_domain(res::Int64, xmax::Float64, alpha::Float64,
@@ -55,6 +69,7 @@ function simple_domain(res::Int64, xmax::Float64, alpha::Float64,
             
             a[i,j] = HSV(argument/(2*pi)*360, 1-alpha^(magnitude), 1)
             a[i,j] = draw_grid(a[i,j], z, threshold)
+            a[i,j] = contour(a[i,j], z)
         end 
     end 
     write_image(a, output_file)
