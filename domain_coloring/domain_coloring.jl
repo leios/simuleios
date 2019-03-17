@@ -30,7 +30,12 @@ function poly(x::Complex{Float64})
     r = sqrt(real(x)^2 + imag(x)^2)
     theta = atan(imag(x), real(x)) 
     complex_val = r*exp(theta*im)
-    return (complex_val+1)^3 + complex_val^2
+    inverse = 1/complex_val
+    if (abs(complex_val) < 0.001)
+        inverse = 1/(0.001 + (0.001)im)
+    end
+    x = complex_val
+    return factorial(x)
 end
 
 function inverse(x::Complex{Float64})
@@ -44,11 +49,13 @@ function inverse(x::Complex{Float64})
 end
 
 function draw_grid(pixel_color::HSV, z::Complex{Float64}, threshold::Float64)
-    if (abs(real(z))%1 <= threshold || abs(imag(z))%1 <= threshold)
-        return HSV(0,0,0)
-    else
-        return pixel_color
-    end
+
+    shade_real = (abs(sin(real(z)*pi))^threshold)
+    shade_imag = (abs(sin(imag(z)*pi))^threshold)
+
+    return HSV(pixel_color.h,
+               pixel_color.s,
+               pixel_color.v*shade_real*shade_imag)
 end
 
 function contour(pixel_color::HSV, z::Complex{Float64})
