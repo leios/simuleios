@@ -1,15 +1,7 @@
 using Images, ImageMagick
 
 function write_image(pixels::Array{HSV, 2}, output_file::String)
-    color_array = Array{RGB{N0f8},2}(undef, size(pixels)[1], size(pixels)[2])
-
-    for i = 1:size(pixels)[1]
-        for j = 1:size(pixels)[2]
-            color_array[i,j] = RGB(pixels[i,j])
-        end
-    end
-    
-    save(output_file, color_array)
+    save(output_file, pixels)
 end
 
 function f(x::Complex{Float64})
@@ -30,12 +22,8 @@ function poly(x::Complex{Float64})
     r = sqrt(real(x)^2 + imag(x)^2)
     theta = atan(imag(x), real(x)) 
     complex_val = r*exp(theta*im)
-    inverse = 1/complex_val
-    if (abs(complex_val) < 0.001)
-        inverse = 1/(0.001 + (0.001)im)
-    end
     x = complex_val
-    return factorial(x)
+    return (x)^3 - 1
 end
 
 function inverse(x::Complex{Float64})
