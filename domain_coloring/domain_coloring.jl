@@ -23,7 +23,8 @@ function poly(x::Complex{Float64})
     theta = atan(imag(x), real(x)) 
     complex_val = r*exp(theta*im)
     x = complex_val
-    return (x)^3 - 1
+    #return (x^2 - 1)*((x - 2 - 1im)^2) / (x^2 + 2 + 2im)
+    return x^3 - 1
 end
 
 function inverse(x::Complex{Float64})
@@ -68,4 +69,31 @@ function simple_domain(res::Int64, xmax::Float64, alpha::Float64,
         end 
     end 
     write_image(a, output_file)
+end
+
+function write_domain(res::Int64, xmax::Float64, real_output::String,
+                      imaginary_output::String, f)
+    a = Array{Complex,2}(undef, res, res)
+
+    imaginary_f = open(imaginary_output, "w")
+    real_f = open(real_output, "w")
+
+    for i = 1:res
+        for j = 1:res
+            x = -xmax + 2*i*xmax/res + (-xmax + 2*j*xmax/res)im
+            z = f(x)
+            if j != res
+                write(imaginary_f, string(imag(z))*"\t")
+                write(real_f, string(real(z))*"\t")
+            else
+                write(imaginary_f, string(imag(z)))
+                write(real_f, string(real(z)))
+            end
+        end
+        write(imaginary_f, "\n")
+        write(real_f, "\n")
+    end
+
+    close(imaginary_f)
+    close(real_f)
 end
