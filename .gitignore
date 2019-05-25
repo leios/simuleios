@@ -71,3 +71,19 @@
 # misc
 *.png
 *.gif
+*.jpg
+*.JPG
+
+*.aux
+*.log
+*.tic
+*.toc
+*.vrb
+*.snm
+*.nav
+*.pdf
+*.raw
+*.mkv
+*.avi
+*.mp4
+*.raw
