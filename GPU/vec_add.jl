@@ -1,36 +1,35 @@
-using CUDAnative, CUDAdrv
-using Test
+using CUDAnative, CUDAdrv, CuArrays, Test
 
-function kernel_vadd(a, b, c, n)
+function kernel_vadd(a, b, c)
     i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-    if (i < n+1)
-        c[i] = a[i] + b[i]
-    end
-
+    j = (blockIdx().y-1) * blockDim().y + threadIdx().y
+    c[i,j] = a[i,j] + b[i,j]
     return nothing
 end
 
-# ERROR: Julia keeps memory allocated on GPU after running in REPL
 function main()
-    dev = CuDevice(0)
-    ctx = CuContext(dev)
 
-    # Generating some data
-    len = 512
-    a = rand(Int, len)
-    b = rand(Int, len)
+    res =1024
 
-    # allocate and upload data to GPU
+    # CUDAdrv functionality: generate and upload data
+    a = round.(rand(Float32, (1024, 1024)) * 100)
+    b = round.(rand(Float32, (1024, 1024)) * 100)
     d_a = CuArray(a)
     d_b = CuArray(b)
-    d_c = similar(d_a)
+    d_c = similar(d_a)  # output array
 
-    @cuda threads = (len, 1, 1) blocks = (1,1,1) kernel_vadd(d_a,d_b,d_c,len)
+    # run the kernel and fetch results
+    # syntax: @cuda [kwargs...] kernel(args...)
+    @cuda threads = (128, 1, 1) blocks = (div(res,128),res,1) kernel_vadd(d_a, d_b, d_c)
+
+    # CUDAdrv functionality: download data
+    # this synchronizes the device
     c = Array(d_c)
+    a = Array(d_a)
+    b = Array(d_b)
 
-    @test c == a+b
-
-    destroy!(ctx)
+    @test a+b ≈ c
 end
 
 main()
+#GC.gc()
