@@ -94,20 +94,29 @@ void draw_scow(camera& cam, scene& world){
                                      -world.size.y*0.05 + head_origin.y},
                                     {-world.size.y*0.04 + head_origin.x,
                                      world.size.y*0.06 + head_origin.y}};
+    std::vector<vec> head_outpoints = {{world.size.y*0.055,
+                                        world.size.y*0.06},
+                                       {world.size.y*0.045,
+                                        -world.size.y*0.05},
+                                       {-world.size.y*0.04,
+                                        -world.size.y*0.05},
+                                       {-world.size.y*0.04,
+                                        world.size.y*0.06},
+                                       {world.size.y*0.055,
+                                        world.size.y*0.06}};
+
 
     auto head_bg = std::make_shared<polygon>(head_points, 2, -.2, head_origin);
 
     // TODO: fix head outline and color animation for head_bg
-    auto head_outline = std::make_shared<curve>(std::vector<vec>(),
-                                                //head_origin);
-                                                vec(0,0));
+    auto head_outline = std::make_shared<curve>(std::vector<vec>(),head_origin);
 /*
     head_bg->add_animator<vec_animator>(0,60,&head_bg->clr,
                                         black, white);
 
-    head_outline->add_animator<vector_animator<vec>>(0,60, 0, head_points,
-                                                     &head_outline->points);
 */
+    head_outline->add_animator<vector_animator<vec>>(0,60, 0, head_outpoints,
+                                                     &head_outline->points);
 
     // Adding elements to world
     world.add_layer();
@@ -116,9 +125,9 @@ void draw_scow(camera& cam, scene& world){
     for (int i = 0; i < 3; ++i){
         world.add_object(legs[i], 2);
     }
-    world.add_object(head_outline, 2);
     world.add_object(tail, 2);
     //world.add_object(head_bg, 1);
+    world.add_object(head_outline, 1);
 
     for (int i = 0; i < 200; ++i){
         world.update(i);
