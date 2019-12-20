@@ -12,9 +12,8 @@
 #include <gathvl/scene.h>
 #include <random>
 
-vec sierpinsky_op(vec point, vec A, vec B, vec C){
+vec sierpinsky_op(vec point, vec A, vec B, vec C, size_t rnd){
 
-    int rnd = rand() % 3;
     vec out;
 
     switch(rnd){
@@ -31,10 +30,9 @@ vec sierpinsky_op(vec point, vec A, vec B, vec C){
     return out;
 }
 
-vec square_op(vec point, vec A, vec B, vec C, vec D){
+vec square_op(vec point, vec A, vec B, vec C, vec D, size_t rnd){
 
     vec E = (A+B+C+D)/4;
-    int rnd = rand() % 5;
     vec out;
 
     switch(rnd){
@@ -57,11 +55,80 @@ vec square_op(vec point, vec A, vec B, vec C, vec D){
     return out;
 }
 
+void animate_hutchinson(camera& cam, scene& world, size_t depth){
+
+    color black = {0,0,0,1};
+    color white = {1,1,1,1};
+
+    std::shared_ptr<ellipse> up;
+    std::shared_ptr<ellipse> left;
+    std::shared_ptr<ellipse> right;
+
+    // Adding elements to world
+    world.add_layer();
+    world.add_layer();
+
+    vec loc_up = {0,0};
+    vec loc_left = {0,0};
+    vec loc_right = {0,0};
+    vec A = {-1,-1};
+    vec B = {1,-1};
+    vec C = {0,1};
+
+    vec scaled_A = vec{((A.x+1)/2)*world.size.x,
+                       ((1-A.y)/2)*world.size.y};
+    vec scaled_B = vec{((B.x+1)/2)*world.size.x,
+                       ((1-B.y)/2)*world.size.y};
+    vec scaled_C = vec{((C.x+1)/2)*world.size.x,
+                       ((1-C.y)/2)*world.size.y};
+
+    up = std::make_shared<ellipse>(white, scaled_C, vec{5,5}, 0, true);
+    left = std::make_shared<ellipse>(white, scaled_A, vec{5,5}, 0, true);
+    right = std::make_shared<ellipse>(white, scaled_B, vec{5,5}, 0, true);
+
+    world.add_object(up, 1);
+    world.add_object(left, 1);
+    world.add_object(right, 1);
+
+    for (size_t i = 0; i < depth; ++i){
+        for (size_t j = 0; j < 3; ++j){
+            loc_up = sierpinsky_op(C, A, B, C, j);
+            loc_right = sierpinsky_op(A, A, B, C, j);
+            loc_left = sierpinsky_op(B, A, B, C, j);
+
+            vec scaled_up = vec{((loc_up.x+1)/2)*world.size.x,
+                                ((1-loc_up.y)/2)*world.size.y};
+            vec scaled_right = vec{((loc_right.x+1)/2)*world.size.x,
+                                   ((1-loc_right.y)/2)*world.size.y};
+            vec scaled_left = vec{((loc_left.x+1)/2)*world.size.x,
+                                  ((1-loc_left.y)/2)*world.size.y};
+
+            up = std::make_shared<ellipse>(white, scaled_up, vec{5,5}, 0, true);
+            left = std::make_shared<ellipse>(white, scaled_left,
+                                             vec{5,5}, 0, true);
+            right = std::make_shared<ellipse>(white, scaled_right,
+                                             vec{5,5}, 0, true);
+
+            world.add_object(up, 1);
+            world.add_object(left, 1);
+            world.add_object(right, 1);
+
+        }
+    }
+
+    for (int i = 0; i < 100; ++i){
+        world.update(i);
+        cam.encode_frame(world);
+    }
+
+    world.clear();
+
+
+}
 
 void animate_chaos(camera& cam, scene& world, size_t n){
     color black = {0,0,0,1};
     color white = {1,1,1,1};
-    color pink = {1,0,1,1};
 
     //std::vector< std::shared_ptr<ellipse> > points(n);
     std::shared_ptr<ellipse> circle;
@@ -71,18 +138,18 @@ void animate_chaos(camera& cam, scene& world, size_t n){
     world.add_layer();
 
     vec loc = {0,0};
-    //vec A = {-1,-1};
-    //vec B = {1,-1};
-    //vec C = {0,1};
-
     vec A = {-1,-1};
-    vec B = {-1,1};
-    vec C = {1,1};
-    vec D = {1,-1};
+    vec B = {1,-1};
+    vec C = {0,1};
+
+    //vec A = {-1,-1};
+    //vec B = {-1,1};
+    //vec C = {1,1};
+    //vec D = {1,-1};
 
     for (size_t i = 0; i < n; ++i){
-        //loc = sierpinsky_op(loc, A, B, C);
-        loc = square_op(loc, A, B, C, D);
+        loc = sierpinsky_op(loc, A, B, C, rand()%3);
+        //loc = square_op(loc, A, B, C, D, rand()%5);
         vec scaled_loc = vec{((loc.x+1)/2)*world.size.x,
                              ((1-loc.y)/2)*world.size.y};
         color clr = {1-(double)i/n,0,(double)i/n,1};
@@ -102,10 +169,11 @@ void animate_chaos(camera& cam, scene& world, size_t n){
 
 int main(){
 
-    camera cam(vec{1280, 720});
-    scene world = scene({1280, 720}, {0, 0, 0, 1});
+    camera cam(vec{720, 720});
+    scene world = scene({720, 720}, {0, 0, 0, 1});
 
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
     animate_chaos(cam, world, 10000);
+    //animate_hutchinson(cam, world, 1);
     cam.clear_encoders();
 }
