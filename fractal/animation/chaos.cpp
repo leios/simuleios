@@ -12,6 +12,61 @@
 #include <gathvl/scene.h>
 #include <random>
 
+vec barnsley_tree_op(vec point, double rnd){
+    vec out;
+    if (rnd <= 0.02){
+        out.x = 0.03*point.x;
+        out.y = 0.1*point.y;
+    }
+    else if (rnd > 0.02 && rnd <= 0.62){
+        out.x = point.x*0.85;
+        out.y = 0.85*point.y + 1.5;
+    }
+    else if (rnd > 0.62 && rnd <= 0.72){
+        out.x = point.x*0.8;
+        out.y = 0.8*point.y + 1.5;
+    }
+    else if (rnd > 0.72 && rnd <= 0.79){
+        out.x = point.x*0.2 - 0.08*point.y;
+        out.y = point.x*0.15 + 0.22*point.y + .85;
+    }
+    else if (rnd > 0.79 && rnd <= 0.86){
+        out.x = -point.x*0.2 + 0.08*point.y;
+        out.y = point.x*0.15 + 0.22*point.y + .85;
+    }
+    else if (rnd > 0.86 && rnd <= 0.93){
+        out.x = point.x*0.25 - 0.1*point.y;
+        out.y = point.x*0.12 + 0.25*point.y + .4;
+    }
+    else{
+        out.x = -point.x*0.2 + 0.1*point.y;
+        out.y = point.x*0.12 + 0.2*point.y + 0.4;
+    } 
+    return out;
+}
+
+
+vec barnsley_op(vec point, double rnd){
+    vec out;
+    if (rnd < 0.01){
+        out.x = 0;
+        out.y = point.y * 0.16;
+    }
+    else if (rnd > 0.01 && rnd <= 0.86){
+        out.x = point.x*0.85 + 0.04*point.y;
+        out.y = -point.x*0.04 + 0.85*point.y + 1.6;
+    }
+    else if (rnd > 0.86 && rnd <= 0.93){
+        out.x = point.x*0.2 - 0.26*point.y;
+        out.y = point.x*0.23 + 0.22*point.y + 1.6;
+    }
+    else{
+        out.x = -point.x*0.15 + 0.28*point.y;
+        out.y = point.x*0.26 + 0.24*point.y + 0.44;
+    } 
+    return out;
+}
+
 vec sierpinsky_op(vec point, vec A, vec B, vec C, size_t rnd){
 
     vec out;
@@ -148,10 +203,14 @@ void animate_chaos(camera& cam, scene& world, size_t n){
     //vec D = {1,-1};
 
     for (size_t i = 0; i < n; ++i){
-        loc = sierpinsky_op(loc, A, B, C, rand()%3);
+        //loc = sierpinsky_op(loc, A, B, C, rand()%3);
+        loc = barnsley_tree_op(loc, rand()%1000 / (double)1000);
+        //std::cout << loc.x << '\t' << loc.y << '\n';
         //loc = square_op(loc, A, B, C, D, rand()%5);
         vec scaled_loc = vec{((loc.x+1)/2)*world.size.x,
-                             ((1-loc.y)/2)*world.size.y};
+                             ((11-loc.y)/11)*world.size.y};
+        //vec scaled_loc = vec{((loc.x+1)/2)*world.size.x,
+        //                     ((1-loc.y)/2)*world.size.y};
         color clr = {1-(double)i/n,0,(double)i/n,1};
         circle = std::make_shared<ellipse>(clr, scaled_loc, vec{0,0},
                                            0, true);
