@@ -2,26 +2,39 @@ function computus(year)
 
     # Tracking lunar orbiting
     # Year's position on the 19 year lunar phase cycle
+    # This tracks our location on the metonic cycle, which is a 19 year cycle
+    # until lunar phases are on the exact same day as the start of the cycle
     a = mod(year, 19)
     
     # Century index
     k = floor(year/100)
 
-    # shift of metonic cycle
+    # shift of metonic cycle, add a day offset every 300 years
+    # 8/25 is roughly 1/3rd, so every 300 years, that will add a day.
+    # 13 is an offset.
+    # 8 days off every 2500 years.
+    # This might be why the alg. breaks down at 4200
     p = floor((13 + 8 * k) / 25) 
 
-    # Leap-day difference between Julian and Gregorian calendars?
+    # Every 400 years, there are 97 leap days. k is already a century index,
+    # so every 400 years, it will be 4. q will then subtract 1 from that and 
+    # give us 3, so that 100-3=97
+    # (k-q) should be thought of as its own variable.
     q = floor(k / 4)
 
-    # Correction to starting point of calculation each century
+    # Correction to starting point of calculation each century, mod 30 because
+    # the lunar calendar is about 30. This is a combination of previous terms.
     M = mod(15 - p + k - q, 30)
 
     # Finding the next Sunday
     # The difference in the number of leap days between the Gregorian and
-    # Julian calendars
+    # Julian calendars. 4 = Number of leap days per year. 4 is an offset.
+    # k-q is the number of additional leap days, and mod 7 because week
     N = mod(4 + k - q, 7)
 
     # Number of days from March 21st until the full moon
+    # moon year = 12 lunar months = 354 days = 365 - 11 and mod(-11, 30) = 19
+    # 0.25 year offset is handled by leap days later
     d = mod(19 * a + M, 30)
 
     # 52x7 = 364, but there are 365 days a year, so we are offsetting for this.
