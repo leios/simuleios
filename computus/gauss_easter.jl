@@ -46,6 +46,16 @@ function computus(year)
     # from March 22. The 6*d adds the appropriate offset to the next Sunday.
     e = mod(2 * b + 4 * c + 6 * d + N, 7)
 
+    # Historical corrections for April 26 and 25 if we are on the last 8 years
+    # of the metonic cycle. There is some ambiguity here I could not understand
+    # related to the length of each lunar month being ~29.5 days, which could 
+    # mean that this is actually a mathematical offset.
+    # Could be an equinox correction where the second half of the metonic cycle
+    # has an earlier equinox?
+    if (d == 29 && e == 6) || (d == 28 && e == 6 && a > 10)
+        e = -1
+    end
+
     # uncomment to recreate Servois's table
     # return mod(21 + d, 31)
     if(22+ d + e > 31)
