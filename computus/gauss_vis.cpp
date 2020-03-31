@@ -25,11 +25,16 @@ void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
     double earth_radius = 200;
     double moon_radius = 100;
 
+    vec earth_offset = vec{sqrt(earth_radius*earth_radius/2),
+                           sqrt(earth_radius*earth_radius/2)};
+
+    vec moon_offset = vec{sqrt(moon_radius*moon_radius/2),
+                          sqrt(moon_radius*moon_radius/2)};
+
+
     vec sun_loc = {world.size.x/2, world.size.y/2};
-    vec earth_loc = sun_loc + vec{sqrt(earth_radius*earth_radius/2),
-                                  sqrt(earth_radius*earth_radius/2)};
-    vec moon_loc = earth_loc + vec{sqrt(moon_radius*moon_radius/2),
-                                   sqrt(moon_radius*moon_radius/2)};
+    vec earth_loc = sun_loc + earth_offset;
+    vec moon_loc = earth_loc + moon_offset;
 
     auto sun = std::make_shared<ellipse>(sun_clr,
                                          sun_loc,
@@ -60,37 +65,62 @@ void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
 
 
     // Creating a theta for the earth that changes with time
-    double earth_theta = M_PI/4;
-    double moon_theta = M_PI/4;
+    double earth_theta[2] = {M_PI/4, 0};
+    double moon_theta[2] = {M_PI/4, 0};
 
     double earth_freq = 0.1;
-    double moon_freq = earth_freq*354*12/365;
+    double moon_freq = earth_freq*365*12/354;
 
     // TODO: figure out exact number for lunar cycle
     double gregorian_year_frames = 2*M_PI/earth_freq/timestep;
     double lunar_year_frames = gregorian_year_frames*29.53*12/365.2524;
     int indices = 2;
     for (int i = 50; i < gregorian_year_frames + 51; ++i){
-        if (i > lunar_year_frames + 32){
+        //if (i > lunar_year_frames + 32){
+        if (i == floor(lunar_year_frames) + 51){
             indices = 1;
+            earth_theta[1] = fmod(earth_theta[0], 2*M_PI);
         }
-        earth_theta -= earth_freq*timestep;
-        moon_theta -= moon_freq*timestep;
+        earth_theta[0] -= earth_freq*timestep;
+        moon_theta[0] -= moon_freq*timestep + earth_freq*timestep;
         for (int j = 0; j < indices; ++j){
-            vec new_loc = sun_loc + vec(earth_radius*cos(earth_theta),
-                                        earth_radius*sin(earth_theta));
+            vec new_loc = sun_loc + vec(earth_radius*cos(earth_theta[0]),
+                                        earth_radius*sin(earth_theta[0]));
             earths[j]->add_animator<vec_animator>(i-1,i, &earths[j]->location,
                                                   earth_loc, new_loc);
             earth_loc = new_loc;
 
-            new_loc = earth_loc + vec(moon_radius*cos(moon_theta),
-                                      moon_radius*sin(moon_theta));
+            new_loc = earth_loc + vec(moon_radius*cos(moon_theta[0]),
+                                      moon_radius*sin(moon_theta[0]));
             moons[j]->add_animator<vec_animator>(i-1,i, &moons[j]->location,
                                                  moon_loc, new_loc);
             moon_loc = new_loc;
         }
     }
+    moon_theta[1] = fmod(moon_theta[0], 2*M_PI);
+    moon_theta[0] = M_PI/4;
 
+    // Drawing the line for the Earths
+    auto earth_arc = std::make_shared<arc>(sun_loc,
+                                           vec(earth_radius,earth_radius),
+                                           vec{0,0});
+    earth_arc->add_animator<vec_animator>(50+gregorian_year_frames,
+                                          80+gregorian_year_frames,
+                                          &earth_arc->angles,
+                                          vec{earth_theta[0], earth_theta[0]},
+                                          vec{earth_theta[0], earth_theta[1]});
+
+    // Drawing the line for the Earths
+    auto moon_arc = std::make_shared<arc>(earth_loc,
+                                          vec(moon_radius,moon_radius),
+                                          vec{0,0});
+    moon_arc->add_animator<vec_animator>(90+gregorian_year_frames,
+                                         120+gregorian_year_frames,
+                                         &moon_arc->angles,
+                                         vec{moon_theta[1], moon_theta[1]},
+                                         vec{moon_theta[1], moon_theta[0]});
+
+    world.add_layer();
     world.add_layer();
     world.add_object(sun, 1);
     for (int i = 0; i < 3; ++i){
@@ -98,8 +128,15 @@ void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
         world.add_object(moons[i], 1);
     }
 
+
     for (int i = 0; i < end_frame; ++i){
         world.update(i);
+        if (i > 50+gregorian_year_frames){
+            world.add_object(earth_arc, 1);
+        }
+        if (i > 90+gregorian_year_frames){
+            world.add_object(moon_arc, 1);
+        }
         cam.encode_frame(world);
     }
 }
