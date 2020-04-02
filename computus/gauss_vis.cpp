@@ -18,6 +18,10 @@
 
 void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
 
+    vec sun_size = {world.size.y*0.09, world.size.y*0.09};
+    vec earth_size = {world.size.y*0.045, world.size.y*0.045};
+    vec moon_size = {world.size.y*0.018, world.size.y*0.018};
+
     color sun_clr = {1, 1, 0.5, 1};
     color earth_clr = {0, 1, 1, 1};
     color moon_clr = {0.5, 0.5, 0.5, 1};
@@ -33,35 +37,41 @@ void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
 
 
     vec sun_loc = {world.size.x/2, world.size.y/2};
-    vec earth_loc = sun_loc + earth_offset;
-    vec moon_loc = earth_loc + moon_offset;
+    vec earth_loc[3] = {sun_loc + earth_offset, vec(0,0), vec(0,0)};
+    vec moon_loc[3] = {earth_loc[0] + moon_offset, vec(0,0), vec(0,0)};
+
+    // Don't Judge Me!
+    for (int i = 1; i < 3; ++i){
+        earth_loc[i] = earth_loc[0];
+        moon_loc[i] = moon_loc[0];
+    }
 
     auto sun = std::make_shared<ellipse>(sun_clr,
                                          sun_loc,
                                          vec{0,0}, 0, true);
 
-    sun->add_animator<vec_animator>(0,20, &sun->size, vec{0,0}, vec{60,60});
-    sun->add_animator<vec_animator>(20,25, &sun->size, vec{60,60}, vec{55,55});
+    sun->add_animator<vec_animator>(0,20, &sun->size, vec{0,0},
+                                    sun_size*1.1);
+    sun->add_animator<vec_animator>(20,25, &sun->size, sun_size*1.1,
+                                    sun_size);
 
-    std::shared_ptr<ellipse> earths[3];
-    std::shared_ptr<ellipse> moons[3];
-    for (int i = 0; i < 3; ++i){
-        earths[i] = std::make_shared<ellipse>(earth_clr, earth_loc,
-                                             vec{0,0}, 0, true);
+    std::shared_ptr<ellipse> earth;
+    std::shared_ptr<ellipse> moon;
+    earth = std::make_shared<ellipse>(earth_clr, earth_loc[0],
+                                     vec{0,0}, 0, true);
 
-        earths[i]->add_animator<vec_animator>(10,30, &earths[i]->size,
-                                              vec{0,0}, vec{30,30});
-        earths[i]->add_animator<vec_animator>(30,35, &earths[i]->size,
-                                              vec{30,30}, vec{25,25});
+    earth->add_animator<vec_animator>(10,30, &earth->size,
+                                      vec{0,0}, earth_size*1.1);
+    earth->add_animator<vec_animator>(30,35, &earth->size,
+                                      earth_size*1.1, earth_size);
 
-        moons[i] = std::make_shared<ellipse>(moon_clr, moon_loc,
-                                             vec{0,0}, 0, true);
+    moon = std::make_shared<ellipse>(moon_clr, moon_loc[0],
+                                     vec{0,0}, 0, true);
 
-        moons[i]->add_animator<vec_animator>(20,40, &moons[i]->size,
-                                             vec{0,0}, vec{15,15});
-        moons[i]->add_animator<vec_animator>(40,45, &moons[i]->size,
-                                             vec{15,15}, vec{10,10});
-    }
+    moon->add_animator<vec_animator>(20,40, &moon->size,
+                                     vec{0,0}, moon_size*1.1);
+    moon->add_animator<vec_animator>(40,45, &moon->size,
+                                     moon_size*1.1, moon_size);
 
 
     // Creating a theta for the earth that changes with time
@@ -71,7 +81,6 @@ void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
     double earth_freq = 0.1;
     double moon_freq = earth_freq*365*12/354;
 
-    // TODO: figure out exact number for lunar cycle
     double gregorian_year_frames = 2*M_PI/earth_freq/timestep;
     double lunar_year_frames = gregorian_year_frames*29.53*12/365.2524;
     int indices = 2;
@@ -79,26 +88,27 @@ void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
         //if (i > lunar_year_frames + 32){
         if (i == floor(lunar_year_frames) + 51){
             indices = 1;
-            earth_theta[1] = fmod(earth_theta[0], 2*M_PI);
+            earth_theta[1] = fmod(earth_theta[0] + earth_freq*timestep, 2*M_PI);
         }
         earth_theta[0] -= earth_freq*timestep;
-        moon_theta[0] -= moon_freq*timestep + earth_freq*timestep;
+        moon_theta[0] -= (moon_freq + earth_freq)*timestep;
         for (int j = 0; j < indices; ++j){
             vec new_loc = sun_loc + vec(earth_radius*cos(earth_theta[0]),
                                         earth_radius*sin(earth_theta[0]));
-            earths[j]->add_animator<vec_animator>(i-1,i, &earths[j]->location,
-                                                  earth_loc, new_loc);
-            earth_loc = new_loc;
+            earth->add_animator<vec_animator>(i-1,i, &earth->location,
+                                              earth_loc[0], new_loc);
+            earth_loc[j] = new_loc;
 
-            new_loc = earth_loc + vec(moon_radius*cos(moon_theta[0]),
-                                      moon_radius*sin(moon_theta[0]));
-            moons[j]->add_animator<vec_animator>(i-1,i, &moons[j]->location,
-                                                 moon_loc, new_loc);
-            moon_loc = new_loc;
+            new_loc = earth_loc[0] + vec(moon_radius*cos(moon_theta[0]),
+                                         moon_radius*sin(moon_theta[0]));
+            moon->add_animator<vec_animator>(i-1,i, &moon->location,
+                                             moon_loc[0], new_loc);
+            moon_loc[j] = new_loc;
         }
     }
-    moon_theta[1] = fmod(moon_theta[0], 2*M_PI);
-    moon_theta[0] = M_PI/4;
+    moon_theta[1] = fmod(moon_theta[0] + (moon_freq+earth_freq)*timestep,
+                         2*M_PI);
+    moon_theta[0] = M_PI/4 + (moon_freq+earth_freq)*timestep;
 
     // Drawing the line for the Earths
     auto earth_arc = std::make_shared<arc>(sun_loc,
@@ -111,7 +121,7 @@ void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
                                           vec{earth_theta[0], earth_theta[1]});
 
     // Drawing the line for the Earths
-    auto moon_arc = std::make_shared<arc>(earth_loc,
+    auto moon_arc = std::make_shared<arc>(earth_loc[0],
                                           vec(moon_radius,moon_radius),
                                           vec{0,0});
     moon_arc->add_animator<vec_animator>(90+gregorian_year_frames,
@@ -120,22 +130,40 @@ void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
                                          vec{moon_theta[1], moon_theta[1]},
                                          vec{moon_theta[1], moon_theta[0]});
 
+    std::shared_ptr<arc> earth_shadows[2];
+    std::shared_ptr<arc> moon_shadows[2];
+
+    for (int i = 0; i < 2; ++i){
+        earth_shadows[i] = std::make_shared<arc>(earth_loc[i+1],
+                                                 earth_size*0.95,
+                                                 vec{0,2*M_PI});
+        moon_shadows[i] = std::make_shared<arc>(moon_loc[i+1],
+                                                moon_size*0.95,
+                                                vec{0,2*M_PI});
+    }
+
     world.add_layer();
     world.add_layer();
     world.add_object(sun, 1);
-    for (int i = 0; i < 3; ++i){
-        world.add_object(earths[i], 1);
-        world.add_object(moons[i], 1);
-    }
+    world.add_object(earth, 2);
+    world.add_object(moon, 2);
 
 
     for (int i = 0; i < end_frame; ++i){
         world.update(i);
-        if (i > 50+gregorian_year_frames){
-            world.add_object(earth_arc, 1);
+        if (i == 51){
+            world.add_object(earth_shadows[1], 1);
+            world.add_object(moon_shadows[1], 1);
         }
-        if (i > 90+gregorian_year_frames){
-            world.add_object(moon_arc, 1);
+        if (i == floor(lunar_year_frames) + 51){
+            world.add_object(earth_shadows[0], 1);
+            world.add_object(moon_shadows[0], 1);
+        }
+        if (i == 50+floor(gregorian_year_frames)){
+            world.add_object(earth_arc, 2);
+        }
+        if (i == 90+floor(gregorian_year_frames)){
+            world.add_object(moon_arc, 2);
         }
         cam.encode_frame(world);
     }
