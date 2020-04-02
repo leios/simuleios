@@ -16,6 +16,130 @@
 #include "include/camera.h"
 #include "include/scene.h"
 
+void synodic_scene(camera& cam, scene& world,
+                   double end_frame, double timestep){
+
+    vec sun_size = {world.size.y*0.09, world.size.y*0.09};
+    vec earth_size = {world.size.y*0.045, world.size.y*0.045};
+    vec moon_size = {world.size.y*0.018, world.size.y*0.018};
+
+    color sun_clr = {1, 1, 0.5, 1};
+    color earth_clr = {0, 1, 1, 1};
+    color moon_clr = {0.5, 0.5, 0.5, 1};
+
+    double earth_radius = 200;
+    double moon_radius = 100;
+
+    vec earth_offset = vec{sqrt(earth_radius*earth_radius/2),
+                           sqrt(earth_radius*earth_radius/2)};
+
+    vec moon_offset = vec{sqrt(moon_radius*moon_radius/2),
+                          sqrt(moon_radius*moon_radius/2)};
+
+
+    vec sun_loc = {world.size.x/2, world.size.y/2};
+    vec earth_loc = sun_loc + earth_offset;
+    vec moon_loc = earth_loc + moon_offset;
+
+    auto sun = std::make_shared<ellipse>(sun_clr,
+                                         sun_loc,
+                                         vec{0,0}, 0, true);
+
+    sun->add_animator<vec_animator>(0,20, &sun->size, vec{0,0},
+                                    sun_size*1.1);
+    sun->add_animator<vec_animator>(20,25, &sun->size, sun_size*1.1,
+                                    sun_size);
+
+    std::shared_ptr<ellipse> earth;
+    std::shared_ptr<ellipse> moon;
+    earth = std::make_shared<ellipse>(earth_clr, earth_loc,
+                                     vec{0,0}, 0, true);
+
+    earth->add_animator<vec_animator>(10,30, &earth->size,
+                                      vec{0,0}, earth_size*1.1);
+    earth->add_animator<vec_animator>(30,35, &earth->size,
+                                      earth_size*1.1, earth_size);
+
+    moon = std::make_shared<ellipse>(moon_clr, moon_loc,
+                                     vec{0,0}, 0, true);
+
+    moon->add_animator<vec_animator>(20,40, &moon->size,
+                                     vec{0,0}, moon_size*1.1);
+    moon->add_animator<vec_animator>(40,45, &moon->size,
+                                     moon_size*1.1, moon_size);
+
+    std::shared_ptr<arc> earth_shadows;
+    std::shared_ptr<arc> moon_shadows;
+
+    earth_shadows = std::make_shared<arc>(earth_loc,
+                                          earth_size*0.95,
+                                          vec{0,2*M_PI});
+    moon_shadows = std::make_shared<arc>(moon_loc,
+                                         moon_size*0.95,
+                                         vec{0,2*M_PI});
+
+
+    // Creating a theta for the earth that changes with time
+    double earth_theta = M_PI/4;
+    double moon_theta = M_PI/4;
+
+    double earth_freq = 0.1;
+    double moon_freq = earth_freq*365*12/354;
+
+    double gregorian_year_frames = 2*M_PI/earth_freq/timestep;
+    double lunar_half_year_frames = gregorian_year_frames*29.53*6/365.2524;
+
+    // creating line connecting sun and moon and adding animator
+    auto synodic_line_0 = std::make_shared<line>(sun_loc, sun_loc);
+    synodic_line_0->add_animator<vec_animator>(lunar_half_year_frames + 60,
+                                               lunar_half_year_frames + 90,
+                                               &synodic_line_0->end,
+                                               sun_loc, moon_loc);
+
+    for (int i = 50; i < lunar_half_year_frames + 51; ++i){
+        earth_theta -= earth_freq*timestep;
+        moon_theta -= (moon_freq + earth_freq)*timestep;
+        vec new_loc = sun_loc + vec(earth_radius*cos(earth_theta),
+                                    earth_radius*sin(earth_theta));
+        earth->add_animator<vec_animator>(i-1,i, &earth->location,
+                                          earth_loc, new_loc);
+        earth_loc = new_loc;
+
+        new_loc = earth_loc + vec(moon_radius*cos(moon_theta),
+                                  moon_radius*sin(moon_theta));
+        moon->add_animator<vec_animator>(i-1,i, &moon->location,
+                                         moon_loc, new_loc);
+        if (i < lunar_half_year_frames + 50){
+            moon_loc = new_loc;
+        }
+    }
+
+    // Create line connecting sun and new moon
+    auto synodic_line_1 = std::make_shared<line>(sun_loc, sun_loc);
+    synodic_line_1->add_animator<vec_animator>(lunar_half_year_frames + 60,
+                                               lunar_half_year_frames + 90,
+                                               &synodic_line_1->end,
+                                               sun_loc, moon_loc);
+
+    world.add_layer();
+    world.add_layer();
+    world.add_object(sun, 1);
+    world.add_object(earth, 2);
+    world.add_object(moon, 2);
+    world.add_object(synodic_line_0, 2);
+    world.add_object(synodic_line_1, 2);
+
+
+    for (int i = 0; i < end_frame; ++i){
+        world.update(i);
+        if (i == 51){
+            world.add_object(earth_shadows, 1);
+            world.add_object(moon_shadows, 1);
+        }
+        cam.encode_frame(world);
+    }
+}
+
 void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
 
     vec sun_size = {world.size.y*0.09, world.size.y*0.09};
@@ -176,6 +300,7 @@ int main() {
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
 
     orbit_scene(cam, world, 1000, 0.1);
+    //synodic_scene(cam, world, 2000, 0.025);
 
     cam.clear_encoders();
 
