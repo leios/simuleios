@@ -26,6 +26,7 @@ void synodic_scene(camera& cam, scene& world,
     color sun_clr = {1, 1, 0.5, 1};
     color earth_clr = {0, 1, 1, 1};
     color moon_clr = {0.5, 0.5, 0.5, 1};
+    color line_clr = {0.5, 0.5, 0.5, 1};
 
     double earth_radius = 200;
     double moon_radius = 100;
@@ -90,7 +91,7 @@ void synodic_scene(camera& cam, scene& world,
     double lunar_half_year_frames = gregorian_year_frames*29.53*6/365.2524;
 
     // creating line connecting sun and moon and adding animator
-    auto synodic_line_0 = std::make_shared<line>(sun_loc, sun_loc);
+    auto synodic_line_0 = std::make_shared<line>(line_clr, sun_loc, sun_loc);
     synodic_line_0->add_animator<vec_animator>(lunar_half_year_frames + 60,
                                                lunar_half_year_frames + 90,
                                                &synodic_line_0->end,
@@ -115,7 +116,7 @@ void synodic_scene(camera& cam, scene& world,
     }
 
     // Create line connecting sun and new moon
-    auto synodic_line_1 = std::make_shared<line>(sun_loc, sun_loc);
+    auto synodic_line_1 = std::make_shared<line>(line_clr, sun_loc, sun_loc);
     synodic_line_1->add_animator<vec_animator>(lunar_half_year_frames + 60,
                                                lunar_half_year_frames + 90,
                                                &synodic_line_1->end,
@@ -126,8 +127,6 @@ void synodic_scene(camera& cam, scene& world,
     world.add_object(sun, 1);
     world.add_object(earth, 2);
     world.add_object(moon, 2);
-    world.add_object(synodic_line_0, 2);
-    world.add_object(synodic_line_1, 2);
 
 
     for (int i = 0; i < end_frame; ++i){
@@ -135,6 +134,10 @@ void synodic_scene(camera& cam, scene& world,
         if (i == 51){
             world.add_object(earth_shadows, 1);
             world.add_object(moon_shadows, 1);
+        }
+        if (i == floor(lunar_half_year_frames) + 60){
+            world.add_object(synodic_line_0, 2);
+            world.add_object(synodic_line_1, 2);
         }
         cam.encode_frame(world);
     }
@@ -296,11 +299,12 @@ void orbit_scene(camera& cam, scene& world, double end_frame, double timestep){
 int main() {
     camera cam(vec{1280, 720});
     scene world = scene({1280, 720}, {0, 0, 0, 1});
+    //world.bg_clr = {1,1,1,1};
 
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
 
-    orbit_scene(cam, world, 1000, 0.1);
-    //synodic_scene(cam, world, 2000, 0.025);
+    //orbit_scene(cam, world, 1000, 0.1);
+    synodic_scene(cam, world, 4000, 0.01);
 
     cam.clear_encoders();
 
