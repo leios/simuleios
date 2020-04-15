@@ -1,9 +1,9 @@
-/*-------------sierpinsky.cpp-------------------------------------------------//
+/*-------------sierpinski.cpp-------------------------------------------------//
 
  Purpose: This is a stand-alone file to draw the spherical cow logo
 
    Notes: Compile with
-              g++ -L/path/to/GathVL -I/path/to/GathVL -lgathvl -o sierpinsky sierpinsky.cpp `pkg-config --cflags --libs cairo libavformat libavcodec libswresample libswscale libavutil` -Wl,-rpath,/path/to/GathVL
+              g++ -L/path/to/GathVL -I/path/to/GathVL -lgathvl -o sierpinski sierpinski.cpp `pkg-config --cflags --libs cairo libavformat libavcodec libswresample libswscale libavutil` -Wl,-rpath,/path/to/GathVL
 
           Props to Kroppeb for help with incrementing trytes
 
@@ -71,9 +71,17 @@ void sierpinski_hutchinson(camera& cam, scene& world, int n, int bin_size){
     color gray = {0.5,0.5,0.5,1};
 
     tryte value (0,0);
+    int level = 1;
+    int diff = 3;
     for(int i = 0; i < 3*3*3*3 ; i++){
-        print_tryte(value,4);
+        if (i == diff){
+            level += 1;
+            value = {0,0};
+            diff += pow(3,level);
+        }
+        print_tryte(value,level);
         value = increment(value);
+        //std::cout << value.first << '\t' << value.second << '\n';
     }
 
     int size = 4;
