@@ -7,6 +7,10 @@
 
           Props to Kroppeb for help with incrementing trytes
 
+    TODO: 1. Remove magic numbers
+          2. Finish animation of hutchinson
+          3. Square distribution
+
 *-----------------------------------------------------------------------------*/
 
 #include <iostream>
@@ -15,6 +19,31 @@
 #include <gathvl/scene.h>
 #include <utility>
 
+vec midpoint(vec point1, vec point2){
+    return 0.5*(point1 + point2);
+}
+
+vec apply_tryte(std::string value_string, vec point,
+                std::vector<vec> triangle_points){
+    for (int i = 0; i < value_string.size(); ++i){
+        char value = value_string[i];
+        switch(value){
+            case '0':
+                point = midpoint(point, triangle_points[0]);
+                break;
+            case '1':
+                point = midpoint(point, triangle_points[1]);
+                break;
+            case '2':
+                point = midpoint(point, triangle_points[2]);
+                break;
+        }
+    }
+
+    return point;
+}
+
+// TODO: Modify trytes to work with bijective base 3
 typedef unsigned long long ll;
 typedef std::pair<ll, ll> tryte;
 
@@ -30,17 +59,18 @@ tryte increment(tryte number){
     return number;
 }
 
-void print_tryte(tryte number, int trits){
+std::string save_tryte(tryte number, int trits){
+    std::string value_string = "";
     for(int i = 1 << (trits-1); i; i >>= 1){
         if(number.first & i){
-            std::cout << "1";
+            value_string += "1";
         }else if(number.second & i){
-            std::cout << "2";
+            value_string += "2";
         }else{
-            std::cout << "0";
+            value_string += "0";
         }
     }
-    std::cout << std::endl;
+    return value_string;
 }
 
 vec convert(tryte number, ll scale, vec B, vec C){
@@ -70,25 +100,6 @@ void sierpinski_hutchinson(camera& cam, scene& world, int n, int bin_size){
     color white = {1,1,1,1};
     color gray = {0.5,0.5,0.5,1};
 
-    tryte value (0,0);
-    int level = 1;
-    int diff = 3;
-    for(int i = 0; i < 3*3*3*3 ; i++){
-        if (i == diff){
-            level += 1;
-            value = {0,0};
-            diff += pow(3,level);
-        }
-        print_tryte(value,level);
-        value = increment(value);
-        //std::cout << value.first << '\t' << value.second << '\n';
-    }
-
-    int size = 4;
-    vec check = convert(value, (2 << (size -1 )), vec(0,1), vec(1,1));
-
-    std::cout << check.x << '\t' << check.y << '\n';
-
     std::vector<vec> triangle_pts = {{0,0},{0.5,1},{1,0}};
     std::vector<std::shared_ptr<ellipse>> triangle(3);
 
@@ -102,9 +113,39 @@ void sierpinski_hutchinson(camera& cam, scene& world, int n, int bin_size){
                                                 vec{0,0}, vec{5,5});
     }
 
+    vec loc;
+    auto point = std::make_shared<ellipse>(white, vec{0,0}, vec{10,10}, 0, 1);
+
+    world.add_layer();
+    world.add_layer();
+
+    tryte value (0,0);
+    int level = 9;
+    int tmp_level = 1;
+    int diff = 3;
+    std::string value_string = "";
+
+    std::shared_ptr<ellipse> points[(int)(3*pow(3,level))];
+    for(int i = 0; i < (pow(3,level)-1)/2-1; i++){
+        if (i == diff){
+            tmp_level += 1;
+            value = {0,0};
+            diff += pow(3,tmp_level);
+        }
+        value = increment(value);
+        value_string = save_tryte(value,tmp_level);
+        for (int j = 0; j < 3; ++j){
+            loc = apply_tryte(value_string, triangle_pts[j],
+                              triangle_pts);
+            std::cout << value_string << '\t' << loc.x << '\t' << loc.y << '\n';
+            loc = {world.size.x*0.5 - 400 + 800*loc.x,
+                   world.size.y*0.5 + 400 - 800*loc.y};
+            point = std::make_shared<ellipse>(white, loc, vec{2,2}, 0, 1);
+            world.add_object(point,1);
+        }
+    }
+
     // Adding elements to world
-    world.add_layer();
-    world.add_layer();
     for (int i = 0; i < 3; ++i){
         world.add_object(triangle[i], 2);
     }
@@ -154,16 +195,13 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size){
     for (int i = 0; i < n; ++i){
         double rnd = rand() % 10000 * 0.0001;
         if (rnd <= 0.33){
-            pt = {0.5*(triangle_pts[0].x + pt.x),
-                  0.5*(triangle_pts[0].y + pt.y)};
+            pt = midpoint(triangle_pts[0],pt);
         }
         else if (rnd > 0.33 && rnd <= 0.66){
-            pt = {0.5*(triangle_pts[1].x + pt.x),
-                  0.5*(triangle_pts[1].y + pt.y)};
+            pt = midpoint(triangle_pts[1],pt);
         }
         else{
-            pt = {0.5*(triangle_pts[2].x + pt.x),
-                  0.5*(triangle_pts[2].y + pt.y)};
+            pt = midpoint(triangle_pts[2],pt);
         }
 
         if (i > 20){
