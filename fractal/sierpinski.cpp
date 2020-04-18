@@ -95,7 +95,7 @@ vec hutchinson(vec init, std::vector<vec> triangle, size_t i){
     return out;
 }
 
-void sierpinski_hutchinson(camera& cam, scene& world, int n, int bin_size){
+void sierpinski_hutchinson(camera& cam, scene& world, int total_frames){
     color black = {0,0,0,1};
     color white = {1,1,1,1};
     color gray = {0.5,0.5,0.5,1};
@@ -113,18 +113,21 @@ void sierpinski_hutchinson(camera& cam, scene& world, int n, int bin_size){
                                                 vec{0,0}, vec{5,5});
     }
 
-    vec loc;
+    vec loc, parent_loc;
     auto point = std::make_shared<ellipse>(white, vec{0,0}, vec{10,10}, 0, 1);
 
     world.add_layer();
     world.add_layer();
 
     tryte value (0,0);
-    int level = 9;
+    int level = 8;
     int tmp_level = 1;
     int diff = 3;
-    std::string value_string = "";
+    std::string value_string = "", parent_string;
 
+    int draw_frame = 120;
+
+    // This is creating all the children
     std::shared_ptr<ellipse> points[(int)(3*pow(3,level))];
     for(int i = 0; i < (pow(3,level)-1)/2-1; i++){
         if (i == diff){
@@ -137,12 +140,24 @@ void sierpinski_hutchinson(camera& cam, scene& world, int n, int bin_size){
         for (int j = 0; j < 3; ++j){
             loc = apply_tryte(value_string, triangle_pts[j],
                               triangle_pts);
-            std::cout << value_string << '\t' << loc.x << '\t' << loc.y << '\n';
+            parent_string = value_string.substr(0,value_string.size()-1);
+            parent_loc = apply_tryte(parent_string, triangle_pts[j],
+                                     triangle_pts);
             loc = {world.size.x*0.5 - 400 + 800*loc.x,
                    world.size.y*0.5 + 400 - 800*loc.y};
-            point = std::make_shared<ellipse>(white, loc, vec{2,2}, 0, 1);
+            parent_loc = {world.size.x*0.5 - 400 + 800*parent_loc.x,
+                          world.size.y*0.5 + 400 - 800*parent_loc.y};
+            point = std::make_shared<ellipse>(white, loc,
+                                              vec{0,0}, 0, 1);
+            point->add_animator<vec_animator>(draw_frame, draw_frame+30,
+                                              &point->size,vec{0,0},
+                                              vec{2,2});
+            point->add_animator<vec_animator>(draw_frame, draw_frame+30,
+                                              &point->location,parent_loc,
+                                              loc);
             world.add_object(point,1);
         }
+        draw_frame += 1;
     }
 
     // Adding elements to world
@@ -150,13 +165,12 @@ void sierpinski_hutchinson(camera& cam, scene& world, int n, int bin_size){
         world.add_object(triangle[i], 2);
     }
 
-    for (int i = 0; i < 100; ++i){
+    for (int i = 0; i < total_frames; ++i){
         world.update(i);
         cam.encode_frame(world);
     }
 
     world.clear();
-
 
 }
 
@@ -234,7 +248,7 @@ int main(){
     scene world = scene({1920, 1080}, {0, 0, 0, 1});
 
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
-    sierpinski_hutchinson(cam, world, 20000, 100);
+    sierpinski_hutchinson(cam, world, 3000);
     //sierpinski_chaos(cam, world, 20000, 100);
     cam.clear_encoders();
 }
