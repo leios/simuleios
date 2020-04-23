@@ -95,13 +95,21 @@ vec hutchinson(vec init, std::vector<vec> triangle, size_t i){
     return out;
 }
 
-void sierpinski_hutchinson(camera& cam, scene& world, int total_frames){
+void sierpinski_hutchinson(camera& cam, scene& world, int level,
+                           int total_frames){
     color black = {0,0,0,1};
     color white = {1,1,1,1};
-    color gray = {0.5,0.5,0.5,1};
+    color blue  = {0,0,1,1};
+    color red   = {1,0,0,1};
+    color green = {0,1,0,1};
+    color gray  = {0.5,0.5,0.5,1};
 
     std::vector<vec> triangle_pts = {{0,0},{0.5,sqrt(0.75)},{1,0}};
-    std::vector<std::shared_ptr<ellipse>> triangle(3);
+    std::vector<vec> triangle_midpts = {0.5*(triangle_pts[0]+triangle_pts[1]),
+                                        0.5*(triangle_pts[1]+triangle_pts[2]),
+                                        0.5*(triangle_pts[2]+triangle_pts[0])};
+    
+    std::vector<std::shared_ptr<ellipse>> triangle(3), midtriangle(3);
 
     int triangle_size = world.size.y*0.95;
     int triangle_offset = triangle_size*0.5;
@@ -116,6 +124,14 @@ void sierpinski_hutchinson(camera& cam, scene& world, int total_frames){
         triangle[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &triangle[i]->size,
                                                 vec{0,0}, vec{5,5});
+        loc = {world.size.x*0.5 - triangle_offset 
+               + triangle_size*triangle_midpts[i].x,
+               world.size.y*0.5 + triangle_offset*sqrt(0.75) 
+               - triangle_size*triangle_midpts[i].y};
+        midtriangle[i] = std::make_shared<ellipse>(loc, vec{0,0}, 0, 1);
+        midtriangle[i]->add_animator<vec_animator>(60+i*10,90+i*10,
+                                                &midtriangle[i]->size,
+                                                vec{0,0}, vec{5,5});
     }
 
     vec loc, parent_loc;
@@ -125,7 +141,6 @@ void sierpinski_hutchinson(camera& cam, scene& world, int total_frames){
     world.add_layer();
 
     tryte value (0,0);
-    int level = 8;
     int tmp_level = 1;
     int diff = 3;
     std::string value_string = "", parent_string;
@@ -143,10 +158,22 @@ void sierpinski_hutchinson(camera& cam, scene& world, int total_frames){
         value = increment(value);
         value_string = save_tryte(value,tmp_level);
         for (int j = 0; j < 3; ++j){
-            loc = apply_tryte(value_string, triangle_pts[j],
+            color point_clr;
+            switch(j){
+                case 0:
+                    point_clr = red;
+                    break;
+                case 1:
+                    point_clr = green;
+                    break;
+                case 2:
+                    point_clr = blue;
+                    break;
+            }
+            loc = apply_tryte(value_string, triangle_midpts[j],
                               triangle_pts);
             parent_string = value_string.substr(0,value_string.size()-1);
-            parent_loc = apply_tryte(parent_string, triangle_pts[j],
+            parent_loc = apply_tryte(parent_string, triangle_midpts[j],
                                      triangle_pts);
             loc = {world.size.x*0.5 - triangle_offset + triangle_size*loc.x,
                    world.size.y*0.5 + triangle_offset*sqrt(0.75)
@@ -155,7 +182,7 @@ void sierpinski_hutchinson(camera& cam, scene& world, int total_frames){
                           + triangle_size*parent_loc.x,
                           world.size.y*0.5 + triangle_offset*sqrt(0.75)
                           - triangle_size*parent_loc.y};
-            point = std::make_shared<ellipse>(white, loc,
+            point = std::make_shared<ellipse>(point_clr, loc,
                                               vec{0,0}, 0, 1);
             point->add_animator<vec_animator>(draw_frame, draw_frame+30,
                                               &point->size,vec{0,0},
@@ -171,6 +198,7 @@ void sierpinski_hutchinson(camera& cam, scene& world, int total_frames){
     // Adding elements to world
     for (int i = 0; i < 3; ++i){
         world.add_object(triangle[i], 2);
+        world.add_object(midtriangle[i], 2);
     }
 
     for (int i = 0; i < total_frames; ++i){
@@ -263,7 +291,7 @@ int main(){
     scene world = scene({1920, 1080}, {0, 0, 0, 1});
 
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
-    sierpinski_hutchinson(cam, world, 3000);
+    sierpinski_hutchinson(cam, world, 7, 3000);
     //sierpinski_chaos(cam, world, 20000, 100, 500);
     cam.clear_encoders();
 }
