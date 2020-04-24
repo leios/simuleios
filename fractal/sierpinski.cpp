@@ -5,7 +5,7 @@
    Notes: Compile with
               g++ -L/path/to/GathVL -I/path/to/GathVL -lgathvl -o sierpinski sierpinski.cpp `pkg-config --cflags --libs cairo libavformat libavcodec libswresample libswscale libavutil` -Wl,-rpath,/path/to/GathVL
 
-          Props to Kroppeb for help with incrementing trytes
+          Props to Kroppeb for help with incrementing trytes and quits
 
     TODO: 1. Remove magic numbers
           2. Finish animation of hutchinson
@@ -21,6 +21,29 @@
 
 vec midpoint(vec point1, vec point2){
     return 0.5*(point1 + point2);
+}
+
+vec apply_quit(std::string value_string, vec point,
+               std::vector<vec> square_points){
+    for (int i = 0; i < value_string.size(); ++i){
+        char value = value_string[i];
+        switch(value){
+            case '0':
+                point = midpoint(point, square_points[0]);
+                break;
+            case '1':
+                point = midpoint(point, square_points[1]);
+                break;
+            case '2':
+                point = midpoint(point, square_points[2]);
+                break;
+            case '3':
+                point = midpoint(point, square_points[3]);
+                break;
+        }
+    }
+
+    return point;
 }
 
 vec apply_tryte(std::string value_string, vec point,
@@ -45,7 +68,7 @@ vec apply_tryte(std::string value_string, vec point,
 
 // TODO: Modify trytes to work with bijective base 3
 typedef unsigned long long ll;
-typedef std::pair<ll, ll> tryte;
+typedef std::pair<ll, ll> tryte, quit;
 
 tryte increment(tryte number){
     ll inc = 1;
@@ -59,9 +82,43 @@ tryte increment(tryte number){
     return number;
 }
 
-std::string save_tryte(tryte number, int trits){
+quit increment_quit(quit number){
+    ll inc = 1;
+    while(inc){
+        ll for2 = number.first & inc;
+        ll overf = number.second & for2;
+        number.first ^= inc;
+        number.second ^= for2;
+        inc = overf << 1;
+    }
+    return number;
+}
+std::string save_quit(quit number, int quits){
     std::string value_string = "";
-    for(int i = 1 << (trits-1); i; i >>= 1){
+    for(int i = 1 << (quits-1); i; i >>= 1){
+        int value = (((number.second & i) > 0) << 1) |
+                    (((number.first & i) > 0));
+        switch(value){
+            case 0:
+                value_string += "0";
+                break;
+            case 1:
+                value_string += "1";
+                break;
+            case 2:
+                value_string += "2";
+                break;
+            case 3:
+                value_string += "3";
+                break;
+        }
+    }
+    return value_string;
+}
+
+std::string save_tryte(tryte number, int trytes){
+    std::string value_string = "";
+    for(int i = 1 << (trytes-1); i; i >>= 1){
         if(number.first & i){
             value_string += "1";
         }else if(number.second & i){
@@ -93,6 +150,134 @@ vec hutchinson(vec init, std::vector<vec> triangle, size_t i){
     }
 
     return out;
+}
+
+void square_hutchinson(camera& cam, scene& world, int level,
+                       int total_frames){
+    color black = {0,0,0,1};
+    color white = {1,1,1,1};
+    color blue  = {0,0,1,1};
+    color pink  = {1,0,1,1};
+    color red   = {1,0,0,1};
+    color green = {0,1,0,1};
+    color gray  = {0.5,0.5,0.5,1};
+
+    std::vector<vec> square_pts = {{0,0},{0,1},{1,1},{1,0}};
+    std::vector<vec> square_midpts = {0.5*(square_pts[0]+square_pts[1]),
+                                      0.5*(square_pts[1]+square_pts[2]),
+                                      0.5*(square_pts[2]+square_pts[3]),
+                                      0.5*(square_pts[0]+square_pts[2]),
+                                      0.5*(square_pts[3]+square_pts[0])};
+    
+    std::vector<std::shared_ptr<ellipse>> square(4), midsquare(5);
+
+    int square_size = world.size.y*0.95;
+    int square_offset = square_size*0.5;
+
+    // Four square points
+    for (int i = 0; i < square.size(); ++i){
+        vec loc = {world.size.x*0.5 - square_offset 
+                   + square_size*square_pts[i].x,
+                   world.size.y*0.5 + square_offset*sqrt(0.75) 
+                   - square_size*square_pts[i].y};
+        square[i] = std::make_shared<ellipse>(loc, vec{0,0}, 0, 1);
+        square[i]->add_animator<vec_animator>(0+i*10,30+i*10,
+                                                &square[i]->size,
+                                                vec{0,0}, vec{5,5});
+    }
+    for (int i = 0; i < midsquare.size(); ++i){
+        vec loc = {world.size.x*0.5 - square_offset 
+               + square_size*square_midpts[i].x,
+               world.size.y*0.5 + square_offset*sqrt(0.75) 
+               - square_size*square_midpts[i].y};
+        midsquare[i] = std::make_shared<ellipse>(loc, vec{0,0}, 0, 1);
+        midsquare[i]->add_animator<vec_animator>(60+i*10,90+i*10,
+                                                &midsquare[i]->size,
+                                                vec{0,0}, vec{5,5});
+    }
+
+    vec loc, parent_loc;
+    auto point = std::make_shared<ellipse>(white, vec{0,0}, vec{10,10}, 0, 1);
+
+    world.add_layer();
+    world.add_layer();
+
+    quit value (0,0);
+    int tmp_level = 1;
+    int diff = 4;
+    std::string value_string = "", parent_string;
+
+    int draw_frame = 120;
+
+    // This is creating all the children
+    for(int i = 0; i < (pow(4,level)-1)/2-1; i++){
+        if (i == diff){
+            tmp_level += 1;
+            value = {0,0};
+            diff += pow(4,tmp_level);
+        }
+        value = increment_quit(value);
+        value_string = save_quit(value,tmp_level);
+        for (int j = 0; j < 5; ++j){
+            color point_clr;
+            switch(j){
+                case 0:
+                    point_clr = red;
+                    break;
+                case 1:
+                    point_clr = green;
+                    break;
+                case 2:
+                    point_clr = blue;
+                    break;
+                case 3:
+                    point_clr = gray;
+                    break;
+                case 4:
+                    point_clr = pink;
+                    break;
+            }
+            loc = apply_quit(value_string, square_midpts[j],
+                             square_pts);
+            parent_string = value_string.substr(0,value_string.size()-1);
+            parent_loc = apply_quit(parent_string, square_midpts[j],
+                                    square_pts);
+            loc = {world.size.x*0.5 - square_offset + square_size*loc.x,
+                   world.size.y*0.5 + square_offset*sqrt(0.75)
+                   - square_size*loc.y};
+            parent_loc = {world.size.x*0.5 - square_offset
+                          + square_size*parent_loc.x,
+                          world.size.y*0.5 + square_offset*sqrt(0.75)
+                          - square_size*parent_loc.y};
+            point = std::make_shared<ellipse>(point_clr, loc,
+                                              vec{0,0}, 0, 1);
+            point->add_animator<vec_animator>(draw_frame, draw_frame+30,
+                                              &point->size,vec{0,0},
+                                              vec{2,2});
+            point->add_animator<vec_animator>(draw_frame, draw_frame+30,
+                                              &point->location,parent_loc,
+                                              loc);
+            world.add_object(point,1);
+        }
+        //std::cout << value_string << '\n';
+        draw_frame += 1;
+    }
+
+    // Adding elements to world
+    for (int i = 0; i < 4; ++i){
+        world.add_object(square[i], 2);
+    }
+    for (int i = 0; i < 5; ++i){
+        world.add_object(midsquare[i], 2);
+    }
+
+    for (int i = 0; i < total_frames; ++i){
+        world.update(i);
+        cam.encode_frame(world);
+    }
+
+    world.clear();
+
 }
 
 void sierpinski_hutchinson(camera& cam, scene& world, int level,
@@ -148,7 +333,6 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
     int draw_frame = 120;
 
     // This is creating all the children
-    std::shared_ptr<ellipse> points[(int)(3*pow(3,level))];
     for(int i = 0; i < (pow(3,level)-1)/2-1; i++){
         if (i == diff){
             tmp_level += 1;
@@ -291,7 +475,8 @@ int main(){
     scene world = scene({1920, 1080}, {0, 0, 0, 1});
 
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
-    sierpinski_hutchinson(cam, world, 7, 3000);
+    square_hutchinson(cam, world, 7, 3000);
+    //sierpinski_hutchinson(cam, world, 7, 3000);
     //sierpinski_chaos(cam, world, 20000, 100, 500);
     cam.clear_encoders();
 }
