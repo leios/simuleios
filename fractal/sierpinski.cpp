@@ -10,6 +10,9 @@
     TODO: 1. Remove magic numbers
           2. Finish animation of hutchinson
           3. Square distribution
+          4. Chaos animation: Allow lines to be properly drawn after triangle
+                              No dots before
+          5. Hutchinson animation: slow animation for vis.
 
 *-----------------------------------------------------------------------------*/
 
@@ -427,12 +430,52 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
 
 
     // First, generate random point.
-
-    vec pt = {rand() % 10000 * 0.0001, rand() % 10000 * 0.0001};
+    srand(1000);
+    //vec pt = {rand() % 10000 * 0.0001, rand() % 10000 * 0.0001};
+    vec pt = {0.5, 0.25}, pts[20];
+    vec prev_pt = {0.5, 0.25};
 
     //std::vector<std::share_ptr<ellipse>> balls;
     // Implementing Sierpinski triangle
     for (int i = 0; i < n; ++i){
+        vec prev_loc = {world.size.x*0.5 - triangle_offset 
+                        + triangle_size*prev_pt.x,
+                        world.size.y*0.5 + triangle_offset*sqrt(0.75)
+                        - triangle_size*prev_pt.y};
+        vec loc = {world.size.x*0.5 - triangle_offset + triangle_size*pt.x,
+                   world.size.y*0.5 + triangle_offset*sqrt(0.75)
+                   - triangle_size*pt.y};
+
+        if (i < 20){
+            color ball_color = {0,1-(double)i/20,1-((double)n-i)/20,1};
+            auto ball = std::make_shared<ellipse>(ball_color,
+                                                  loc, vec{0,0}, 0, 1);
+            ball->add_animator<vec_animator>(60+i*10+floor(n/bin_size)-20,
+                                             90+i*10+floor(n/bin_size)-20,
+                                             &ball->size,
+                                             vec{0,0}, vec{5,5});
+
+            color line_color = {1, 1, 1, 1-(double)i/20};
+            auto arrow = std::make_shared<line>(line_color, loc, loc);
+            arrow->add_animator<vec_animator>(60+i*35+floor(n/bin_size)-20,
+                                              90+i*35+floor(n/bin_size)-20,
+                                              &arrow->end, prev_loc, loc);
+            world.add_object(ball,2);
+            world.add_object(arrow,2);
+        }
+        else{
+
+            color ball_color = {1-((double)n-i)/n,0,1-(double)i/n,1};
+            auto ball = std::make_shared<ellipse>(ball_color,
+                                                  loc, vec{0,0}, 0, 1);
+            ball->add_animator<vec_animator>(30+floor(i/bin_size)-20,
+                                             60+floor(i/bin_size)-20,
+                                             &ball->size,
+                                             vec{0,0}, vec{2,2});
+            world.add_object(ball,1);
+        }
+
+        prev_pt = pt;
         double rnd = rand() % 10000 * 0.0001;
         if (rnd <= 0.33){
             pt = midpoint(triangle_pts[0],pt);
@@ -444,20 +487,6 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
             pt = midpoint(triangle_pts[2],pt);
         }
 
-        if (i > 20){
-            vec loc = {world.size.x*0.5 - triangle_offset + triangle_size*pt.x,
-                       world.size.y*0.5 + triangle_offset*sqrt(0.75)
-                       - triangle_size*pt.y};
-
-            color ball_color = {1-((double)n-i)/n,0,1-(double)i/n,1};
-            auto ball = std::make_shared<ellipse>(ball_color,
-                                                  loc, vec{0,0}, 0, 1);
-            ball->add_animator<vec_animator>(30+floor(i/bin_size)-20,
-                                             60+floor(i/bin_size)-20,
-                                             &ball->size,
-                                             vec{0,0}, vec{2,2});
-            world.add_object(ball,1);
-        }
     }
 
 
@@ -475,8 +504,8 @@ int main(){
     scene world = scene({1920, 1080}, {0, 0, 0, 1});
 
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
-    square_hutchinson(cam, world, 7, 3000);
+    //square_hutchinson(cam, world, 7, 3000);
     //sierpinski_hutchinson(cam, world, 7, 3000);
-    //sierpinski_chaos(cam, world, 20000, 100, 500);
+    sierpinski_chaos(cam, world, 20000, 100, 500);
     cam.clear_encoders();
 }
