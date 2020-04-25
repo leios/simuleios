@@ -424,13 +424,14 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
     // Adding elements to world
     world.add_layer();
     world.add_layer();
+    world.add_layer();
     for (int i = 0; i < 3; ++i){
         world.add_object(triangle[i], 2);
     }
 
 
     // First, generate random point.
-    srand(1000);
+    srand(1337);
     //vec pt = {rand() % 10000 * 0.0001, rand() % 10000 * 0.0001};
     vec pt = {0.5, 0.25}, pts[20];
     vec prev_pt = {0.5, 0.25};
@@ -447,7 +448,7 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
                    - triangle_size*pt.y};
 
         if (i < 20){
-            color ball_color = {0,1-(double)i/20,1-((double)n-i)/20,1};
+            color ball_color = {0, 1.0-i/20.0, i/20.0, 1};
             auto ball = std::make_shared<ellipse>(ball_color,
                                                   loc, vec{0,0}, 0, 1);
             ball->add_animator<vec_animator>(60+i*10+floor(n/bin_size)-20,
@@ -455,17 +456,22 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
                                              &ball->size,
                                              vec{0,0}, vec{5,5});
 
-            color line_color = {1, 1, 1, 1-(double)i/20};
-            auto arrow = std::make_shared<line>(line_color, loc, loc);
+            color clear = {0,0,0,0};
+            color line_color = {1, 1, 1, 1.0-(i+1)/20.0};
+            auto arrow = std::make_shared<line>(clear, prev_loc, prev_loc);
+            arrow->add_animator<color_animator>(60+i*35+floor(n/bin_size)-20,
+                                                61+i*35+floor(n/bin_size)-20,
+                                                &arrow->clr, line_color,
+                                                line_color);
             arrow->add_animator<vec_animator>(60+i*35+floor(n/bin_size)-20,
                                               90+i*35+floor(n/bin_size)-20,
                                               &arrow->end, prev_loc, loc);
-            world.add_object(ball,2);
+            world.add_object(ball,3);
             world.add_object(arrow,2);
         }
         else{
 
-            color ball_color = {1-((double)n-i)/n,0,1-(double)i/n,1};
+            color ball_color = {1-(double)i/n, 0, 1-((double)n-i)/n,1};
             auto ball = std::make_shared<ellipse>(ball_color,
                                                   loc, vec{0,0}, 0, 1);
             ball->add_animator<vec_animator>(30+floor(i/bin_size)-20,
@@ -506,6 +512,6 @@ int main(){
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
     //square_hutchinson(cam, world, 7, 3000);
     //sierpinski_hutchinson(cam, world, 7, 3000);
-    sierpinski_chaos(cam, world, 20000, 100, 500);
+    sierpinski_chaos(cam, world, 20000, 100, 1000);
     cam.clear_encoders();
 }
