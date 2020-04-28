@@ -10,9 +10,7 @@
     TODO: 1. Remove magic numbers
           2. Finish animation of hutchinson
           3. Square distribution
-          4. Chaos animation: Allow lines to be properly drawn after triangle
-                              No dots before
-          5. Hutchinson animation: slow animation for vis.
+          4. Change all ball sizes
 
 *-----------------------------------------------------------------------------*/
 
@@ -24,6 +22,10 @@
 
 vec midpoint(vec point1, vec point2){
     return 0.5*(point1 + point2);
+}
+
+vec two_thirds(vec point1, vec point2){
+    return (point1 + 2*point2)/3.0;
 }
 
 vec apply_quit(std::string value_string, vec point,
@@ -156,7 +158,7 @@ vec hutchinson(vec init, std::vector<vec> triangle, size_t i){
 }
 
 void square_hutchinson(camera& cam, scene& world, int level,
-                       int total_frames){
+                       int total_frames, bool aaa_version){
     color black = {0,0,0,1};
     color white = {1,1,1,1};
     color blue  = {0,0,1,1};
@@ -164,6 +166,14 @@ void square_hutchinson(camera& cam, scene& world, int level,
     color red   = {1,0,0,1};
     color green = {0,1,0,1};
     color gray  = {0.5,0.5,0.5,1};
+
+    color pt_clr;
+    if (aaa_version){
+        pt_clr = black;
+    }
+    else{
+        pt_clr = white;
+    }
 
     std::vector<vec> square_pts = {{0,0},{0,1},{1,1},{1,0}};
     std::vector<vec> square_midpts = {0.5*(square_pts[0]+square_pts[1]),
@@ -181,26 +191,26 @@ void square_hutchinson(camera& cam, scene& world, int level,
     for (int i = 0; i < square.size(); ++i){
         vec loc = {world.size.x*0.5 - square_offset 
                    + square_size*square_pts[i].x,
-                   world.size.y*0.5 + square_offset*sqrt(0.75) 
+                   world.size.y*0.5 + square_offset 
                    - square_size*square_pts[i].y};
-        square[i] = std::make_shared<ellipse>(loc, vec{0,0}, 0, 1);
+        square[i] = std::make_shared<ellipse>(pt_clr, loc, vec{0,0}, 0, 1);
         square[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &square[i]->size,
-                                                vec{0,0}, vec{5,5});
+                                                vec{0,0}, vec{10,10});
     }
     for (int i = 0; i < midsquare.size(); ++i){
         vec loc = {world.size.x*0.5 - square_offset 
                + square_size*square_midpts[i].x,
-               world.size.y*0.5 + square_offset*sqrt(0.75) 
+               world.size.y*0.5 + square_offset 
                - square_size*square_midpts[i].y};
-        midsquare[i] = std::make_shared<ellipse>(loc, vec{0,0}, 0, 1);
+        midsquare[i] = std::make_shared<ellipse>(pt_clr, loc, vec{0,0}, 0, 1);
         midsquare[i]->add_animator<vec_animator>(60+i*10,90+i*10,
                                                 &midsquare[i]->size,
-                                                vec{0,0}, vec{5,5});
+                                                vec{0,0}, vec{10,10});
     }
 
     vec loc, parent_loc;
-    auto point = std::make_shared<ellipse>(white, vec{0,0}, vec{10,10}, 0, 1);
+    auto point = std::make_shared<ellipse>(pt_clr, vec{0,0}, vec{10,10}, 0, 1);
 
     world.add_layer();
     world.add_layer();
@@ -212,12 +222,18 @@ void square_hutchinson(camera& cam, scene& world, int level,
 
     int draw_frame = 120;
 
+    double ball_size = level;
+
     // This is creating all the children
-    for(int i = 0; i < (pow(4,level)-1)/2-1; i++){
+    for(int i = 0; i < ((pow(4,level)-1)/3)-1; i++){
         if (i == diff){
             tmp_level += 1;
             value = {0,0};
             diff += pow(4,tmp_level);
+            draw_frame += 60;
+            if (ball_size > 1){
+                ball_size -= 1;
+            }
         }
         value = increment_quit(value);
         value_string = save_quit(value,tmp_level);
@@ -246,24 +262,23 @@ void square_hutchinson(camera& cam, scene& world, int level,
             parent_loc = apply_quit(parent_string, square_midpts[j],
                                     square_pts);
             loc = {world.size.x*0.5 - square_offset + square_size*loc.x,
-                   world.size.y*0.5 + square_offset*sqrt(0.75)
+                   world.size.y*0.5 + square_offset
                    - square_size*loc.y};
             parent_loc = {world.size.x*0.5 - square_offset
                           + square_size*parent_loc.x,
-                          world.size.y*0.5 + square_offset*sqrt(0.75)
+                          world.size.y*0.5 + square_offset
                           - square_size*parent_loc.y};
             point = std::make_shared<ellipse>(point_clr, loc,
                                               vec{0,0}, 0, 1);
             point->add_animator<vec_animator>(draw_frame, draw_frame+30,
                                               &point->size,vec{0,0},
-                                              vec{2,2});
+                                              vec{ball_size, ball_size});
             point->add_animator<vec_animator>(draw_frame, draw_frame+30,
                                               &point->location,parent_loc,
                                               loc);
             world.add_object(point,1);
         }
-        //std::cout << value_string << '\n';
-        draw_frame += 1;
+        draw_frame += ceil(30/(i+1));
     }
 
     // Adding elements to world
@@ -284,13 +299,21 @@ void square_hutchinson(camera& cam, scene& world, int level,
 }
 
 void sierpinski_hutchinson(camera& cam, scene& world, int level,
-                           int total_frames){
+                           int total_frames, bool aaa_version){
     color black = {0,0,0,1};
     color white = {1,1,1,1};
     color blue  = {0,0,1,1};
     color red   = {1,0,0,1};
     color green = {0,1,0,1};
     color gray  = {0.5,0.5,0.5,1};
+
+    color pt_clr;
+    if (aaa_version){
+        pt_clr = black;
+    }
+    else{
+        pt_clr = white;
+    }
 
     std::vector<vec> triangle_pts = {{0,0},{0.5,sqrt(0.75)},{1,0}};
     std::vector<vec> triangle_midpts = {0.5*(triangle_pts[0]+triangle_pts[1]),
@@ -308,22 +331,22 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
                    + triangle_size*triangle_pts[i].x,
                    world.size.y*0.5 + triangle_offset*sqrt(0.75) 
                    - triangle_size*triangle_pts[i].y};
-        triangle[i] = std::make_shared<ellipse>(loc, vec{0,0}, 0, 1);
+        triangle[i] = std::make_shared<ellipse>(pt_clr, loc, vec{0,0}, 0, 1);
         triangle[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &triangle[i]->size,
-                                                vec{0,0}, vec{5,5});
+                                                vec{0,0}, vec{10,10});
         loc = {world.size.x*0.5 - triangle_offset 
                + triangle_size*triangle_midpts[i].x,
                world.size.y*0.5 + triangle_offset*sqrt(0.75) 
                - triangle_size*triangle_midpts[i].y};
-        midtriangle[i] = std::make_shared<ellipse>(loc, vec{0,0}, 0, 1);
+        midtriangle[i] = std::make_shared<ellipse>(pt_clr, loc, vec{0,0}, 0, 1);
         midtriangle[i]->add_animator<vec_animator>(60+i*10,90+i*10,
                                                 &midtriangle[i]->size,
-                                                vec{0,0}, vec{5,5});
+                                                vec{0,0}, vec{10,10});
     }
 
     vec loc, parent_loc;
-    auto point = std::make_shared<ellipse>(white, vec{0,0}, vec{10,10}, 0, 1);
+    auto point = std::make_shared<ellipse>(pt_clr, vec{0,0}, vec{10,10}, 0, 1);
 
     world.add_layer();
     world.add_layer();
@@ -334,13 +357,18 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
     std::string value_string = "", parent_string;
 
     int draw_frame = 120;
+    double ball_size = level-1;
 
     // This is creating all the children
-    for(int i = 0; i < (pow(3,level)-1)/2-1; i++){
+    for(int i = 0; i < ((pow(3,level)-1)/2)-1; i++){
         if (i == diff){
             tmp_level += 1;
             value = {0,0};
             diff += pow(3,tmp_level);
+            draw_frame += 60;
+            if (ball_size > 1){
+                ball_size -= 1;
+            }
         }
         value = increment(value);
         value_string = save_tryte(value,tmp_level);
@@ -373,13 +401,13 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
                                               vec{0,0}, 0, 1);
             point->add_animator<vec_animator>(draw_frame, draw_frame+30,
                                               &point->size,vec{0,0},
-                                              vec{2,2});
+                                              vec{ball_size, ball_size});
             point->add_animator<vec_animator>(draw_frame, draw_frame+30,
                                               &point->location,parent_loc,
                                               loc);
             world.add_object(point,1);
         }
-        draw_frame += 1;
+        draw_frame += ceil(30/(i+1));
     }
 
     // Adding elements to world
@@ -398,10 +426,18 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
 }
 
 void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
-                      int total_frames){
+                      int total_frames, bool aaa_version){
     color black = {0,0,0,1};
     color white = {1,1,1,1};
     color gray = {0.5,0.5,0.5,1};
+
+    color pt_clr;
+    if (aaa_version){
+        pt_clr = white;
+    }
+    else{
+        pt_clr = black;
+    }
 
     std::vector<vec> triangle_pts = {{0,0},{0.5,sqrt(0.75)},{1,0}};
     std::vector<std::shared_ptr<ellipse>> triangle(3);
@@ -415,7 +451,7 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
                    + triangle_size*triangle_pts[i].x,
                    world.size.y*0.5 + triangle_offset*sqrt(0.75)
                    - triangle_size*triangle_pts[i].y};
-        triangle[i] = std::make_shared<ellipse>(loc, vec{0,0}, 0, 1);
+        triangle[i] = std::make_shared<ellipse>(pt_clr, loc, vec{0,0}, 0, 1);
         triangle[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &triangle[i]->size,
                                                 vec{0,0}, vec{5,5});
@@ -448,36 +484,45 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
                    - triangle_size*pt.y};
 
         if (i < 20){
+            double ball_size = 7;
             color ball_color = {0, 1.0-i/20.0, i/20.0, 1};
             auto ball = std::make_shared<ellipse>(ball_color,
                                                   loc, vec{0,0}, 0, 1);
-            ball->add_animator<vec_animator>(60+i*10+floor(n/bin_size)-20,
-                                             90+i*10+floor(n/bin_size)-20,
+            ball->add_animator<vec_animator>(60+i*30+floor(n/bin_size)-20,
+                                             90+i*30+floor(n/bin_size)-20,
                                              &ball->size,
-                                             vec{0,0}, vec{5,5});
+                                             vec{0,0},
+                                             vec{ball_size, ball_size});
 
             color clear = {0,0,0,0};
-            color line_color = {1, 1, 1, 1.0-(i+1)/20.0};
-            auto arrow = std::make_shared<line>(clear, prev_loc, prev_loc);
-            arrow->add_animator<color_animator>(60+i*35+floor(n/bin_size)-20,
-                                                61+i*35+floor(n/bin_size)-20,
+            color line_color;
+            if (aaa_version){
+                line_color = {0, 0, 0, 1.0-(i+1)/20.0};
+            }
+            else{
+                line_color = {1, 1, 1, 1.0-(i+1)/20.0};
+            }
+            auto arrow = std::make_shared<line>(white, prev_loc, prev_loc);
+            arrow->add_animator<color_animator>(60+i*30+floor(n/bin_size)-20,
+                                                61+i*30+floor(n/bin_size)-20,
                                                 &arrow->clr, line_color,
                                                 line_color);
-            arrow->add_animator<vec_animator>(60+i*35+floor(n/bin_size)-20,
-                                              90+i*35+floor(n/bin_size)-20,
+            arrow->add_animator<vec_animator>(60+i*30+floor(n/bin_size)-20,
+                                              90+i*30+floor(n/bin_size)-20,
                                               &arrow->end, prev_loc, loc);
             world.add_object(ball,3);
             world.add_object(arrow,2);
         }
         else{
-
+            double ball_size = 1;
             color ball_color = {1-(double)i/n, 0, 1-((double)n-i)/n,1};
             auto ball = std::make_shared<ellipse>(ball_color,
                                                   loc, vec{0,0}, 0, 1);
             ball->add_animator<vec_animator>(30+floor(i/bin_size)-20,
                                              60+floor(i/bin_size)-20,
                                              &ball->size,
-                                             vec{0,0}, vec{2,2});
+                                             vec{0,0},
+                                             vec{ball_size, ball_size});
             world.add_object(ball,1);
         }
 
@@ -508,10 +553,11 @@ int main(){
 
     camera cam(vec{1920, 1080});
     scene world = scene({1920, 1080}, {0, 0, 0, 1});
+    world.bg_clr = {1, 1, 1, 1};
 
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
-    //square_hutchinson(cam, world, 7, 3000);
-    //sierpinski_hutchinson(cam, world, 7, 3000);
-    sierpinski_chaos(cam, world, 20000, 100, 1000);
+    //square_hutchinson(cam, world, 7, 1000, true);
+    sierpinski_hutchinson(cam, world, 8, 1000, true);
+    //sierpinski_chaos(cam, world, 200000, 1000, 1000, true);
     cam.clear_encoders();
 }
