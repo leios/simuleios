@@ -433,10 +433,10 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
 
     color pt_clr;
     if (aaa_version){
-        pt_clr = white;
+        pt_clr = black;
     }
     else{
-        pt_clr = black;
+        pt_clr = white;
     }
 
     std::vector<vec> triangle_pts = {{0,0},{0.5,sqrt(0.75)},{1,0}};
@@ -454,7 +454,7 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
         triangle[i] = std::make_shared<ellipse>(pt_clr, loc, vec{0,0}, 0, 1);
         triangle[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &triangle[i]->size,
-                                                vec{0,0}, vec{5,5});
+                                                vec{0,0}, vec{10,10});
     }
 
     // Adding elements to world
@@ -555,9 +555,10 @@ int main(){
     scene world = scene({1920, 1080}, {0, 0, 0, 1});
     world.bg_clr = {1, 1, 1, 1};
 
-    cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
+    //cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
+    cam.add_encoder<png_encoder>();
     //square_hutchinson(cam, world, 7, 1000, true);
-    sierpinski_hutchinson(cam, world, 8, 1000, true);
-    //sierpinski_chaos(cam, world, 200000, 1000, 1000, true);
+    //sierpinski_hutchinson(cam, world, 8, 1000, true);
+    sierpinski_chaos(cam, world, 200000, 1000, 1000, true);
     cam.clear_encoders();
 }
