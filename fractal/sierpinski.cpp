@@ -167,14 +167,17 @@ void square_hutchinson(camera& cam, scene& world, int level,
     color green = {0,1,0,1};
     color gray  = {0.5,0.5,0.5,1};
 
-    color pt_clr;
+    color pt_clr, bg_clr;
     if (aaa_version){
         pt_clr = black;
+        bg_clr = white;
     }
     else{
         pt_clr = white;
+        bg_clr = black;
     }
 
+    double text_size = 40;
     std::vector<vec> square_pts = {{0,0},{0,1},{1,1},{1,0}};
     std::vector<vec> square_midpts = {0.5*(square_pts[0]+square_pts[1]),
                                       0.5*(square_pts[1]+square_pts[2]),
@@ -184,11 +187,34 @@ void square_hutchinson(camera& cam, scene& world, int level,
     
     std::vector<std::shared_ptr<ellipse>> square(4), midsquare(5);
 
-    int square_size = world.size.y*0.95;
+    int square_size = world.size.y*0.8;
     int square_offset = square_size*0.5;
+
+    std::shared_ptr<text> label;
+    vec label_offset;
+    std::string letter;
 
     // Four square points
     for (int i = 0; i < square.size(); ++i){
+        switch(i){
+            case 0:
+                letter = "A";
+                label_offset = {0, text_size};
+                break;
+            case 1:
+                letter = "B";
+                label_offset = {0, -0.25*text_size};
+                break;
+            case 2:
+                letter = "C";
+                label_offset = {0, -0.25*text_size};
+                break;
+            case 3:
+                letter = "D";
+                label_offset = {0, text_size};
+                break;
+        }
+
         vec loc = {world.size.x*0.5 - square_offset 
                    + square_size*square_pts[i].x,
                    world.size.y*0.5 + square_offset 
@@ -197,6 +223,13 @@ void square_hutchinson(camera& cam, scene& world, int level,
         square[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &square[i]->size,
                                                 vec{0,0}, vec{10,10});
+
+        label = std::make_shared<text>(bg_clr, loc+label_offset, text_size,
+                                       letter, 0);
+        label->add_animator<color_animator>(0+i*10,30+i*10,
+                                           &label->clr,
+                                           bg_clr,pt_clr);
+        world.add_object(label, 0);
     }
     for (int i = 0; i < midsquare.size(); ++i){
         vec loc = {world.size.x*0.5 - square_offset 
@@ -307,13 +340,17 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
     color green = {0,1,0,1};
     color gray  = {0.5,0.5,0.5,1};
 
-    color pt_clr;
+    color pt_clr, bg_clr;
     if (aaa_version){
         pt_clr = black;
+        bg_clr = white;
     }
     else{
         pt_clr = white;
+        bg_clr = black;
     }
+
+    double text_size = 40;
 
     std::vector<vec> triangle_pts = {{0,0},{0.5,sqrt(0.75)},{1,0}};
     std::vector<vec> triangle_midpts = {0.5*(triangle_pts[0]+triangle_pts[1]),
@@ -324,9 +361,26 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
 
     int triangle_size = world.size.y*0.95;
     int triangle_offset = triangle_size*0.5;
+    std::shared_ptr<text> label;
+    vec label_offset;
 
+    std::string letter;
     // Three triangle points
     for (int i = 0; i < triangle.size(); ++i){
+        switch(i){
+            case 0:
+                letter = "A";
+                label_offset = {0, text_size};
+                break;
+            case 1:
+                letter = "B";
+                label_offset = {0, -0.25*text_size};
+                break;
+            case 2:
+                letter = "C";
+                label_offset = {0, text_size};
+                break;
+        }
         vec loc = {world.size.x*0.5 - triangle_offset 
                    + triangle_size*triangle_pts[i].x,
                    world.size.y*0.5 + triangle_offset*sqrt(0.75) 
@@ -335,6 +389,28 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
         triangle[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &triangle[i]->size,
                                                 vec{0,0}, vec{10,10});
+
+        label = std::make_shared<text>(bg_clr, loc+label_offset, text_size,
+                                       letter, 0);
+        label->add_animator<color_animator>(0+i*10,30+i*10,
+                                           &label->clr,
+                                           bg_clr,pt_clr);
+        world.add_object(label, 0);
+
+        switch(i){
+            case 0:
+                letter = "D";
+                label_offset = {-1*text_size,0};
+                break;
+            case 1:
+                letter = "E";
+                label_offset = {0.25*text_size, 0};
+                break;
+            case 2:
+                letter = "F";
+                label_offset = {0, text_size};
+                break;
+        }
         loc = {world.size.x*0.5 - triangle_offset 
                + triangle_size*triangle_midpts[i].x,
                world.size.y*0.5 + triangle_offset*sqrt(0.75) 
@@ -343,6 +419,13 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
         midtriangle[i]->add_animator<vec_animator>(60+i*10,90+i*10,
                                                 &midtriangle[i]->size,
                                                 vec{0,0}, vec{10,10});
+
+        label = std::make_shared<text>(bg_clr, loc+label_offset, text_size,
+                                       letter, 0);
+        label->add_animator<color_animator>(60+i*10,90+i*10,
+                                           &label->clr,
+                                           bg_clr,pt_clr);
+        world.add_object(label, 0);
     }
 
     vec loc, parent_loc;
@@ -431,13 +514,17 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
     color white = {1,1,1,1};
     color gray = {0.5,0.5,0.5,1};
 
-    color pt_clr;
+    color pt_clr, bg_clr;
     if (aaa_version){
         pt_clr = black;
+        bg_clr = white;
     }
     else{
         pt_clr = white;
+        bg_clr = black;
     }
+
+    double text_size = 40;
 
     std::vector<vec> triangle_pts = {{0,0},{0.5,sqrt(0.75)},{1,0}};
     std::vector<std::shared_ptr<ellipse>> triangle(3);
@@ -445,8 +532,27 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
     int triangle_size = world.size.y*0.95;
     int triangle_offset = triangle_size*0.5;
 
+    std::shared_ptr<text> label;
+    std::string letter;
+    vec label_offset;
+
     // Three triangle points
     for (int i = 0; i < triangle.size(); ++i){
+        switch(i){
+            case 0:
+                letter = "A";
+                label_offset = {0, text_size};
+                break;
+            case 1:
+                letter = "B";
+                label_offset = {0, -0.25*text_size};
+                break;
+            case 2:
+                letter = "C";
+                label_offset = {0, text_size};
+                break;
+        }
+
         vec loc = {world.size.x*0.5 - triangle_offset
                    + triangle_size*triangle_pts[i].x,
                    world.size.y*0.5 + triangle_offset*sqrt(0.75)
@@ -455,6 +561,13 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
         triangle[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &triangle[i]->size,
                                                 vec{0,0}, vec{10,10});
+
+        label = std::make_shared<text>(bg_clr, loc+label_offset, text_size,
+                                       letter, 0);
+        label->add_animator<color_animator>(0+i*10,30+i*10,
+                                           &label->clr,
+                                           bg_clr,pt_clr);
+        world.add_object(label, 0);
     }
 
     // Adding elements to world
@@ -551,14 +664,16 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
 
 int main(){
 
-    camera cam(vec{1920, 1080});
-    scene world = scene({1920, 1080}, {0, 0, 0, 1});
+    camera cam(vec{0.5*1920, 0.5*1080});
+    scene world = scene({0.5*1920, 0.5*1080}, {0, 0, 0, 1});
+    //camera cam(vec{1920, 1080});
+    //scene world = scene({1920, 1080}, {0, 0, 0, 1});
     world.bg_clr = {1, 1, 1, 1};
 
-    //cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
-    cam.add_encoder<png_encoder>();
+    cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
+    //cam.add_encoder<png_encoder>();
     //square_hutchinson(cam, world, 7, 1000, true);
-    //sierpinski_hutchinson(cam, world, 8, 1000, true);
-    sierpinski_chaos(cam, world, 200000, 1000, 1000, true);
+    sierpinski_hutchinson(cam, world, 8, 1000, true);
+    //sierpinski_chaos(cam, world, 200000, 1000, 1000, true);
     cam.clear_encoders();
 }
