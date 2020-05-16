@@ -177,7 +177,8 @@ void square_hutchinson(camera& cam, scene& world, int level,
         bg_clr = black;
     }
 
-    double text_size = 40;
+    double text_size = 100;
+    double ball_size = (level*2);
     std::vector<vec> square_pts = {{0,0},{0,1},{1,1},{1,0}};
     std::vector<vec> square_midpts = {0.5*(square_pts[0]+square_pts[1]),
                                       0.5*(square_pts[1]+square_pts[2]),
@@ -255,8 +256,6 @@ void square_hutchinson(camera& cam, scene& world, int level,
 
     int draw_frame = 120;
 
-    double ball_size = level;
-
     // This is creating all the children
     for(int i = 0; i < ((pow(4,level)-1)/3)-1; i++){
         if (i == diff){
@@ -265,7 +264,10 @@ void square_hutchinson(camera& cam, scene& world, int level,
             diff += pow(4,tmp_level);
             draw_frame += 60;
             if (ball_size > 1){
-                ball_size -= 1;
+                ball_size /= 1.4;
+            }
+            else{
+                ball_size = 1;
             }
         }
         value = increment_quit(value);
@@ -350,7 +352,8 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
         bg_clr = black;
     }
 
-    double text_size = 40;
+    double text_size = 100;
+    double ball_size = (level*2);
 
     std::vector<vec> triangle_pts = {{0,0},{0.5,sqrt(0.75)},{1,0}};
     std::vector<vec> triangle_midpts = {0.5*(triangle_pts[0]+triangle_pts[1]),
@@ -388,7 +391,8 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
         triangle[i] = std::make_shared<ellipse>(pt_clr, loc, vec{0,0}, 0, 1);
         triangle[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &triangle[i]->size,
-                                                vec{0,0}, vec{10,10});
+                                                vec{0,0},
+                                                vec{ball_size, ball_size});
 
         label = std::make_shared<text>(bg_clr, loc+label_offset, text_size,
                                        letter, 0);
@@ -418,7 +422,8 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
         midtriangle[i] = std::make_shared<ellipse>(pt_clr, loc, vec{0,0}, 0, 1);
         midtriangle[i]->add_animator<vec_animator>(60+i*10,90+i*10,
                                                 &midtriangle[i]->size,
-                                                vec{0,0}, vec{10,10});
+                                                vec{0,0},
+                                                vec{ball_size, ball_size});
 
         label = std::make_shared<text>(bg_clr, loc+label_offset, text_size,
                                        letter, 0);
@@ -440,7 +445,6 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
     std::string value_string = "", parent_string;
 
     int draw_frame = 120;
-    double ball_size = level-1;
 
     // This is creating all the children
     for(int i = 0; i < ((pow(3,level)-1)/2)-1; i++){
@@ -450,7 +454,10 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
             diff += pow(3,tmp_level);
             draw_frame += 60;
             if (ball_size > 1){
-                ball_size -= 1;
+                ball_size /= 1.4;
+            }
+            else{
+                ball_size = 1;
             }
         }
         value = increment(value);
@@ -524,7 +531,8 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
         bg_clr = black;
     }
 
-    double text_size = 40;
+    double text_size = 100;
+    double ball_size = (14);
 
     std::vector<vec> triangle_pts = {{0,0},{0.5,sqrt(0.75)},{1,0}};
     std::vector<std::shared_ptr<ellipse>> triangle(3);
@@ -560,7 +568,8 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
         triangle[i] = std::make_shared<ellipse>(pt_clr, loc, vec{0,0}, 0, 1);
         triangle[i]->add_animator<vec_animator>(0+i*10,30+i*10,
                                                 &triangle[i]->size,
-                                                vec{0,0}, vec{10,10});
+                                                vec{0,0},
+                                                vec{ball_size, ball_size});
 
         label = std::make_shared<text>(bg_clr, loc+label_offset, text_size,
                                        letter, 0);
@@ -597,7 +606,7 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
                    - triangle_size*pt.y};
 
         if (i < 20){
-            double ball_size = 7;
+            double ball_size = 14;
             color ball_color = {0, 1.0-i/20.0, i/20.0, 1};
             auto ball = std::make_shared<ellipse>(ball_color,
                                                   loc, vec{0,0}, 0, 1);
@@ -627,7 +636,7 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
             world.add_object(arrow,2);
         }
         else{
-            double ball_size = 1;
+            double ball_size = 2;
             color ball_color = {1-(double)i/n, 0, 1-((double)n-i)/n,1};
             auto ball = std::make_shared<ellipse>(ball_color,
                                                   loc, vec{0,0}, 0, 1);
@@ -664,16 +673,16 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
 
 int main(){
 
-    camera cam(vec{0.5*1920, 0.5*1080});
-    scene world = scene({0.5*1920, 0.5*1080}, {0, 0, 0, 1});
+    camera cam(vec{2*1920, 2*1080});
+    scene world = scene({2*1920, 2*1080}, {0, 0, 0, 1});
     //camera cam(vec{1920, 1080});
     //scene world = scene({1920, 1080}, {0, 0, 0, 1});
-    world.bg_clr = {1, 1, 1, 1};
+    //world.bg_clr = {1, 1, 1, 1};
 
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
     //cam.add_encoder<png_encoder>();
-    //square_hutchinson(cam, world, 7, 1000, true);
-    sierpinski_hutchinson(cam, world, 8, 1000, true);
-    //sierpinski_chaos(cam, world, 200000, 1000, 1000, true);
+    //square_hutchinson(cam, world, 7, 1000, false);
+    //sierpinski_hutchinson(cam, world, 8, 1000, false);
+    sierpinski_chaos(cam, world, 200000, 1000, 1000, false);
     cam.clear_encoders();
 }
