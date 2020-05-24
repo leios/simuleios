@@ -87,6 +87,33 @@ tryte increment(tryte number){
     return number;
 }
 
+std::string save_tryte(tryte number, int trytes){
+    std::string value_string = "";
+    for(int i = 1 << (trytes-1); i; i >>= 1){
+        if(number.first & i){
+            value_string += "0";
+        }else if(number.second & i){
+            value_string += "1";
+        }else{
+            value_string += "2";
+        }
+    }
+    return value_string;
+}
+
+void print_tryte(tryte number, int trits){
+    for(int i = 1 << (trits-1); i; i >>= 1){
+        if(number.first & i){
+            std::cout << "1";
+        }else if(number.second & i){
+            std::cout << "2";
+        }else{
+            std::cout << "0";
+        }
+    }
+    std::cout << std::endl;
+}
+
 quit increment_quit(quit number){
     ll inc = 1;
     while(inc){
@@ -105,34 +132,36 @@ std::string save_quit(quit number, int quits){
                     (((number.first & i) > 0));
         switch(value){
             case 0:
-                value_string += "0";
+                value_string += "3";
                 break;
             case 1:
-                value_string += "1";
+                value_string += "0";
                 break;
             case 2:
-                value_string += "2";
+                value_string += "1";
                 break;
             case 3:
-                value_string += "3";
+                value_string += "2";
                 break;
         }
     }
     return value_string;
 }
 
-std::string save_tryte(tryte number, int trytes){
-    std::string value_string = "";
-    for(int i = 1 << (trytes-1); i; i >>= 1){
-        if(number.first & i){
-            value_string += "1";
-        }else if(number.second & i){
-            value_string += "2";
-        }else{
-            value_string += "0";
+void print_increment(){
+    tryte value (0,0);
+    int level = 1;
+    int diff = 3;
+    for(int i = 0; i < 3*3*3*3 ; i++){
+        if (i == diff){
+            level += 1;
+            value = {0,0};
+            diff += pow(3,level);
         }
+        print_tryte(value,level);
+        value = increment(value);
+        //std::cout << value.first << '\t' << value.second << '\n';
     }
-    return value_string;
 }
 
 vec convert(tryte number, ll scale, vec B, vec C){
@@ -401,18 +430,22 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
                                            bg_clr,pt_clr);
         world.add_object(label, 0);
 
+        color label_clr;
         switch(i){
             case 0:
                 letter = "D";
                 label_offset = {-1*text_size,0};
+                label_clr = red;
                 break;
             case 1:
                 letter = "E";
                 label_offset = {0.25*text_size, 0};
+                label_clr = green;
                 break;
             case 2:
                 letter = "F";
                 label_offset = {0, text_size};
+                label_clr = blue;
                 break;
         }
         loc = {world.size.x*0.5 - triangle_offset 
@@ -430,6 +463,12 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
         label->add_animator<color_animator>(60+i*10,90+i*10,
                                            &label->clr,
                                            bg_clr,pt_clr);
+        label->add_animator<color_animator>(120+i*40,150+i*40,
+                                           &label->clr,
+                                           pt_clr, label_clr);
+        midtriangle[i]->add_animator<color_animator>(120+i*40,150+i*40,
+                                                     &midtriangle[i]->clr,
+                                                     pt_clr, label_clr);
         world.add_object(label, 0);
     }
 
@@ -444,7 +483,7 @@ void sierpinski_hutchinson(camera& cam, scene& world, int level,
     int diff = 3;
     std::string value_string = "", parent_string;
 
-    int draw_frame = 120;
+    int draw_frame = 250;
 
     // This is creating all the children
     for(int i = 0; i < ((pow(3,level)-1)/2)-1; i++){
@@ -624,7 +663,7 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
             else{
                 line_color = {1, 1, 1, 1.0-(i+1)/20.0};
             }
-            auto arrow = std::make_shared<line>(white, prev_loc, prev_loc);
+            auto arrow = std::make_shared<line>(black, prev_loc, prev_loc);
             arrow->add_animator<color_animator>(60+i*30+floor(n/bin_size)-20,
                                                 61+i*30+floor(n/bin_size)-20,
                                                 &arrow->clr, line_color,
@@ -673,6 +712,8 @@ void sierpinski_chaos(camera& cam, scene& world, int n, int bin_size,
 
 int main(){
 
+    print_increment();
+/*
     camera cam(vec{2*1920, 2*1080});
     scene world = scene({2*1920, 2*1080}, {0, 0, 0, 1});
     //camera cam(vec{1920, 1080});
@@ -682,7 +723,8 @@ int main(){
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
     //cam.add_encoder<png_encoder>();
     //square_hutchinson(cam, world, 7, 1000, false);
-    //sierpinski_hutchinson(cam, world, 8, 1000, false);
-    sierpinski_chaos(cam, world, 200000, 1000, 1000, false);
+    sierpinski_hutchinson(cam, world, 8, 1000, false);
+    //sierpinski_chaos(cam, world, 200000, 1000, 1000, false);
     cam.clear_encoders();
+*/
 }
