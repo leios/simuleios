@@ -71,29 +71,20 @@ function simple_domain(res::Int64, xmax::Float64, alpha::Float64,
     write_image(a, output_file)
 end
 
-function write_domain(res::Int64, xmax::Float64, real_output::String,
-                      imaginary_output::String, f)
+function write_domain(res::Int64, xmax::Float64, output::String, f)
     a = Array{Complex,2}(undef, res, res)
 
-    imaginary_f = open(imaginary_output, "w")
-    real_f = open(real_output, "w")
+    file = open(output, "w")
 
     for i = 1:res
         for j = 1:res
-            x = -xmax + 2*i*xmax/res + (-xmax + 2*j*xmax/res)im
+            x = -xmax + 2*j*xmax/res + (-xmax + 2*i*xmax/res)im
             z = f(x)
-            if j != res
-                write(imaginary_f, string(imag(z))*"\t")
-                write(real_f, string(real(z))*"\t")
-            else
-                write(imaginary_f, string(imag(z)))
-                write(real_f, string(real(z)))
-            end
+            write(file, string(real(x)) *'\t' * string(imag(x)) *'\t' *
+                        string(real(z)) * '\t' * string(imag(z)) * '\n')
         end
-        write(imaginary_f, "\n")
-        write(real_f, "\n")
+        write(file,'\n')
     end
 
-    close(imaginary_f)
-    close(real_f)
+    close(file)
 end

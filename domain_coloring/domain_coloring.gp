@@ -42,4 +42,5 @@ shade(x,y) = (abs(sin(rp(x,y)*pi)**thresh) * abs(sin(ip(x,y)*pi))**thresh)
 save_encoding = "utf8"
 
 ## Last datafile plotted: "++"
-splot 'out.dat' using 1:2:(color($3,$4)) with pm3d lc rgb variable nocontour
+#splot 'out.dat' using 1:2:(color($3,$4)) with pm3d lc rgb variable nocontour
+splot 'out.dat' using 1:2:(color($3,$4)) with pm3d lc rgb variable
