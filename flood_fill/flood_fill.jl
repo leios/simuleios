@@ -1,4 +1,17 @@
 using Plots
+using DataStructures
+
+function inbounds(canvas_size, loc)
+    if minimum(Tuple(loc)) < 1
+        return false
+    elseif loc[2] > canvas_size[2]
+        return false
+    elseif loc[1] > canvas_size[1]
+        return false
+    else
+        return true
+    end
+end
 
 function create_circle!(canvas, loc::CartesianIndex, radius, threshold,
                         fill_val)
@@ -16,9 +29,9 @@ end
 function recursive_fill!(canvas, loc::CartesianIndex,
                          fill_val, replacement_val)
     # bounds check
-    #if min(loc - CartesianIndex(size(canvas))) < 1
-    #    return
-    #end
+    if !inbounds(size(canvas), loc)
+        return
+    end
 
     if (fill_val == replacement_val)
         return
@@ -41,9 +54,10 @@ end
 function main()
     canvas = zeros(100,100)
     loc = CartesianIndex(50,50)
+    loc2 = CartesianIndex(10,10)
     create_circle!(canvas, loc, 30, 5, 0.75)
-    recursive_fill!(canvas, loc, 0.0, 0.5)
+    recursive_fill!(canvas, loc2, 0.0, 0.5)
 
-    heatmap(canvas)
+    heatmap(canvas, color=:coolwarm)
 end
 main()
