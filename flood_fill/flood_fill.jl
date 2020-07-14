@@ -52,27 +52,15 @@ function find_neighbors(canvas, loc::CartesianIndex, old_val, new_val;
                               loc + CartesianIndex(-1, 0)]
     elseif direction == "north"
         temp_loc = loc + CartesianIndex(1, 0)
-        if !inbounds(size(canvas), temp_loc)
-            temp_loc -= CartesianIndex(size(canvas)[1], 0)
-        end
         possible_neighbors = [temp_loc]
     elseif direction == "south"
         temp_loc = loc + CartesianIndex(-1, 0)
-        if !inbounds(size(canvas), temp_loc)
-            temp_loc += CartesianIndex(size(canvas)[1], 0)
-        end
         possible_neighbors = [temp_loc]
     elseif direction == "east"
         temp_loc = loc + CartesianIndex(0, 1)
-        if !inbounds(size(canvas), temp_loc)
-            temp_loc -= CartesianIndex(0, size(canvas)[1])
-        end
         possible_neighbors = [temp_loc]
     elseif direction == "west"
         temp_loc = loc + CartesianIndex(0, -1)
-        if !inbounds(size(canvas), temp_loc)
-            temp_loc += CartesianIndex(0, size(canvas)[1])
-        end
         possible_neighbors = [temp_loc]
     else
         error("direction ", direction, " not found!")
@@ -155,45 +143,50 @@ function loop_fill!(canvas, loc::CartesianIndex, old_val, new_val)
     enqueue!(q, loc)
 
     for element in q
-        west_element = find_neighbors(canvas, loc, old_val, new_val;
+        println(element)
+        west_element = find_neighbors(canvas, element, old_val, new_val;
                        direction = "west")
         while length(west_element) > 0
             println(west_element)
             color!(canvas, west_element[1], old_val, new_val)
-            west_element = find_neighbors(canvas, west_element[1], old_val,
-                           new_val; direction = "west")
 
             north_element = find_neighbors(canvas, west_element[1], old_val,
                             new_val; direction = "north")
             south_element = find_neighbors(canvas, west_element[1], old_val,
                             new_val; direction = "south")
+
             if length(north_element) > 0
                 enqueue!(q,north_element[1])
             end
             if length(south_element) > 0
                 enqueue!(q,south_element[1])
             end
+            west_element = find_neighbors(canvas, west_element[1], old_val,
+                           new_val; direction = "west")
 
         end
         
-        east_element = find_neighbors(canvas, loc, old_val, new_val;
-                       direction = "west")
+        east_element = find_neighbors(canvas, element, old_val, new_val;
+                       direction = "east")
         while length(east_element) > 0
             color!(canvas, east_element[1], old_val, new_val)
-            east_element = find_neighbors(canvas, east_element[1], old_val,
-                           new_val; direction = "east")
 
             north_element = find_neighbors(canvas, east_element[1], old_val,
                             new_val; direction = "north")
             south_element = find_neighbors(canvas, east_element[1], old_val,
                             new_val; direction = "south")
+
             if length(north_element) > 0
                 enqueue!(q,north_element[1])
             end
             if length(south_element) > 0
                 enqueue!(q,south_element[1])
             end
+
+            east_element = find_neighbors(canvas, east_element[1], old_val,
+                           new_val; direction = "east")
         end
+        color!(canvas, element, old_val, new_val)
     end
 end
 
