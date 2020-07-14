@@ -41,16 +41,45 @@ function color!(canvas, loc::CartesianIndex, old_val, new_val)
     end
 end
 
-function neighbors(canvas, loc::CartesianIndex, old_val, new_val)
+function find_neighbors(canvas, loc::CartesianIndex, old_val, new_val;
+                       direction = "all")
     
     neighbors =  []
-    possible_neighbors = [loc + CartesianIndex(0, 1),
-                          loc + CartesianIndex(1, 0),
-                          loc + CartesianIndex(0, -1),
-                          loc + CartesianIndex(-1, 0)]
+    if direction == "all"
+        possible_neighbors = [loc + CartesianIndex(0, 1),
+                              loc + CartesianIndex(1, 0),
+                              loc + CartesianIndex(0, -1),
+                              loc + CartesianIndex(-1, 0)]
+    elseif direction == "north"
+        temp_loc = loc + CartesianIndex(1, 0)
+        if !inbounds(size(canvas), temp_loc)
+            temp_loc -= CartesianIndex(size(canvas)[1], 0)
+        end
+        possible_neighbors = [temp_loc]
+    elseif direction == "south"
+        temp_loc = loc + CartesianIndex(-1, 0)
+        if !inbounds(size(canvas), temp_loc)
+            temp_loc += CartesianIndex(size(canvas)[1], 0)
+        end
+        possible_neighbors = [temp_loc]
+    elseif direction == "east"
+        temp_loc = loc + CartesianIndex(0, 1)
+        if !inbounds(size(canvas), temp_loc)
+            temp_loc -= CartesianIndex(0, size(canvas)[1])
+        end
+        possible_neighbors = [temp_loc]
+    elseif direction == "west"
+        temp_loc = loc + CartesianIndex(0, -1)
+        if !inbounds(size(canvas), temp_loc)
+            temp_loc += CartesianIndex(0, size(canvas)[1])
+        end
+        possible_neighbors = [temp_loc]
+    else
+        error("direction ", direction, " not found!")
+    end
     for possible_neighbor in possible_neighbors
         if inbounds(size(canvas), possible_neighbor) &&
-           canvas[possible_neighbor] == old_val &&
+           canvas[possible_neighbor] == old_val
             push!(neighbors, possible_neighbor)
         end
     end
@@ -70,7 +99,7 @@ function stack_fill!(canvas, loc::CartesianIndex, old_val, new_val)
     while length(s) > 0
         temp_loc = pop!(s)
         color!(canvas, temp_loc, old_val, new_val)
-        possible_neighbors = neighbors(canvas, temp_loc, old_val, new_val)
+        possible_neighbors = find_neighbors(canvas, temp_loc, old_val, new_val)
         for neighbor in possible_neighbors
             push!(s,neighbor)
         end
@@ -90,7 +119,7 @@ function queue_fill!(canvas, loc::CartesianIndex, old_val, new_val)
     while length(q) > 0
         temp_loc = dequeue!(q)
         color!(canvas, temp_loc, old_val, new_val)
-        possible_neighbors = neighbors(canvas, temp_loc, old_val, new_val)
+        possible_neighbors = find_neighbors(canvas, temp_loc, old_val, new_val)
         for neighbor in possible_neighbors
             enqueue!(q,neighbor)
         end
@@ -107,9 +136,64 @@ function recursive_fill!(canvas, loc::CartesianIndex, old_val, new_val)
         canvas[loc] = new_val
     end
 
-    possible_neighbors = neighbors(canvas, loc, old_val, new_val)
+    possible_neighbors = find_neighbors(canvas, loc, old_val, new_val)
     for possible_neighbor in possible_neighbors
         recursive_fill!(canvas, possible_neighbor, old_val, new_val)
+    end
+end
+
+# TODO: find array of *all* west and east elements in find_neighbor
+function loop_fill!(canvas, loc::CartesianIndex, old_val, new_val)
+
+    if (old_val == new_val)
+        return
+    elseif (canvas[loc] != old_val)
+        return
+    end
+
+    q = Queue{CartesianIndex}()
+    enqueue!(q, loc)
+
+    for element in q
+        west_element = find_neighbors(canvas, loc, old_val, new_val;
+                       direction = "west")
+        while length(west_element) > 0
+            println(west_element)
+            color!(canvas, west_element[1], old_val, new_val)
+            west_element = find_neighbors(canvas, west_element[1], old_val,
+                           new_val; direction = "west")
+
+            north_element = find_neighbors(canvas, west_element[1], old_val,
+                            new_val; direction = "north")
+            south_element = find_neighbors(canvas, west_element[1], old_val,
+                            new_val; direction = "south")
+            if length(north_element) > 0
+                enqueue!(q,north_element[1])
+            end
+            if length(south_element) > 0
+                enqueue!(q,south_element[1])
+            end
+
+        end
+        
+        east_element = find_neighbors(canvas, loc, old_val, new_val;
+                       direction = "west")
+        while length(east_element) > 0
+            color!(canvas, east_element[1], old_val, new_val)
+            east_element = find_neighbors(canvas, east_element[1], old_val,
+                           new_val; direction = "east")
+
+            north_element = find_neighbors(canvas, east_element[1], old_val,
+                            new_val; direction = "north")
+            south_element = find_neighbors(canvas, east_element[1], old_val,
+                            new_val; direction = "south")
+            if length(north_element) > 0
+                enqueue!(q,north_element[1])
+            end
+            if length(south_element) > 0
+                enqueue!(q,south_element[1])
+            end
+        end
     end
 end
 
@@ -125,7 +209,8 @@ function main()
     loc2 = CartesianIndex(50,50)
     #recursive_fill!(canvas, loc2, 0.0, 0.5)
     #queue_fill!(canvas, loc2, 0.0, 0.5)
-    stack_fill!(canvas, loc2, 0.0, 0.5)
+    #stack_fill!(canvas, loc2, 0.0, 0.5)
+    loop_fill!(canvas, loc2, 0.0, 0.5)
 
     heatmap(canvas, color=:coolwarm)
 end
