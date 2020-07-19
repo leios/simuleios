@@ -85,24 +85,26 @@ function stack_fill!(canvas, loc::CartesianIndex, old_val, new_val;
 
     s = Stack{CartesianIndex}()
     #s = CartesianIndex[]
-    color!(canvas, loc, old_val, new_val)
     push!(s, loc)
 
     id = 0
 
     while length(s) > 0
         temp_loc = pop!(s)
-        if output
-            plt = heatmap(canvas, color=:coolwarm, ratio=:equal,
-                          size=(1000,1000))
-            savefig("out"*lpad(string(id[1]),5,string(0))*".png") 
-            id += 1
-            println("Outputting: ", id)
-        end 
-        possible_neighbors = find_neighbors(canvas, temp_loc, old_val, new_val)
-        for neighbor in possible_neighbors
-            color!(canvas, neighbor, old_val, new_val)
-            push!(s,neighbor)
+        if canvas[temp_loc] == old_val
+            color!(canvas, temp_loc, old_val, new_val)
+            if output
+                plt = heatmap(canvas, color=:coolwarm, ratio=:equal,
+                              size=(1000,1000))
+                savefig("out"*lpad(string(id[1]),5,string(0))*".png") 
+                id += 1
+                println("Outputting: ", id)
+            end 
+            possible_neighbors = find_neighbors(canvas, temp_loc,
+                                                old_val, new_val)
+            for neighbor in possible_neighbors
+                push!(s,neighbor)
+            end
         end
         
     end
@@ -181,6 +183,7 @@ end
 
 function recursive_fill!(canvas, loc::CartesianIndex, old_val, new_val;
                          output=false, id=id)
+
     if (old_val == new_val)
         return
     elseif (canvas[loc] != old_val)
@@ -214,9 +217,9 @@ end
 function main()
     canvas = init_canvas()
     loc2 = CartesianIndex(15,15)
-    recursive_fill!(canvas, loc2, 0.0, 0.5; output=true, id = [0])
+    #recursive_fill!(canvas, loc2, 0.0, 0.5; output=true, id = [0])
     #queue_fill!(canvas, loc2, 0.0, 0.5; output=true)
-    #stack_fill!(canvas, loc2, 0.0, 0.5; output=true)
+    stack_fill!(canvas, loc2, 0.0, 0.5; output=true)
 
     heatmap(canvas, color=:coolwarm)
 
