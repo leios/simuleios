@@ -10,6 +10,10 @@ default(show=false, reuse=true)
 
 ENV["GKSwstype"]="nul"
 
+scale = 2
+fnt = font("Computer Modern", 10*scale)
+default(titlefont=fnt, guidefont=fnt, tickfont=fnt, legendfont=fnt)
+
 function convert_to_float(a::RGB)
     a = float(a)
     return (a.r + a.g + a.b)/3.0
@@ -213,18 +217,51 @@ function init_canvas()
     return canvas
 end
 
+function create_grid(dims)
+    tuple_array = Array{Tuple{Int, Int}}(undef, dims[1]*dims[2])
+    grid = Array{Float64}(undef, dims)
+    for i = 1:dims[1]
+        for j = 1:dims[2]
+            tuple_array[(i-1)*dims[2]+j] = (i,j)
+            grid[i,j] = i+j
+        end
+    end
+
+    lines = Array{Tuple{Int, Int}}(undef, 10,2)
+    for i = 1:5
+        lines[i,:]=[tuple_array[(i-1)*5+1], tuple_array[i*5]]
+        lines[i+5,:]=[tuple_array[i], tuple_array[20+i]]
+    end 
+
+    println(lines)
+
+    plt = heatmap(grid, color=:coolwarm, size=(600,500), aspect_ratio=:equal,
+                 xlims=(0.5,5.5), ylims=(0.5,5.5))
+    for i = 1:size(lines)[1]
+        plot!(plt, lines[i,:], label="", color=:black, linewidth=3)
+    end
+    #plot!(plt, lines, label="")
+    scatter!(plt, tuple_array, label = "", markersize=15)
+
+    savefig("grid.png")
+
+end
 
 function main()
+
+    create_grid((5,5))
+#=
     canvas = init_canvas()
     loc2 = CartesianIndex(15,15)
     #recursive_fill!(canvas, loc2, 0.0, 0.5; output=true, id = [0])
     #queue_fill!(canvas, loc2, 0.0, 0.5; output=true)
-    stack_fill!(canvas, loc2, 0.0, 0.5; output=true)
+    #stack_fill!(canvas, loc2, 0.0, 0.5; output=true)
 
-    heatmap(canvas, color=:coolwarm)
+    plt = heatmap(canvas, color=:coolwarm, size=(600,500), aspect_ratio=:equal,
+                  xlims=(1,30), ylims=(1,30))
+    savefig("simple_circle.png")
 
     # For maze
-#=
     maze = maze_to_canvas("maze2.png")
     maze_start = CartesianIndex(50,50)
     maze_end = CartesianIndex(96,96)
