@@ -1,27 +1,32 @@
 using Images, ImageView
 
-@enum Direction vertical=1 horizontal=2
+function draw_seam(img, seam)
+    img_w_seam = copy(img)
+    for i = 1:size(img)[1]
+        img_w_seam[i,seam[i]] = RGB(1,1,1)
+    end 
 
-struct Seam
-    direction::Direction
-    elements::Vector{Int}
+    return img_w_seam
+end
+
+function write_image(img, i; filebase = "out")
+    save(filebase*lpad(string(i),5,string(0))*".png", img)
 end
 
 # function to return magnitude of image elements
-# Todo: Maybe convert to another color-space for better magnitude
 function brightness(img_element)
     return img_element.r + img_element.g + img_element.b
 end
 
 # function to find energy of image
 function find_energy(img)
-    energy_x = imfilter(brightness.(img), Kernel.sobel()[1])
-    energy_y = imfilter(brightness.(img), Kernel.sobel()[2])
+    energy_x = imfilter(brightness.(img), Kernel.sobel()[2])
+    energy_y = imfilter(brightness.(img), Kernel.sobel()[1])
     return sqrt.(energy_x.^2 + energy_y.^2)
+    return abs2.(imfilter(brightness.(img), Kernel.sobel()))
 end
 
 # function to find direction to move in
-# TODO: generalize to horizontal and vertical seams
 function find_energy_map(energy)
     energy_map = zeros(size(energy))
     energy_map[end,:] .= energy[end,:]
@@ -31,51 +36,74 @@ function find_energy_map(energy)
         for j = 1:size(energy)[2]
             left = max(1, j-1)
             right = min(size(energy)[2], j+1)
+            if left < 1
+                println("less than 1")
+            end
 
             local_energy, next_element = findmin(energy_map[i+1, left:right])
             energy_map[i,j] += local_energy + energy[i,j]
-            next_elements[i,j] = next_element - 2
+            next_elements[i,j] = next_element -2
+
+            # correct for only having 2 options on left edge.
+            if left == 1 && size(energy)[2] > 3
+                next_elements[i,j] += 1
+            end
         end
     end
 
     return energy_map, next_elements
 end
 
+function generate_seam(energy, next_elements, element)
+    seam = zeros(Int, size(next_elements)[1])
+    seam[1] = element
+
+    seam_energy = energy[element]
+
+    for i = 2:length(seam)
+        seam[i] = seam[i-1] + next_elements[i, seam[i-1]]
+        seam_energy += energy[i, seam[i]]
+    end
+
+    return seam, seam_energy
+end
+
+
 # function to create seams and return seam of minimum energy
 # n is number of seams
-function find_seam(energy, direction)
+function find_seam(energy)
 
     energy_map, next_elements = find_energy_map(energy)
 
-    seam = Seam(direction, zeros(size(energy[direction])))
+    kept_energy = Inf
+    kept_seam = zeros(size(energy)[1])
 
-    
+    for i = 1:size(energy)[2]
+        seam, seam_energy = generate_seam(energy, next_elements, i)
+        if seam_energy < kept_energy
+            kept_seam = seam
+            kept_energy = seam_energy
+        end
+    end
+
+    return kept_seam, kept_energy
 end
 
 # function to remove seams
-function remove_seam(img, seam::Seam)
-    img_res = size(img)
-    # TODO: Make this pretty
-    # img_res[Int(seam.direction)] -= 1
-    if seam.direction == horizontal
-        img_res = (img_res[1], img_res[2]-1)
-    elseif seam.direction == vertical
-        img_res = (img_res[1]-1, img_res[2])
-    else
-        error("direction not found!")
-    end
+function remove_seam(img, seam)
+    img_res = (size(img)[1], size(img)[2]-1)
 
     # preallocate image
     new_img = Array{RGB}(undef, img_res)
 
-    for i = 1:length(seam.elements)
-        if seam.direction == horizontal
-            # TODO: figure out hcat here
-            new_img[i, :] = hcat(img[i, 1:seam.elements[i]-1], 
-                                 img[i, seam.elements[i]+1:end])
-        else
-            new_img[:, i] = vcat(img[1:seam.elements[i]-1, i], 
-                                 img[seam.elements[i]+1:end, i])
+    for i = 1:length(seam)
+        if i > 1 && i < size(img)[2]
+            new_img[i, :] .= vcat(img[i, 1:seam[i]-1], 
+                                  img[i, seam[i]+1:end])
+        elseif i == 1
+            new_img[i,:] .= img[i,2:end]
+        elseif i == size(img)[2]
+            new_img[i,:] .= img[i,1:end-1]
         end
     end
 
@@ -83,19 +111,16 @@ function remove_seam(img, seam::Seam)
 end
 
 # Putting it all together
-function seam_carving(img, res, n)
+function seam_carving(img, res)
 
-    # vertical
-    while size(img)[1] != res[1]
-        energy = find_energy(img)
-        seam = find_seam(energy, n, vertical)
-        img = remove_seam(img, seam)
+    if res < 0 || res > size(img)[2]
+        error("resolution not acceptable")
     end
 
-    # horizontal
-    while size(img)[2] != res[2]
+    for i = (1:size(img)[2] - res)
         energy = find_energy(img)
-        seam = find_seam(energy, n, horizontal)
+        seam, energy = find_seam(energy)
         img = remove_seam(img, seam)
+        write_image(img, res, i)
     end
 end
