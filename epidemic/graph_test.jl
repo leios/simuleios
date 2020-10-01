@@ -1,47 +1,46 @@
-using LightGraphs
+@enum Int64 S I R
 
-mutable struct Node
-    push::Bool
-    pull::Bool
-    weight::Float64
-    neighbors::Vector{Node}
+include("tree_helpers.jl")
+
+# Note: I usually define a helper function to more easily add edges
+mutable struct Person
+    SIR
+    ID
+    is_infected::Bool
+    neighbors::Vector{Person}
+    Person(SIR, ID) = new(SIR, ID, false, [])
 end
 
-function infect(n::Node, new_weight)
-    if n.pull == true
-        n.weight = new_weight
-        n.pull = false
-    end
-
-    if n.push == true
-        n.push = false
-        for neighbor in n.neighbors
-            infect(neighbor, n.weight)
+function infect(p::Person)
+    if p.SIR == S
+        p.is_infected = true
+        p.SIR = I
+        for neighbor in p.neighbors
+            infect(neighbor)
         end
+    else
+        return
     end
 
 end
 
-#TODO: write function to more easily add neighbors
+function sir_test()
+    people = [Person(S,i) for i = 1:6]
 
-function test()
-    a = Node(true, true, 0.0, [])
-    b = Node(false, true, 0.0, [a])
-    c = Node(true, true, 0.0, [])
-    d = Node(false, false, 0.0, [c])
-    e = Node(true, true, 0.0, [])
-    f = Node(false, true, 0.0, [e])
+    # setting the 4th person to be recovered
+    people[4].SIR = R
 
-    a.neighbors = [b, c]
-    c.neighbors = [e]
-    e.neighbors = [f]
+    # this is where the helper function would allow us to specify only 1 dir!
+    people[1].neighbors = [people[2], people[3]]
+    people[2].neighbors = [people[3]]
+    people[3].neighbors = [people[4], people[5]]
+    people[5].neighbors = [people[6]]
 
-    infect(a, 1.0)
+    infect(people[1])
 
-    println("a weight is: ", a.weight)
-    println("b weight is: ", b.weight)
-    println("c weight is: ", c.weight)
-    println("d weight is: ", d.weight)
-    println("e weight is: ", e.weight)
-    println("f weight is: ", f.weight)
+    for person in people
+        println("infection status: ", person.is_infected)
+    end
+
+    return people
 end
