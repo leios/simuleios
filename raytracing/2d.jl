@@ -6,6 +6,10 @@ using Test
 
 pyplot()
 
+function Base.isapprox(n1::Nothing, n2::Nothing)
+    return true
+end
+
 mutable struct Ray
     # Velocity vector
     v::Vector{Float64}
@@ -137,10 +141,6 @@ function intersection_point(ray::Ray, lens::Lens)
     # distance projected onto the direction vector
     projected_relative_dist = dot(relative_dist, ray.v)
 
-    if (projected_relative_dist < 0 && !inside_of(ray, lens))
-        return nothing
-    end 
-
     # distance of closest approach
     # Might make more sense to do a dot product instead of a norm
     closest_approach = sqrt(norm(relative_dist)^2 -
@@ -154,6 +154,14 @@ function intersection_point(ray::Ray, lens::Lens)
 
     # half chord length
     half_chord = sqrt(lens.r^2 - closest_approach^2)
+
+    # checks if ray is moving away from sphere by seeing if we are 
+    # outside of sphere (abs(projected_relative_dist) > half_chord), and if
+    # the ray is moving away from the boundary
+    if (projected_relative_dist < 0 &&
+        abs(projected_relative_dist) > half_chord)
+        return nothing
+    end 
 
     in_lens = half_chord < projected_relative_dist
     intersect = zeros(2)
@@ -173,14 +181,16 @@ function intersect_test()
     @testset "intersection tests" begin
         rays = [Ray([1.0, 0.0], [0.0, 1.0], zeros(2,2)),
                 Ray([1.0, 0.0], [3.0, 1.0], zeros(2,2)),
+                Ray([sqrt(0.5), sqrt(0.5)], [2.0, 0.0], zeros(2,2)),
                 Ray([-1.0, 0.0], [0.0, 1.0], zeros(2,2)),
                 Ray([0.0, 1.0], [0.0, 1.0], zeros(2,2)),
                 Ray([1.0, 0.0], [0.0, 0.0], zeros(2,2))]
-        answers = [[2.0, 0.0], [1.0, 0.0], nothing, nothing, nothing]
+        answers = [[2.0, 0.0], [1.0, 0.0], [1-sqrt(0.5), 1-sqrt(0.5)],
+                   nothing, nothing, nothing]
 
         for i = 1:length(rays)
             pt = intersection_point(rays[i], lens)
-            @test pt == answers[i]
+            @test isapprox(pt, answers[i])
         end
     end
 end
