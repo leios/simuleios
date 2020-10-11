@@ -132,9 +132,7 @@ function step!(ray::Ray, dt)
     ray.p .+= .+ ray.v.*dt
 end
 
-
 function intersection_point(ray::Ray, lens::Lens)
-    println(lens.p, '\t', ray.p, '\t', ray.v)
     # distance from the center of the lens
     relative_dist = lens.p - ray.p
 
@@ -143,12 +141,15 @@ function intersection_point(ray::Ray, lens::Lens)
 
     # distance of closest approach
     # Might make more sense to do a dot product instead of a norm
-    closest_approach = sqrt(norm(relative_dist)^2 -
-                            projected_relative_dist^2)
+    closest_approach = abs(sqrt(norm(relative_dist)^2 -
+                            projected_relative_dist^2))
 
-    println(closest_approach)
+    # TODO: arbitrary threshold, should be fixed.
+    if abs(closest_approach - lens.r) < 0.001
+        closest_approach = lens.r
+    end 
 
-    if closest_approach >= lens.r
+    if closest_approach > lens.r
         return nothing
     end
 
@@ -174,6 +175,32 @@ function intersection_point(ray::Ray, lens::Lens)
     return intersect
 end
 
+function intersection_point_quadratic(ray::Ray, lens::Lens)
+    relative_dist = ray.p-lens.p
+    a = dot(ray.v, ray.v)
+    b = 2.0 * dot(relative_dist, ray.v)
+    c = dot(relative_dist, relative_dist) - lens.r*lens.r
+    discriminant = b*b - 4*a*c
+    println(discriminant)
+    if discriminant < 0
+        return nothing
+    elseif discriminant > 0
+        roots = [(-b + sqrt(discriminant)) / (2*a),
+                 (-b - sqrt(discriminant)) / (2*a)]
+        min = minimum(roots)
+        max = maximum(roots)
+        if min >= 0
+            return (min)*ray.v
+        elseif max >= 0
+            return (max)*ray.v
+        else
+            return nothing
+        end
+    else
+        return (-b/(2*a))*ray.v
+    end 
+end
+
 function intersect_test()
 
     lens = Lens([3.0, 1.0], 1.0, 1.5)
@@ -186,10 +213,11 @@ function intersect_test()
                 Ray([0.0, 1.0], [0.0, 1.0], zeros(2,2)),
                 Ray([1.0, 0.0], [0.0, 0.0], zeros(2,2))]
         answers = [[2.0, 0.0], [1.0, 0.0], [1-sqrt(0.5), 1-sqrt(0.5)],
-                   nothing, nothing, nothing]
+                   nothing, nothing, [3.0, 0.0]]
 
         for i = 1:length(rays)
             pt = intersection_point(rays[i], lens)
+            #pt = intersection_point_quadratic(rays[i], lens)
             @test isapprox(pt, answers[i])
         end
     end
