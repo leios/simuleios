@@ -34,6 +34,15 @@ function constant(p)
     return 1.5
 end
 
+function mag_index(p)
+    return cos(sum(p[:].^2))
+end
+
+function inverse(p)
+    mag = sum(p[:].^2)
+    return 1/(mag)
+end
+
 function lens_normal_at(ray, lens)
     n = normalize(ray.p .- lens.p)
     if dot(-n, ray.v) < 0
@@ -147,18 +156,19 @@ function propagate!(rays::Vector{Ray}, mirrors::Vector{Mirror},
             for lens in lenses
                 if inside_of(rays[j], lens) && i > 2
                    if !inside_of(rays[j].positions[i-2, :], lens)
-                       ior = 1/lens.f(rays[j].p)
+                       ior = 1/lens.f(rays[j].p .- lens.p)
                    elseif inside_of(rays[j].positions[i-2, :], lens)
-                       ior = lens.f(rays[j].positions[i-2,:])/lens.f(rays[j].p)
+                       ior = lens.f(rays[j].positions[i-2,:] .- lens.p)/
+                             lens.f(rays[j].p .- lens.p)
                    end
                    refract!(rays[j], lens, ior)
                 elseif !inside_of(rays[j], lens) && i > 2 &&
                        inside_of(rays[j].positions[i-2, :], lens) 
-                    ior = lens.f(rays[j].positions[i-2, :])
+                    ior = lens.f(rays[j].positions[i-2, :] .- lens.p)
                     refract!(rays[j], lens, ior)
                 end
                 if rays[j].v == zeros(2)
-                    reflect!(rays[j], lens_normal_at(ray.p, lens))
+                    reflect!(rays[j], lens_normal_at(rays[j], lens))
                 end
             end
             step!(rays[j], dt)
@@ -173,7 +183,8 @@ function parallel_propagate(ray_num, n; filename="check.png", dt = 0.1)
             [0.1, float(i)],
             zeros(n, 2)) for i = 1:ray_num]
 
-    lenses = [Lens([10, 6], 6, constant)]
+    #lenses = [Lens([10, 6], 6, constant)]
+    lenses = [Lens([10, 6], 6, inverse)]
     #lenses = [Lens([-15, -10], 5, 1.5)]
     mirrors = [Mirror([0.0, -1.0],[5.0, 0.0])]
 #=
