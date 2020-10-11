@@ -1,5 +1,8 @@
+# TODO: abstract to objects (spheres) with Transmission and Reflectivity
+
 using Plots
 using LinearAlgebra
+using Test
 
 pyplot()
 
@@ -127,16 +130,23 @@ end
 
 
 function intersection_point(ray::Ray, lens::Lens)
+    println(lens.p, '\t', ray.p, '\t', ray.v)
     # distance from the center of the lens
     relative_dist = lens.p - ray.p
 
     # distance projected onto the direction vector
     projected_relative_dist = dot(relative_dist, ray.v)
 
+    if (projected_relative_dist < 0 && !inside_of(ray, lens))
+        return nothing
+    end 
+
     # distance of closest approach
     # Might make more sense to do a dot product instead of a norm
     closest_approach = sqrt(norm(relative_dist)^2 -
                             projected_relative_dist^2)
+
+    println(closest_approach)
 
     if closest_approach >= lens.r
         return nothing
@@ -146,19 +156,31 @@ function intersection_point(ray::Ray, lens::Lens)
     half_chord = sqrt(lens.r^2 - closest_approach^2)
 
     in_lens = half_chord < projected_relative_dist
+    intersect = zeros(2)
     if in_lens
-        return (projected_relative_dist - half_chord)*ray.v
+        intersect = (projected_relative_dist - half_chord)*ray.v
     else
-        return (projected_relative_dist + half_chord)*ray.v
+        intersect = (projected_relative_dist + half_chord)*ray.v
     end
+
+    return intersect
 end
 
-function intersect_check()
-
-    ray = Ray([1.0, 0.0], [0.0, 1.0], zeros(2,2))
+function intersect_test()
 
     lens = Lens([3.0, 1.0], 1.0, 1.5)
 
-    pt = intersection_point(ray, lens)
-    println(pt)
+    @testset "intersection tests" begin
+        rays = [Ray([1.0, 0.0], [0.0, 1.0], zeros(2,2)),
+                Ray([1.0, 0.0], [3.0, 1.0], zeros(2,2)),
+                Ray([-1.0, 0.0], [0.0, 1.0], zeros(2,2)),
+                Ray([0.0, 1.0], [0.0, 1.0], zeros(2,2)),
+                Ray([1.0, 0.0], [0.0, 0.0], zeros(2,2))]
+        answers = [[2.0, 0.0], [1.0, 0.0], nothing, nothing, nothing]
+
+        for i = 1:length(rays)
+            pt = intersection_point(rays[i], lens)
+            @test pt == answers[i]
+        end
+    end
 end
