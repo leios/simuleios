@@ -108,26 +108,26 @@ function draw_circle(p, r, res)
     return [x .+ (p[1], p[2]) for x in Plots.partialcircle(0, 2pi, res, r)]
 end
 
-function plot_rays(rays::Vector{Ray}, mirrors::Vector{Mirror},
-                   lenses::Vector{Lens}, filename)
+function plot_rays(rays::Vector{Ray}, objects::Vector{O},
+                   filename) where {O <: Object}
     plt = plot(background_color=:black, aspect_ratio=:equal)
     for ray in rays
         plot!(plt, (ray.positions[:,1], ray.positions[:,2]); label = "ray",
               linecolor=:yellow)
     end
 
-    for mirror in mirrors
-        dir = [-mirror.n[2], mirror.n[1]]
-        extents = zeros(2,2)
-        extents[1,:] .= mirror.p .- mirror.scale * dir
-        extents[2,:] .= mirror.p .+ mirror.scale * dir
-        plot!(plt, (extents[:,1], extents[:,2]), label = "mirror")
-    end 
-
-    for lens in lenses
-        circle = draw_circle(lens.p, lens.r, 100)
-        plot!(circle; label="lens", linecolor=:lightblue)
-    end 
+    for object in objects
+        if typeof(object) == Mirror
+            dir = [-object.n[2], object.n[1]]
+            extents = zeros(2,2)
+            extents[1,:] .= object.p .- object.scale * dir
+            extents[2,:] .= object.p .+ object.scale * dir
+            plot!(plt, (extents[:,1], extents[:,2]), label = "mirror")
+        elseif typeof(object) == Lens
+            circle = draw_circle(object.p, object.r, 100)
+            plot!(circle; label="lens", linecolor=:lightblue)
+        end 
+    end
 
     savefig(plt, filename)
 end
@@ -137,6 +137,9 @@ function step!(ray::Ray, dt)
 end
 
 function intersection(ray::Ray, lens::Lens)
+    # threshold to avoid floating precision errors
+    thresh = 0.00001
+
     # distance from the center of the lens
     relative_dist = lens.p - ray.p
 
@@ -149,11 +152,12 @@ function intersection(ray::Ray, lens::Lens)
                             projected_relative_dist^2))
 
     # TODO: arbitrary threshold, should be fixed.
-    if abs(closest_approach - lens.r) < 0.001
+    if abs(closest_approach - lens.r) < thresh
         closest_approach = lens.r
     end 
 
-    if closest_approach > lens.r
+    # Note: returns nothing if tangential
+    if closest_approach >= lens.r
         return nothing
     end
 
@@ -170,10 +174,12 @@ function intersection(ray::Ray, lens::Lens)
 
     in_lens = half_chord < projected_relative_dist
     intersect = zeros(2)
+    # Adding a threshold to output so we are definitely on the other side of
+    # the boundary after intersecting
     if in_lens
-        intersect = (projected_relative_dist - half_chord)*ray.v
+        intersect = (projected_relative_dist - half_chord+thresh)*ray.v
     else
-        intersect = (projected_relative_dist + half_chord)*ray.v
+        intersect = (projected_relative_dist + half_chord+thresh)*ray.v
     end
 
     return intersect
@@ -194,15 +200,17 @@ function intersection_quadratic(ray::Ray, lens::Lens)
         min = minimum(roots)
         max = maximum(roots)
 
-        if min >= 0
+        if min > 0
             return (min)*ray.v
-        elseif max >= 0
+        elseif max > 0
             return (max)*ray.v
         else
             return nothing
         end
     else
-        return (-b/(2*a))*ray.v
+        # Returns nothing if tangential
+        return nothing
+        #return (-b/(2*a))*ray.v
     end 
 end
 
@@ -233,7 +241,7 @@ function intersect_test()
         for i = 1:length(rays)
             pt = intersection(rays[i], lens)
             @test isapprox(pt, answers[i])
-            pt = intersection_quadratic(rays[i], lens)
+            pt = intersection_geometric(rays[i], lens)
             @test isapprox(pt, answers[i])
         end
     end
@@ -271,6 +279,10 @@ function propagate!(rays::Vector{Ray}, objects::Vector{O},
                 end
             end
 
+            if j == 7
+                println("7 intersection point, ", intersect_final)
+            end
+
             if intersect_final != nothing
                 rays[j].p .+= intersect_final
                 rays[j].positions[i,:] .= rays[j].p
@@ -281,6 +293,10 @@ function propagate!(rays::Vector{Ray}, objects::Vector{O},
                     end
 
                     refract!(rays[j], intersected_object, ior)
+                    if rays[j].v == zeros(2)
+                        reflect!(rays[j], lens_normal_at(rays[j], lens))
+                    end
+
                 elseif typeof(intersected_object) == Mirror
                     reflect!(rays[j], intersected_object.n)
                 end
@@ -305,15 +321,17 @@ function parallel_propagate(ray_num, num_intersections, box_size;
     end
 
     lenses = [Lens([10, 5], 5, 1.5)]
-    mirrors = [Mirror([-1.0, 0.0], [25.0, 5.0])]
-               #Mirror([1.0, 0.0], [0, 5.0]),
-               #Mirror([0.0, 1.0], [12.5, 0.0]),
-               #Mirror([0.0, -1.0], [12.5, 10.0])]
+    mirrors = [Mirror([-1.0, 0.0], [25.0, 5.0]),
+               Mirror([1.0, 0.0], [0, 5.0]),
+               Mirror([0.0, 1.0], [12.5, 0.0]),
+               Mirror([0.0, -1.0], [12.5, 10.0])]
 
     objects = vcat(lenses, mirrors)
 
     propagate!(rays, objects, num_intersections)
 
-    plot_rays(rays, mirrors, lenses, filename)
+    plot_rays(rays, objects, filename)
+
+    return rays
 
 end
