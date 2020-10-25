@@ -1,4 +1,5 @@
 # TODO: abstract to objects (spheres) with Transmission and Reflectivity
+# TODO: rasterize rays
 
 using Plots
 using LinearAlgebra
@@ -18,9 +19,6 @@ mutable struct Ray
 
     # Position vector
     p::Vector{Float64}
-
-    # Set of positions
-    positions::Array{Float64}
 
 end
 
@@ -108,12 +106,13 @@ function draw_circle(p, r, res)
     return [x .+ (p[1], p[2]) for x in Plots.partialcircle(0, 2pi, res, r)]
 end
 
-function plot_rays(rays::Vector{Ray}, objects::Vector{O},
+function plot_rays(positions, objects::Vector{O},
                    filename) where {O <: Object}
     plt = plot(background_color=:black, aspect_ratio=:equal)
-    for ray in rays
-        plot!(plt, (ray.positions[:,1], ray.positions[:,2]); label = "ray",
-              linecolor=:yellow)
+
+    for i = 1:size(positions)[1]
+        plot!(plt, (positions[i,:,1], positions[i,:,2]); label = "ray",
+              linecolor=:white)
     end
 
     for object in objects
@@ -264,7 +263,7 @@ function intersect_test()
 end
 
 function propagate!(rays::Vector{Ray}, objects::Vector{O},
-                    num_intersections) where {O <: Object}
+                    num_intersections, positions) where {O <: Object}
     for i = 2:num_intersections
         for j = 1:length(rays)
 
@@ -279,13 +278,9 @@ function propagate!(rays::Vector{Ray}, objects::Vector{O},
                 end
             end
 
-            if j == 7
-                println("7 intersection point, ", intersect_final)
-            end
-
             if intersect_final != nothing
                 rays[j].p .+= intersect_final
-                rays[j].positions[i,:] .= rays[j].p
+                positions[j, i, :] .= rays[j].p
                 if typeof(intersected_object) == Lens
                     ior = intersected_object.ior
                     if inside_of(rays[j], intersected_object)
@@ -312,13 +307,7 @@ function parallel_propagate(ray_num, num_intersections, box_size;
                             filename="check.png")
 
     rays = [Ray([1, 0],
-            [0.1, float(i)],
-            zeros(num_intersections, 2)) for i = 1:ray_num]
-
-    # TODO: do this in constructor
-    for i = 1:length(rays)
-        rays[i].positions[1,:] .= rays[i].p
-    end
+            [0.1, float(i)]) for i = 1:ray_num]
 
     lenses = [Lens([10, 5], 5, 1.5)]
     mirrors = [Mirror([-1.0, 0.0], [25.0, 5.0]),
@@ -327,11 +316,16 @@ function parallel_propagate(ray_num, num_intersections, box_size;
                Mirror([0.0, -1.0], [12.5, 10.0])]
 
     objects = vcat(lenses, mirrors)
+    positions = zeros(ray_num, num_intersections, 2)
 
-    propagate!(rays, objects, num_intersections)
+    for i = 1:length(rays)
+        positions[i, 1, :] .= rays[i].p
+    end
 
-    plot_rays(rays, objects, filename)
+    propagate!(rays, objects, num_intersections, positions)
 
-    return rays
+    plot_rays(positions, objects, filename)
+
+    return positions
 
 end
