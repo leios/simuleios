@@ -13,7 +13,20 @@ function Base.isapprox(n1::Nothing, n2::Nothing)
     return true
 end
 
-abstract type Object end
+# For now, all cameras are aligned on the z axis
+mutable struct Camera
+    # Set of all pixels, counts as scene resolution
+    pixels
+
+    # physical size of aperture
+    size::Vector{Float64}
+
+    # camera's distance from screen
+    focal_length::Float64
+
+    # camera's position
+    p::Vector{Float64}
+end
 
 mutable struct Ray
     # Velocity vector
@@ -27,24 +40,52 @@ mutable struct Ray
 
 end
 
-abstract type Sphere <: Object end
+struct Surface
 
-mutable struct Lens <: Sphere
+    # Reflectivity
+    r::Float64
+
+    # Transmission
+    t::Float64
+
+    # Color
+    c::RGBA
+
+    # index of refraction
+    ior::Float64
+
+    function Surface(in_r, in_t, in_c, in_ior)
+        if !isapprox(in_r+in_t+in_c.alpha, 1)
+            error("invalid surface definition, RTC < 1")
+        end
+        new(in_r,in_t,in_c, in_ior)
+    end
+
+    Surface(in_r, in_t, in_c::Float64, in_ior) =
+         new(in_r, in_t, RGBA(0,0,0,0), in_ior)
+end
+
+abstract type Object end
+
+mutable struct Sphere <: Object
     # Lens position
     p::Vector{Float64}
 
     # Lens radius
     r::Float64
 
-    # Index of Refraction
-    ior::Float64
+    s::Surface
 end
 
-mutable struct SkyBox <: Sphere
-    # Position of mirror
+function Lens(p, r, ior)
+    return Sphere(p, r, Surface(1,0,RGBA(0,0,0,0),ior))
+end
+
+mutable struct SkyBox <: Object
+    # Skybox position
     p::Vector{Float64}
 
-    # Radius of SkyBox
+    # Skybox radius
     r::Float64
 end
 
@@ -76,7 +117,7 @@ end
 #       moving through, so...
 #       n_2*v = n_1*l + (n_1*cos(theta_1) - n_2*cos(theta_2))*n
 #       Other approximations: ior = n_1/n_2, c = -n*l
-function refract!(ray, lens::Lens, ior)
+function refract!(ray, lens::Sphere, ior)
     n = sphere_normal_at(ray, lens)
 
     c = dot(-n, ray.v);
@@ -305,11 +346,12 @@ function propagate!(rays::Array{Ray}, objects::Vector{O},
                 if intersect_final != nothing
                     rays[j].p .+= intersect_final
                     positions[j, i, :] .= rays[j].p
-                    if typeof(intersected_object) == Lens
-                        ior = 1/intersected_object.ior
+                    if typeof(intersected_object) == Sphere
+                        ior = 1/intersected_object.s.ior
                         if dot(rays[j].v,
                                sphere_normal_at(rays[j],
                                                 intersected_object)) > 0
+                            ior = intersected_object.s.ior
                         end
 
                         refract!(rays[j], intersected_object, ior)
@@ -389,29 +431,39 @@ function convert_to_img(rays::Array{Ray}, filename)
     save(filename, color_array)
 end
 
-function ray_trace(res, dim; filename="check.png", camera_loc=[0,0,1],
-                   num_intersections = 5)
+function init_rays(cam::Camera)
+
+    res = size(cam.pixels)
+    dim = cam.size
 
     pixel_width = dim ./ res
+
     # create a set of rays that go through every pixel in our grid.
-    rays = Array{Ray}(undef, res[1],res[2])
+    rays = Array{Ray}(undef, res[1], res[2])
     for i = 1:res[1]
         for j = 1:res[2]
-            pixel_loc = [0.5*dim[1] - i*dim[1]/res[1] + 0.5*pixel_width[1],
-                         0.5*dim[2] - j*dim[2]/res[2] + 0.5*pixel_width[2],0]
-            l = normalize(pixel_loc - camera_loc)
+            pixel_loc = [cam.p[1] + 0.5*dim[1] - i*dim[1]/res[1] + 
+                         0.5*pixel_width[1],
+                         cam.p[2] + 0.5*dim[2] - j*dim[2]/res[2] +
+                         0.5*pixel_width[2],
+                         cam.p[3]+cam.focal_length]
+            l = normalize(pixel_loc - cam.p)
             rays[res[2]*(i-1) + j] = Ray(l, pixel_loc, RGB(0))
         end
     end
 
-    sky = [SkyBox([0.0, 0.0, 0.0], 1000)]
-    #mirrors = [Mirror([0.0, 0.0, 1.0], [0.0, 0.0, -40.0])]
+    return rays
 
-    lenses = [Lens([0,0,-25], 20, 1.5)]
+end
 
-    objects = vcat(sky, lenses)
-    #objects = vcat(sky)
+function ray_trace(objects::Vector{O}, cam::Camera; filename="check.png",
+                   num_intersections = 5) where {O <: Object}
+
+    rays = init_rays(cam)
+
+    # initializing the array of positions
     positions = zeros(length(rays), num_intersections, 3)
+
     for i = 1:length(rays)
         positions[i, 1, :] .= rays[i].p
     end
@@ -422,4 +474,18 @@ function ray_trace(res, dim; filename="check.png", camera_loc=[0,0,1],
 
     return (positions, rays)
 
+end
+
+function main()
+    sky = [SkyBox([0.0, 0.0, 0.0], 1000)]
+    lenses = [Lens([0,0,-25], 20, 1.5)]
+
+    objects = vcat(sky, lenses)
+
+    blank_img = Array{RGB}(undef, 1920, 1080)
+    blank_img[:] .= RGB(0)
+
+    cam = Camera(blank_img, [160,90], -100, [0,0,100])
+
+    ray_trace(objects, cam)
 end
