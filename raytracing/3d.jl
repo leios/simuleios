@@ -27,7 +27,9 @@ mutable struct Ray
 
 end
 
-mutable struct Lens <: Object
+abstract type Sphere <: Object end
+
+mutable struct Lens <: Sphere
     # Lens position
     p::Vector{Float64}
 
@@ -38,8 +40,16 @@ mutable struct Lens <: Object
     ior::Float64
 end
 
-function lens_normal_at(ray, lens)
-    n = normalize(ray.p .- lens.p)
+mutable struct SkyBox <: Sphere
+    # Position of mirror
+    p::Vector{Float64}
+
+    # Radius of SkyBox
+    r::Float64
+end
+
+function sphere_normal_at(ray, sphere)
+    n = normalize(ray.p .- sphere.p)
 
     if dot(-n, ray.v) < 0
         n .*= -1
@@ -48,14 +58,14 @@ function lens_normal_at(ray, lens)
     return n
 end
 
-function inside_of(ray::Ray, lens)
-    return inside_of(ray.p, lens)
+function inside_of(ray::Ray, sphere)
+    return inside_of(ray.p, sphere)
 end
 
-function inside_of(pos, lens)
-    x = lens.p[1] - pos[1]
-    y = lens.p[2] - pos[2]
-    if (x^2 + y^2 <= lens.r^2)
+function inside_of(pos, sphere)
+    x = sphere.p[1] - pos[1]
+    y = sphere.p[2] - pos[2]
+    if (x^2 + y^2 <= sphere.r^2)
         return true
     else
         return false
@@ -66,30 +76,21 @@ end
 #       moving through, so...
 #       n_2*v = n_1*l + (n_1*cos(theta_1) - n_2*cos(theta_2))*n
 #       Other approximations: ior = n_1/n_2, c = -n*l
-function refract!(ray, lens, ior)
-    n = lens_normal_at(ray, lens)
+function refract!(ray, lens::Lens, ior)
+    n = sphere_normal_at(ray, lens)
 
     c = dot(-n, ray.v);
     d = 1.0 - ior^2 * (1.0 - c^2);
 
     if (d < 0.0)
-        return zeros(length(ray.v));
+        reflect!(ray, n)
+        return
     end
 
     ray.v = ior * ray.v + (ior * c - sqrt(d)) * n;
 end
 
 abstract type Wall <: Object end;
-
-mutable struct SkyBox <: Wall
-    # Normal vector
-    n::Vector{Float64}
-
-    # Position of mirror
-    p::Vector{Float64}
-
-    SkyBox(in_n, in_p) = new(in_n, in_p)
-end
 
 mutable struct Mirror <: Wall
     # Normal vector
@@ -125,7 +126,7 @@ end
 
 function plot_rays(positions, objects::Vector{O},
                    filename) where {O <: Object}
-    plt = plot(background_color=:black, aspect_ratio=:equal)
+    plt = plot(background_color=:black, aspect_ratio=:equal, legend=false)
 
     for i = 1:size(positions)[1]
         plot!(plt, (positions[i,:,1], positions[i,:,2]); label = "ray",
@@ -152,12 +153,12 @@ function step!(ray::Ray, dt)
     ray.p .+= .+ ray.v.*dt
 end
 
-function intersection_geometric(ray::Ray, lens::Lens)
+function intersection_geometric(ray::Ray, sphere::Sphere)
     # threshold to avoid floating precision errors
     thresh = 0.00001
 
-    # distance from the center of the lens
-    relative_dist = lens.p - ray.p
+    # distance from the center of the sphere
+    relative_dist = sphere.p - ray.p
 
     # distance projected onto the direction vector
     projected_relative_dist = dot(relative_dist, ray.v)
@@ -168,17 +169,17 @@ function intersection_geometric(ray::Ray, lens::Lens)
                             projected_relative_dist^2))
 
     # TODO: arbitrary threshold, should be fixed.
-    if abs(closest_approach - lens.r) < thresh
-        closest_approach = lens.r
+    if abs(closest_approach - sphere.r) < thresh
+        closest_approach = sphere.r
     end 
 
     # Note: returns nothing if tangential
-    if closest_approach >= lens.r
+    if closest_approach >= sphere.r
         return nothing
     end
 
     # half chord length
-    half_chord = sqrt(lens.r^2 - closest_approach^2)
+    half_chord = sqrt(sphere.r^2 - closest_approach^2)
 
     # checks if ray is moving away from sphere by seeing if we are 
     # outside of sphere (abs(projected_relative_dist) > half_chord), and if
@@ -188,12 +189,12 @@ function intersection_geometric(ray::Ray, lens::Lens)
         return nothing
     end 
 
-    in_lens = half_chord < projected_relative_dist
+    in_sphere = half_chord < projected_relative_dist
     intersect = zeros(length(ray.v))
 
     # Adding a threshold to output so we are definitely on the other side of
     # the boundary after intersecting
-    if in_lens
+    if in_sphere
         intersect = (projected_relative_dist - half_chord+thresh)*ray.v
     else
         intersect = (projected_relative_dist + half_chord+thresh)*ray.v
@@ -202,11 +203,11 @@ function intersection_geometric(ray::Ray, lens::Lens)
     return intersect
 end
 
-function intersection_quadratic(ray::Ray, lens::Lens)
-    relative_dist = ray.p-lens.p
+function intersection_quadratic(ray::Ray, sphere::Sphere)
+    relative_dist = ray.p-sphere.p
     a = dot(ray.v, ray.v)
     b = 2.0 * dot(relative_dist, ray.v)
-    c = dot(relative_dist, relative_dist) - lens.r*lens.r
+    c = dot(relative_dist, relative_dist) - sphere.r*sphere.r
     discriminant = b*b - 4*a*c
 
     if discriminant < 0
@@ -218,9 +219,9 @@ function intersection_quadratic(ray::Ray, lens::Lens)
         max = maximum(roots)
 
         if min > 0
-            return (min)*ray.v + 0.001*ray.v
+            return (min)*ray.v + 0.0001*ray.v
         elseif max > 0
-            return (max)*ray.v + 0.001*ray.v
+            return (max)*ray.v + 0.0001*ray.v
         else
             return nothing
         end
@@ -231,8 +232,8 @@ function intersection_quadratic(ray::Ray, lens::Lens)
     end 
 end
 
-intersection(ray::Ray, lens::Lens) = intersection_quadratic(ray, lens)
-#intersection(ray::Ray, lens::Lens) = intersection_geometric(ray, lens)
+intersection(ray::Ray, sphere::Sphere) = intersection_quadratic(ray, sphere)
+#intersection(ray::Ray, sphere::Sphere) = intersection_geometric(ray, sphere)
 
 function intersection(ray::Ray, wall::W) where {W <: Wall}
     intersection_pt = -dot((ray.p .- wall.p),wall.n)/dot(ray.v, wall.n)
@@ -250,12 +251,12 @@ function intersect_test()
     lens = Lens([3.0, 1.0], 1.0, 1.5)
 
     @testset "intersect lens tests" begin
-        rays = [Ray([1.0, 0.0], [0.0, 1.0], zeros(2,2)),
-                Ray([1.0, 0.0], [3.0, 1.0], zeros(2,2)),
-                Ray([sqrt(0.5), sqrt(0.5)], [2.0, 0.0], zeros(2,2)),
-                Ray([-1.0, 0.0], [0.0, 1.0], zeros(2,2)),
-                Ray([0.0, 1.0], [0.0, 1.0], zeros(2,2)),
-                Ray([1.0, 0.0], [0.0, 0.0], zeros(2,2))]
+        rays = [Ray([1.0, 0.0], [0.0, 1.0], RGB(0)),
+                Ray([1.0, 0.0], [3.0, 1.0], RGB(0)),
+                Ray([sqrt(0.5), sqrt(0.5)], [2.0, 0.0], RGB(0)),
+                Ray([-1.0, 0.0], [0.0, 1.0], RGB(0)),
+                Ray([0.0, 1.0], [0.0, 1.0], RGB(0)),
+                Ray([1.0, 0.0], [0.0, 0.0], RGB(0))]
         answers = [[2.0, 0.0], [1.0, 0.0], [1-sqrt(0.5), 1-sqrt(0.5)],
                    nothing, nothing, [3.0, 0.0]]
 
@@ -306,14 +307,14 @@ function propagate!(rays::Array{Ray}, objects::Vector{O},
                     positions[j, i, :] .= rays[j].p
                     if typeof(intersected_object) == Lens
                         ior = 1/intersected_object.ior
-                        #println(j, " velocity before: ", rays[j].v)
 #=
                         println(rays[j].v, '\t', rays[j].p, '\n',
-                                lens_normal_at(rays[j], intersected_object))
+                                sphere_normal_at(rays[j], intersected_object))
                         println(dot(rays[j].v,
-                               lens_normal_at(rays[j], intersected_object)))
+                               sphere_normal_at(rays[j], intersected_object)))
                         if dot(rays[j].v,
-                               lens_normal_at(rays[j], intersected_object)) > 0
+                               sphere_normal_at(rays[j],
+                                                intersected_object)) > 0
 =#
                         if(inside_of(rays[j].p-rays[j].v*0.01,
                            intersected_object))
@@ -321,10 +322,6 @@ function propagate!(rays::Array{Ray}, objects::Vector{O},
                         end
 
                         refract!(rays[j], intersected_object, ior)
-                        if rays[j].v == zeros(length(rays[j].v))
-                            reflect!(rays[j], lens_normal_at(rays[j], lens))
-                        end
-                        #println(j, " velocity after: ", rays[j].v)
 
                     elseif typeof(intersected_object) == Mirror
                         reflect!(rays[j], intersected_object.n)
@@ -347,7 +344,7 @@ function parallel_propagate(ray_num, num_intersections, box_size;
     rays = [Ray([1, 0],
             [0.01, float(i*2*radius/ray_num)], RGB(0)) for i = 1:ray_num]
 
-    lenses = [Lens([10, 5], radius, 1.5)]
+    lenses = [Lens([10, 5], radius/1.1, 1.5)]
     mirrors = [Mirror([-1.0, 0.0], [25.0, 5.0]),
                Mirror([1.0, 0.0], [0, 5.0]),
                Mirror([0.0, 1.0], [12.5, 0.0]),
@@ -369,30 +366,25 @@ function parallel_propagate(ray_num, num_intersections, box_size;
 end
 
 function pixel_color(position)
-    extents = 100
+    extents = 1000.0
     c = RGB(0)
     if position[1] < extents && position[1] > -extents
-        c += RGB((position[1]+100)/200, 0, 0)
+        c += RGB((position[1]+extents)/(2.0*extents), 0, 0)
+    else
+        println(position)
     end
+
     if position[2] < extents && position[2] > -extents
-        c += RGB(0,(position[2]+100)/200, 0)
+        c += RGB(0,0,(position[2]+extents)/(2.0*extents))
+    else
+        println(position)
     end
+
     if position[3] < extents && position[3] > -extents
-        c += RGB(0,0,(position[3]+100)/200)
+        c += RGB(0,(position[3]+extents)/(2.0*extents), 0)
+    else
+        println(position)
     end
-#=
-    if position[3] < 0
-        c += RGB(0,0,1)
-    end
-
-    if position[2] < 0
-        c += RGB(0.1*rand*(),1,0)
-    end
-
-    if position[1] < 0
-        c += RGB(1,0,0)
-    end
-=#
 
     return c
 end
@@ -421,17 +413,13 @@ function ray_trace(res, dim; filename="check.png", camera_loc=[0,0,1],
         end
     end
 
-    sky = [SkyBox([-1.0, 0.0, 0.0], [50.0, 0.0, 0.0]),
-           SkyBox([1.0, 0.0, 0.0], [-50, 0.0, 0.0]),
-           SkyBox([0.0, 1.0, 0.0], [0.0, -50.0, 0.0]),
-           SkyBox([0.0, -1.0, 0.0], [0.0, 50.0, 00.0]),
-           SkyBox([0.0, 0.0, 1.0], [0.0, 0.0, -50.0]),
-           SkyBox([0.0, 0.0, -1.0], [0.0, 0.0, 50.0])]
+    sky = [SkyBox([0.0, 0.0, 0.0], 1000)]
     #mirrors = [Mirror([0.0, 0.0, 1.0], [0.0, 0.0, -40.0])]
 
     lenses = [Lens([0,0,-25], 20, 1.5)]
 
     objects = vcat(sky, lenses)
+    #objects = vcat(sky)
     positions = zeros(length(rays), num_intersections, 3)
     for i = 1:length(rays)
         positions[i, 1, :] .= rays[i].p
