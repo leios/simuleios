@@ -14,7 +14,7 @@ function Base.isapprox(n1::Nothing, n2::Nothing)
 end
 
 # For now, all cameras are aligned on the z axis
-mutable struct Camera
+struct Camera
     # Set of all pixels, counts as scene resolution
     pixels
 
@@ -28,7 +28,7 @@ mutable struct Camera
     p::Vector{Float64}
 end
 
-mutable struct Ray
+struct Ray
     # Velocity vector
     v::Vector{Float64}
 
@@ -67,7 +67,7 @@ end
 
 abstract type Object end
 
-mutable struct Sphere <: Object
+struct Sphere <: Object
     # Lens position
     p::Vector{Float64}
 
@@ -121,7 +121,7 @@ end
 #       moving through, so...
 #       n_2*v = n_1*l + (n_1*cos(theta_1) - n_2*cos(theta_2))*n
 #       Other approximations: ior = n_1/n_2, c = -n*l
-function refract!(ray, lens::Sphere, ior)
+function refract(ray, lens::Sphere, ior)
     n = sphere_normal_at(ray, lens)
 
     if dot(n, ray.v) > 0
@@ -135,7 +135,8 @@ function refract!(ray, lens::Sphere, ior)
         return
     end
 
-    ray.v = ior * ray.v + (ior * c - sqrt(d)) * n;
+    ray_vel = ior * ray.v + (ior * c - sqrt(d)) * n;
+    return Ray(ray_vel, ray.p, ray.c)
 end
 
 abstract type Wall <: Object end;
@@ -164,9 +165,10 @@ end
 # note: for reflection, l_x -> l_x, but l_y -> -l_y
 #       In this case, the y component of l = cos(theta)*n
 #       so new vector: v = l + 2cos(theta)*n
-function reflect!(ray, n)
-    ray.v .-= 2*dot(ray.v, n).*n
-    ray.p .+= 0.001*ray.v
+function reflect(ray, n)
+    ray_vel = ray.v .- 2*dot(ray.v, n).*n
+    ray_pos = ray.p .+ 0.001*ray.v
+    return Ray(ray_vel, ray_pos, ray.c)
 end
 
 function draw_circle(p, r, res)
@@ -198,64 +200,14 @@ function plot_rays(positions, objects::Vector{O},
     savefig(plt, filename)
 end
 
-function step!(ray::Ray, dt)
+function step(ray::Ray, dt)
     ray.p .+= .+ ray.v.*dt
+    return ray
 end
 
-function intersection_geometric(ray::Ray,
-                                sphere::S) where {S <: Union{Sphere, SkyBox}}
-    # threshold to avoid floating precision errors
-    thresh = 0.00001
-
-    # distance from the center of the sphere
-    relative_dist = sphere.p - ray.p
-
-    # distance projected onto the direction vector
-    projected_relative_dist = dot(relative_dist, ray.v)
-
-    # distance of closest approach
-    # Might make more sense to do a dot product instead of a norm
-    closest_approach = abs(sqrt(norm(relative_dist)^2 -
-                            projected_relative_dist^2))
-
-    # TODO: arbitrary threshold, should be fixed.
-    if abs(closest_approach - sphere.r) < thresh
-        closest_approach = sphere.r
-    end 
-
-    # Note: returns nothing if tangential
-    if closest_approach >= sphere.r
-        return nothing
-    end
-
-    # half chord length
-    half_chord = sqrt(sphere.r^2 - closest_approach^2)
-
-    # checks if ray is moving away from sphere by seeing if we are 
-    # outside of sphere (abs(projected_relative_dist) > half_chord), and if
-    # the ray is moving away from the boundary
-    if (projected_relative_dist < 0 &&
-        abs(projected_relative_dist) > half_chord)
-        return nothing
-    end 
-
-    in_sphere = half_chord < projected_relative_dist
-    intersect = zeros(length(ray.v))
-
-    # Adding a threshold to output so we are definitely on the other side of
-    # the boundary after intersecting
-    if in_sphere
-        intersect = (projected_relative_dist - half_chord+thresh)*ray.v
-    else
-        intersect = (projected_relative_dist + half_chord+thresh)*ray.v
-    end
-
-    return intersect
-end
-
-function intersection_quadratic(ray::Ray, sphere::S;
-                                threshold = 0.01) where
-                                {S <: Union{Sphere, SkyBox}}
+function intersection(ray::Ray, sphere::S;
+                      threshold = 0.01) where
+                      {S <: Union{Sphere, SkyBox}}
     relative_dist = ray.p-sphere.p
     a = dot(ray.v, ray.v)
     b = 2.0 * dot(relative_dist, ray.v)
@@ -284,8 +236,6 @@ function intersection_quadratic(ray::Ray, sphere::S;
     end 
 end
 
-intersection(ray::Ray, sphere::S) where {S <: Union{Sphere, SkyBox}} = intersection_quadratic(ray, sphere)
-#intersection(ray::Ray, sphere::S) = intersection_geometric(ray, sphere)
 
 function intersection(ray::Ray, wall::W) where {W <: Wall}
     intersection_pt = -dot((ray.p .- wall.p),wall.n)/dot(ray.v, wall.n)
@@ -298,123 +248,66 @@ function intersection(ray::Ray, wall::W) where {W <: Wall}
     end
 end
 
-function intersect_test()
-
-    lens = Lens([3.0, 1.0], 1.0, 1.5)
-
-    @testset "intersect lens tests" begin
-        rays = [Ray([1.0, 0.0], [0.0, 1.0], RGB(0)),
-                Ray([1.0, 0.0], [3.0, 1.0], RGB(0)),
-                Ray([sqrt(0.5), sqrt(0.5)], [2.0, 0.0], RGB(0)),
-                Ray([-1.0, 0.0], [0.0, 1.0], RGB(0)),
-                Ray([0.0, 1.0], [0.0, 1.0], RGB(0)),
-                Ray([1.0, 0.0], [0.0, 0.0], RGB(0))]
-        answers = [[2.0, 0.0], [1.0, 0.0], [1-sqrt(0.5), 1-sqrt(0.5)],
-                   nothing, nothing, [3.0, 0.0]]
-
-        for i = 1:length(rays)
-            pt = intersection(rays[i], lens)
-            @test isapprox(pt, answers[i])
-            pt = intersection_geometric(rays[i], lens)
-            @test isapprox(pt, answers[i])
-        end
+function propagate(rays::Array{Ray}, objects::Vector{O},
+                    num_intersections) where {O <: Object}
+    for j = 1:length(rays)
+        rays[j] = propagate(rays[j], objects, num_intersections)
     end
 
-    wall = Mirror([-1.0, 0.0], [2.0, 1.0])
-
-    @testset "intersect wall tests" begin
-        rays = [Ray([1.0, 0.0], [0.0, 1.0], zeros(2,2)),
-                Ray([sqrt(0.5), sqrt(0.5)], [0.0, 0.0], zeros(2,2)),
-                Ray([-sqrt(0.5), sqrt(0.5)], [0.0, 0.0], zeros(2,2)),
-                Ray([0.0, 1.0], [0.0, 1.0], zeros(2,2))]
-
-        answers = [[2.0, 0.0], [2.0, 2.0], nothing, nothing]
-
-        for i = 1:length(rays)
-            pt = intersection(rays[i], wall)
-            @test isapprox(pt, answers[i])
-        end
-    end
+    return rays
 end
 
-function propagate!(rays::Array{Ray}, objects::Vector{O},
-                    num_intersections, positions) where {O <: Object}
-    for i = 2:num_intersections
-        for j = 1:length(rays)
+function propagate(ray::Ray, objects::Vector{O},
+                   num_intersections) where {O <: Object}
 
-            if rays[j].v != zeros(length(rays[j].v))
-                intersect_final = [Inf, Inf]
-                intersected_object = nothing
-                for object in objects
-                    intersect = intersection(rays[j], object)
-                    if intersect != nothing &&
-                       sum(intersect[:].^2) < sum(intersect_final[:].^2)
-                        intersect_final = intersect
-                        intersected_object = object
-                    end
+    for i = 1:num_intersections
+        if ray.v != zeros(length(ray.v))
+            intersect_final = [Inf, Inf]
+            intersected_object = nothing
+            for object in objects
+                intersect = intersection(ray, object)
+                if intersect != nothing &&
+                   sum(intersect[:].^2) < sum(intersect_final[:].^2)
+                    intersect_final = intersect
+                    intersected_object = object
                 end
+            end
 
-                if intersect_final != nothing
-                    rays[j].p .+= intersect_final
-                    positions[j, i, :] .= rays[j].p
-                    if typeof(intersected_object) == Sphere
-                        if isapprox(intersected_object.s.t, 1)
-                            ior = 1/intersected_object.s.ior
-                            if dot(rays[j].v,
-                                   sphere_normal_at(rays[j],
-                                                    intersected_object)) > 0
-                                ior = intersected_object.s.ior
-                            end
-
-                            refract!(rays[j], intersected_object, ior)
-                        elseif isapprox(intersected_object.s.r, 1)
-                            n = sphere_normal_at(rays[j], intersected_object)
-                            reflect!(rays[j], n)
-                        elseif isapprox(intersected_object.s.c.alpha, 1)
-                            rays[j].c = RGB(intersected_object.s.c)
-                            rays[j].v = zeros(length(rays[j].v))
+            if intersect_final != nothing
+                ray.p .+= intersect_final
+                if typeof(intersected_object) == Sphere
+                    if !isapprox(intersected_object.s.t, 0)
+                        ior = 1/intersected_object.s.ior
+                        if dot(ray.v,
+                               sphere_normal_at(ray,
+                                                intersected_object)) > 0
+                            ior = intersected_object.s.ior
                         end
 
-                    elseif typeof(intersected_object) == Mirror
-                        reflect!(rays[j], intersected_object.n)
-                    elseif typeof(intersected_object) == SkyBox
-                        rays[j].c = pixel_color(rays[j].p)
-                        rays[j].v = zeros(length(rays[j].v))
+                        ray = refract(ray, intersected_object, ior)
+                    elseif !isapprox(intersected_object.s.r, 0)
+                        n = sphere_normal_at(ray, intersected_object)
+                        ray = reflect(ray, n)
+                    elseif !isapprox(intersected_object.s.c.alpha, 0)
+                        ray_color = RGB(intersected_object.s.c)
+                        ray_vel = zeros(length(ray.v))
+                        ray = Ray(ray_vel, ray.p, ray_color)
                     end
-                else
-                    println("hit nothing")
+
+                elseif typeof(intersected_object) == Mirror
+                    ray = reflect(ray, intersected_object.n)
+                elseif typeof(intersected_object) == SkyBox
+                    ray_color = pixel_color(ray.p)
+                    ray_vel = zeros(length(ray.v))
+                    ray = Ray(ray_vel, ray.p, ray_color)
                 end
+            else
+                println("hit nothing")
             end
         end
     end
-end
 
-function parallel_propagate(ray_num, num_intersections, box_size;
-                            filename="check.png")
-
-    radius = 5
-    rays = [Ray([1, 0],
-            [0.01, float(i*2*radius/ray_num)], RGB(0)) for i = 1:ray_num]
-
-    lenses = [Lens([10, 5], radius/1.1, 1.5)]
-    mirrors = [Mirror([-1.0, 0.0], [25.0, 5.0]),
-               Mirror([1.0, 0.0], [0, 5.0]),
-               Mirror([0.0, 1.0], [12.5, 0.0]),
-               Mirror([0.0, -1.0], [12.5, 10.0])]
-
-    objects = vcat(lenses, mirrors)
-    positions = zeros(ray_num, num_intersections, 2)
-
-    for i = 1:length(rays)
-        positions[i, 1, :] .= rays[i].p
-    end
-
-    propagate!(rays, objects, num_intersections, positions)
-
-    plot_rays(positions, objects, filename)
-
-    return (positions, rays)
-
+    return ray
 end
 
 function pixel_color(position)
@@ -480,18 +373,11 @@ function ray_trace(objects::Vector{O}, cam::Camera; filename="check.png",
 
     rays = init_rays(cam)
 
-    # initializing the array of positions
-    positions = zeros(length(rays), num_intersections, 3)
-
-    for i = 1:length(rays)
-        positions[i, 1, :] .= rays[i].p
-    end
-
-    propagate!(rays, objects, num_intersections, positions)
+    rays = propagate(rays, objects, num_intersections)
 
     convert_to_img(rays, filename)
 
-    return (positions, rays)
+    return rays
 
 end
 
