@@ -307,18 +307,9 @@ function propagate!(rays::Array{Ray}, objects::Vector{O},
                     positions[j, i, :] .= rays[j].p
                     if typeof(intersected_object) == Lens
                         ior = 1/intersected_object.ior
-#=
-                        println(rays[j].v, '\t', rays[j].p, '\n',
-                                sphere_normal_at(rays[j], intersected_object))
-                        println(dot(rays[j].v,
-                               sphere_normal_at(rays[j], intersected_object)))
                         if dot(rays[j].v,
                                sphere_normal_at(rays[j],
                                                 intersected_object)) > 0
-=#
-                        if(inside_of(rays[j].p-rays[j].v*0.01,
-                           intersected_object))
-                            ior = intersected_object.ior
                         end
 
                         refract!(rays[j], intersected_object, ior)
