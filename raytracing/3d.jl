@@ -1,4 +1,5 @@
-# TODO: get refraction to work
+# TODO: get refraction to work without offsets in quadratic / inside_of fxs
+#       Also, use dot product to see if exiting lens
 
 using Plots
 using LinearAlgebra
@@ -217,9 +218,9 @@ function intersection_quadratic(ray::Ray, lens::Lens)
         max = maximum(roots)
 
         if min > 0
-            return (min)*ray.v
+            return (min)*ray.v + 0.001*ray.v
         elseif max > 0
-            return (max)*ray.v
+            return (max)*ray.v + 0.001*ray.v
         else
             return nothing
         end
@@ -230,8 +231,8 @@ function intersection_quadratic(ray::Ray, lens::Lens)
     end 
 end
 
-#intersection(ray::Ray, lens::Lens) = intersection_quadratic(ray, lens)
-intersection(ray::Ray, lens::Lens) = intersection_geometric(ray, lens)
+intersection(ray::Ray, lens::Lens) = intersection_quadratic(ray, lens)
+#intersection(ray::Ray, lens::Lens) = intersection_geometric(ray, lens)
 
 function intersection(ray::Ray, wall::W) where {W <: Wall}
     intersection_pt = -dot((ray.p .- wall.p),wall.n)/dot(ray.v, wall.n)
@@ -304,7 +305,8 @@ function propagate!(rays::Array{Ray}, objects::Vector{O},
                     rays[j].p .+= intersect_final
                     positions[j, i, :] .= rays[j].p
                     if typeof(intersected_object) == Lens
-                        ior = intersected_object.ior
+                        ior = 1/intersected_object.ior
+                        #println(j, " velocity before: ", rays[j].v)
 #=
                         println(rays[j].v, '\t', rays[j].p, '\n',
                                 lens_normal_at(rays[j], intersected_object))
@@ -313,14 +315,16 @@ function propagate!(rays::Array{Ray}, objects::Vector{O},
                         if dot(rays[j].v,
                                lens_normal_at(rays[j], intersected_object)) > 0
 =#
-                        if(inside_of(rays[j], intersected_object))
-                            ior = 1/intersected_object.ior
+                        if(inside_of(rays[j].p-rays[j].v*0.01,
+                           intersected_object))
+                            ior = intersected_object.ior
                         end
 
                         refract!(rays[j], intersected_object, ior)
                         if rays[j].v == zeros(length(rays[j].v))
                             reflect!(rays[j], lens_normal_at(rays[j], lens))
                         end
+                        #println(j, " velocity after: ", rays[j].v)
 
                     elseif typeof(intersected_object) == Mirror
                         reflect!(rays[j], intersected_object.n)
@@ -328,8 +332,8 @@ function propagate!(rays::Array{Ray}, objects::Vector{O},
                         rays[j].c = pixel_color(rays[j].p)
                         rays[j].v = zeros(length(rays[j].v))
                     end
-
-                    #println(rays[j].v, '\t', rays[j].p)
+                else
+                    println("hit nothing")
                 end
             end
         end
@@ -339,10 +343,11 @@ end
 function parallel_propagate(ray_num, num_intersections, box_size;
                             filename="check.png")
 
+    radius = 5
     rays = [Ray([1, 0],
-            [0.1, float(i)], RGB(0)) for i = 1:ray_num]
+            [0.01, float(i*2*radius/ray_num)], RGB(0)) for i = 1:ray_num]
 
-    lenses = [Lens([10, 5], 5, 1.5)]
+    lenses = [Lens([10, 5], radius, 1.5)]
     mirrors = [Mirror([-1.0, 0.0], [25.0, 5.0]),
                Mirror([1.0, 0.0], [0, 5.0]),
                Mirror([0.0, 1.0], [12.5, 0.0]),
@@ -359,23 +364,35 @@ function parallel_propagate(ray_num, num_intersections, box_size;
 
     plot_rays(positions, objects, filename)
 
-    return positions
+    return (positions, rays)
 
 end
 
 function pixel_color(position)
+    extents = 100
     c = RGB(0)
+    if position[1] < extents && position[1] > -extents
+        c += RGB((position[1]+100)/200, 0, 0)
+    end
+    if position[2] < extents && position[2] > -extents
+        c += RGB(0,(position[2]+100)/200, 0)
+    end
+    if position[3] < extents && position[3] > -extents
+        c += RGB(0,0,(position[3]+100)/200)
+    end
+#=
     if position[3] < 0
         c += RGB(0,0,1)
     end
 
     if position[2] < 0
-        c += RGB(0,1,0)
+        c += RGB(0.1*rand*(),1,0)
     end
 
     if position[1] < 0
         c += RGB(1,0,0)
     end
+=#
 
     return c
 end
@@ -410,16 +427,20 @@ function ray_trace(res, dim; filename="check.png", camera_loc=[0,0,1],
            SkyBox([0.0, -1.0, 0.0], [0.0, 50.0, 00.0]),
            SkyBox([0.0, 0.0, 1.0], [0.0, 0.0, -50.0]),
            SkyBox([0.0, 0.0, -1.0], [0.0, 0.0, 50.0])]
+    #mirrors = [Mirror([0.0, 0.0, 1.0], [0.0, 0.0, -40.0])]
 
     lenses = [Lens([0,0,-25], 20, 1.5)]
 
     objects = vcat(sky, lenses)
     positions = zeros(length(rays), num_intersections, 3)
+    for i = 1:length(rays)
+        positions[i, 1, :] .= rays[i].p
+    end
 
     propagate!(rays, objects, num_intersections, positions)
 
     convert_to_img(rays, filename)
 
-    return rays
+    return (positions, rays)
 
 end
