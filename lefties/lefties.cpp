@@ -15,7 +15,7 @@
 #include "include/camera.h"
 #include "include/scene.h"
 
-std::vector<vec> normalize(std::vector<vec> points, double factor){
+std::vector<vec> normalize(std::vector<vec> points){
     double max_value = 0.0;
     for (int i = 0; i < points.size(); ++i){
          if (points[i].y > max_value){
@@ -26,20 +26,23 @@ std::vector<vec> normalize(std::vector<vec> points, double factor){
     std::cout << max_value << '\n';
 
     for (int i = 0; i < points.size(); ++i){
-        points[i].y = points[i].y * factor / max_value;
+        points[i].y /= max_value;
     }
 
     return points;
 }
 
 std::vector<vec> GM_dist(int res, vec dim, double beta){
-    std::vector<vec> GM_points(res);
+    std::vector<vec> GM_points;
     for (int i = 0; i < res; ++i) {
         GM_points.emplace_back(i * dim.x/res, std::exp(i * beta));
     }
 
-    return normalize(GM_points, dim.y);
-    //return GM_points;
+    GM_points = normalize(GM_points);
+    for (int i = 0; i < GM_points.size(); ++i)
+        GM_points[i].y *= dim.y;
+
+    return GM_points;
 }
 
 void lefty_vis(camera& cam, scene& world) {
@@ -55,7 +58,7 @@ void lefty_vis(camera& cam, scene& world) {
     auto GM_curve =
         std::make_shared<curve>(std::vector<vec>(), origin);
 
-    GM_curve->add_animator<vector_animator<vec>>(0, 200, 0, GM_points,
+    GM_curve->add_animator<vector_animator<vec>>(0, GM_points.size(), 0, GM_points,
                                                  &GM_curve->points);
 
     world.add_object(title, 0);
