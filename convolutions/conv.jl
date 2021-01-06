@@ -1,5 +1,6 @@
 using FFTW
 using Plots
+using Plots.PlotMeasures
 using LinearAlgebra
 
 import Plots: default
@@ -19,17 +20,18 @@ function signal_plot(i, signal1, signal2, out; filebase = "out",
     end
     shift_signal = real([signal2[n1-i:n1-1];signal2[1:n1-i]])
     conv_sum = real(signal1).*shift_signal
-    plt = plot(real(signal1); label = "signal (f)",
+    plt = plot(real(signal1); label = "signal (f(x))",
                ylabel = "Signal and Filter values", dpi=200, legend=:topleft,
-               ylims=(0,1), size=(600,400), right_margin=12mm)
-    plt = plot!(plt, shift_signal; label = "filter (g)")
-    plt = plot!(plt, zeros(n1); label = "area under fg",
+               ylims=(0,1.3), size=(600,400), right_margin=12mm,
+               xlabel = "x")
+    plt = plot!(plt, shift_signal; label = "filter (g(x-t))")
+    plt = plot!(plt, zeros(n1); label = "area under f(x)g(x-t)",
                 ribbon=(zeros(n1),conv_sum))
 
     plt = twinx()
     plt = plot!(plt, real(out); label = out_name,
                 linewidth=2, linestyle=:dash, ylabel = "Convolution output", 
-                grid=:off, ylims = (0,scale+0.1), linecolor=:purple, 
+                grid=:off, ylims = (0,scale*1.3), linecolor=:purple, 
                 legend=:topright)
     savefig(filebase*lpad(string(i),5,string(0))*".png")
 
@@ -44,7 +46,7 @@ end
 
 function conv_lin(signal1::Array{Float64,1},
                   signal2::Array{Float64,1};
-                  norm_factor = 1, plot = false)
+                  norm_factor = 1, plot = false, frame_output = 1)
     n = length(signal1)
     out = zeros(n)
     rsum = 0
@@ -59,7 +61,7 @@ function conv_lin(signal1::Array{Float64,1},
                        .*reverse(signal2))
         end
         out[i] = rsum
-        if plot
+        if plot && i % frame_output == 0
             signal_plot(i, signal1, signal2, out; scale = norm_factor)
         end
         rsum = 0
@@ -69,14 +71,15 @@ function conv_lin(signal1::Array{Float64,1},
 end
 
 function main()
-    #x = [exp(-((i-50)/100)^2/.01) for i = 1:100]
-    #y = [exp(-((i-50)/100)^2/.01) for i = 1:100]
-    x = zeros(100)
-    x[40:60] .= 1.0 + 0im
-    y = [(float(i))/20 for i = 20:-1:0]
+    #x = [exp(-((i-500)/1000)^2/.01) for i = 1:1000]
+    #y = [exp(-((i-500)/1000)^2/.01) for i = 1:1000]
+    x = zeros(1000)
+    x[400:600] .= 1.0 + 0im
+    y = [(float(i))/200 for i = 200:-1:0]
     #normalize!(x)
     #normalize!(y)
-    out_conv = conv_lin(x,y, norm_factor=sum(x.*x)*0.5; plot=true)
+    out_conv = conv_lin(x,y, norm_factor=sum(x.*x)*0.5; plot=true,
+                        frame_output = 10)
 
     return x
 end
