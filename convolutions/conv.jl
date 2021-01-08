@@ -23,8 +23,11 @@ function signal_plot(i, signal1, signal2, out; filebase = "out",
     temp = -ones(n1)
     if n2 < n1
         signal2 = [reverse(signal2);zeros(n1-n2)]
-    elseif n1 > n2
+    elseif n1 < n2
         signal1 = [signal1;zeros(n2-n1)]
+        signal2 = reverse(signal2)
+    else
+        signal2 = reverse(signal2)
     end
     if bounds_type == :periodic
         shift_signal = real([signal2[n1-i:n1-1];signal2[1:n1-i]])
@@ -60,8 +63,7 @@ function conv_fft(signal1::Array{Float64,1},
     return ifft(fft(signal1).*fft(signal2))
 end
 
-function conv_lin(signal1::Array{Float64,1},
-                  signal2::Array{Float64,1};
+function conv_lin(signal1::Array, signal2::Array;
                   norm_factor = 1, plot = false, frame_output = 1,
                   bounds_type = :periodic)
     n = length(signal1)
@@ -89,6 +91,25 @@ function conv_lin(signal1::Array{Float64,1},
                         bounds_type = bounds_type)
         end
         rsum = 0
+    end
+
+    return out
+end
+
+function conv_check(signal1::Array, signal2::Array)
+    n = length(signal1) + length(signal2)
+    out = Array{Complex{Float64},1}(undef,n)
+    sum = 0
+
+    for i = 1:n-1
+        for j = 1:i-1
+            if i-j < length(signal2) && j < length(signal1)
+                println(j, '\t', i, '\t', i-j)
+                sum += signal1[j] * signal2[i-j]
+            end
+        end
+        out[i] = sum
+        sum = 0
     end
 
     return out
