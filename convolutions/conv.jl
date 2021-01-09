@@ -1,6 +1,5 @@
-#TODO: Fix offset in visualization
-#TODO: Fix visualization for different bounds -- fix left simple bound
-#TODO: Simple bounds also requires no bounds
+#TODO: Fix offset in visualization for periodic bounds
+#TODO: Fix visualization for different bounds -- add simple bound
 
 using FFTW
 using Plots
@@ -80,8 +79,12 @@ function signal_plot(i, signal1, signal2, out; filebase = "out",
     plt = plot!(plt, real(out[1:i]); label = "",
                 linewidth=2, linestyle=:dash, ylabel = "Convolution output", 
                 grid=:off, ylims = (0,scale*1.35), linecolor=:purple) 
-    plt = plot!(plt, vcat(zeros(i), real(out[i])/scale); label = "",
+    plt = plot!(plt, ([i,i],[0,real(out[i])/scale]); label = "",
                 linewidth=2, linecolor=:purple)
+#=
+    plt = plot!(plt, vcat(zeros(i-1), real(out[i])/scale); label = "",
+                linewidth=2, linecolor=:purple)
+=#
     savefig(filebase*lpad(string(i),5,string(0))*".png")
 end
 
@@ -195,7 +198,7 @@ function main()
     # Gaussian signals
     #x = [exp(-((i-500)/1000)^2/.01) for i = 1:1000]
     y = [exp(-((i-50)/100)^2/.01) for i = 1:100]
-    y = vcat(y[div(length(y),2)+1:end], y[1:div(length(y),2)])
+    #y = vcat(y[div(length(y),2)+1:end], y[1:div(length(y),2)])
 
     # Square wave
     x = zeros(1000)
@@ -211,7 +214,7 @@ function main()
     #normalize!(x)
     #normalize!(y)
     out_conv = conv_periodic(x,y, norm_factor=sum(x.*x); plot=true,
-                             frame_output = 10)
+                             frame_output = 1)
     #out_conv = conv_lin(x,y, norm_factor=sum(x.*x); plot=true,
     #                   frame_output = 1)
 
