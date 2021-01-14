@@ -1,6 +1,6 @@
 /*-------------monte_carlo_vis.cpp--------------------------------------------//
 *
-* Purpose: To visualize a simple monte-carlo agorithm for LeiosOS
+* Purpose: To visualize a simple monte-carlo algorithm for LeiosOS
 *
 *   Notes: This will be using the cairo package, hopefully creating animations
 *          I could use the subroutine-comic project, but this will be from 
