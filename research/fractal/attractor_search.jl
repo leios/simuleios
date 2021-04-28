@@ -1,5 +1,9 @@
+# TODO: Fix image birghtness when writing images out to file
+
 using DelimitedFiles
 using LinearAlgebra
+using Images
+using ImageIO
 
 # Function to output a set of points as an image
 function create_image_array(points, ranges, res; point_offset = 10)
@@ -26,6 +30,17 @@ function create_image_array(points, ranges, res; point_offset = 10)
         return zeros(size(output_array))
     end
 
+end
+
+function write_image(points, ranges, res, filename; point_offset = 10)
+    img_array = create_image_array(points, ranges, res;
+                                   point_offset = point_offset)
+    write_image(img_array, filename)
+    
+end
+
+function write_image(img_array, filename)
+    save(filename, reverse(img_array / maximum(img_array),dims=1))
 end
 
 # Create a set of affine transforms for function system
@@ -81,7 +96,7 @@ end
 function main()
     #hutchinson = create_sierpinski_set([0.0, 0.0], [0.5, sqrt(0.75)], [1.0, 0.0])
     hutchinson = create_barnsley_set()
-    output_points = chaos_game(10000, hutchinson)
+    output_points = chaos_game(100000000, hutchinson)
     #println(output_points)
     writedlm("out.dat", output_points)
     return output_points
