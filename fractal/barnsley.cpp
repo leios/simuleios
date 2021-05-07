@@ -7,6 +7,7 @@
           For all affine transforms, we are storing them as:
               [0 1]   [2]
               [3 4] + [5]
+    TODO: Visual of pregenerated barnsley fern doing each transform
 
 *-----------------------------------------------------------------------------*/
 
@@ -51,12 +52,12 @@ vec apply_barnsley(vec point, int bid){
 //     a_num is the affine transform within that function (6 possible)
 void barnsley_twiddle(camera& cam, scene& world, int n, int fx_num, int a_num){
 
+    int frame_num = 600;
     std::vector<std::shared_ptr<ellipse>> balls(n);
     world.add_layer();
     world.add_layer();
 
-    vec pt = vec{0,0};
-
+    double twiddle_val = 0;
 
     // Create function set
     double fx_set[4][6] = {{0.00,0.00,0.00,0.00,0.16,0.00},
@@ -64,43 +65,71 @@ void barnsley_twiddle(camera& cam, scene& world, int n, int fx_num, int a_num){
                            {0.2, -0.26, 0.00, 0.23, 0.22, 1.6},
                            {-0.15, 0.28, 0.00, 0.26, 0.24, 0.44}};
 
+    double modified_element = fx_set[fx_num][a_num];
+
+    double twiddle_max = 0.5;
+    if (1-abs(fx_set[fx_num][a_num]) < 0.5){
+        twiddle_max = 1-abs(fx_set[fx_num][a_num]);
+    }
+
     // Do chaos game
     // Implementing barnsley fern
-    for (int i = 0; i < n; ++i){
-        double rnd = rand() % 10000 * 0.0001;
-        if (rnd <= 0.01){
-            pt = apply_affine(pt, fx_set[0]);
-            //pt = apply_barnsley(pt, 0);
+    for (int i = 0; i < frame_num; ++i){
+        vec pt = vec{0,0};
+        if (i < frame_num/4){
+            twiddle_val = i * twiddle_max / (0.25*frame_num);
         }
-        else if (rnd > 0.01 && rnd <= 0.86){
-            pt = apply_affine(pt, fx_set[1]);
-            //pt = apply_barnsley(pt, 1);
+        else if (i >= 0.25 * frame_num && i < 0.5 * frame_num){
+            twiddle_val = twiddle_max
+                          - (i-0.25*frame_num) * twiddle_max / (0.25*frame_num);
         }
-        else if (rnd > 0.86 && rnd <= 0.93){
-            pt = apply_affine(pt, fx_set[2]);
-            //pt = apply_barnsley(pt, 2);
+        else if (i >= 0.5 * frame_num && i < 0.75 * frame_num){
+            twiddle_val = 0.0
+                          - (i-0.5*frame_num) * twiddle_max / (0.25*frame_num);
         }
-        else{
-            pt = apply_affine(pt, fx_set[3]);
-            //pt = apply_barnsley(pt, 3);
+        else if (i >= 0.75 * frame_num){
+            twiddle_val = -twiddle_max
+                          + (i-0.75*frame_num) * twiddle_max / (0.25*frame_num);
+        }
+        //std::cout << twiddle_val << '\n';
+
+        fx_set[fx_num][a_num] = modified_element + twiddle_val;
+        if (fx_set[fx_num][a_num] > 1){
+            fx_set[fx_num][a_num] = 1;
+        }
+        std::cout << i << '\t' << fx_set[fx_num][a_num] << '\n';
+        
+        srand(1337);
+        for (int j = 0; j < n; ++j){
+            double rnd = rand() % 10000 * 0.0001;
+            if (rnd <= 0.01){
+                pt = apply_affine(pt, fx_set[0]);
+            }
+            else if (rnd > 0.01 && rnd <= 0.86){
+                pt = apply_affine(pt, fx_set[1]);
+            }
+            else if (rnd > 0.86 && rnd <= 0.93){
+                pt = apply_affine(pt, fx_set[2]);
+            }
+            else{
+                pt = apply_affine(pt, fx_set[3]);
+            }
+
+            vec loc = {world.size.x*0.5 + 200*pt.x,
+                       world.size.y*0.5 + 500 - 100*pt.y};
+
+            color ball_color = {0,1-((double)n-j)/n,1-(double)j/n,1};
+            auto ball = std::make_shared<ellipse>(ball_color,
+                                                  loc, vec{2,2}, 0, 1);
+            world.add_object(ball,1);
         }
 
-        vec loc = {world.size.x*0.5 + 200*pt.x,
-                   world.size.y*0.5 + 500 - 100*pt.y};
 
-        color ball_color = {0,1-((double)n-i)/n,1-(double)i/n,1};
-        auto ball = std::make_shared<ellipse>(ball_color,
-                                              loc, vec{2,2}, 0, 1);
-        world.add_object(ball,1);
-    }
-
-
-    for (int i = 0; i < 600; ++i){
         world.update(i);
         cam.encode_frame(world);
+        world.clear_layer(1);
     }
 
-    world.clear();
 
 }
 
@@ -150,8 +179,77 @@ void barnsley_quadtransform(camera& cam, scene& world, int n){
 
 }
 
+// This function creates a barnsley fern and uses the chosen
+//     transformation from the barnsley fern to get an idea what each one does
+void barnsley_fern_transform(camera& cam, scene& world, int n, int ttype){
+
+    std::vector<vec> pts(n);
+    std::vector<std::shared_ptr<ellipse>> balls(n), new_balls(n);
+    world.add_layer();
+    world.add_layer();
+
+    int bf = 0;
+    for (int i = 0; i < pts.size(); ++i){
+        if (i == 0){
+            pts[0] = {0,0};
+        }
+        else {
+            double rnd = (double)(rand() % 1000) / 1000;
+            if (rnd <= 0.01){
+                bf = 0;
+            }
+            else if (rnd > 0.01 && rnd <= 0.86){
+                bf = 1;
+            }
+            else if (rnd > 0.86 && rnd <= 0.93){
+                bf = 2;
+            }
+            else{
+                bf = 3;
+            }
+
+            pts[i] = apply_barnsley(pts[i-1], bf);
+        }
+
+        vec loc = {world.size.x*0.5 + 200*pts[i].x,
+                   world.size.y*0.5 + 500 - 100*pts[i].y};
+        color ball_color = {0,1-((double)n-i)/n,1-(double)i/n,1};
+
+        balls[i] = std::make_shared<ellipse>(ball_color, loc, vec{0,0}, 0, 1);
+        balls[i]->add_animator<vec_animator>(0,30,&balls[i]->size,
+                                             vec{0,0}, vec{2,2});
+        new_balls[i] = std::make_shared<ellipse>(ball_color,
+                                                 loc, vec{0,0}, 0, 1);
+        new_balls[i]->add_animator<vec_animator>(0,30,&new_balls[i]->size,
+                                                 vec{0,0}, vec{2,2});
+    }
+
+    for (int i = 0; i < pts.size(); ++i){
+        vec loc_prev = {world.size.x*0.5 + 200*pts[i].x,
+                        world.size.y*0.5 + 500 - 100*pts[i].y};
+        pts[i] = apply_barnsley(pts[i],ttype);
+        vec loc_after = {world.size.x*0.5 + 200*pts[i].x,
+                         world.size.y*0.5 + 500 - 100*pts[i].y};
+        new_balls[i]->add_animator<vec_animator>(60,120,&new_balls[i]->location,
+                                                 loc_prev, loc_after);
+        new_balls[i]->add_animator<color_animator>(60,120,&new_balls[i]->clr,
+                                                   new_balls[i]->clr, 
+                                                   color{0.5,0,0,1});
+        world.add_object(balls[i], 1);
+        world.add_object(new_balls[i], 2);
+    }
+
+    for (int i = 0; i < 200; ++i){
+        world.update(i);
+        cam.encode_frame(world);
+    }
+
+    world.clear();
+}
+
+
 // This function creates a random distribution of points and uses the chosen
-//     transformation from the barnsel fern to get an idea what each one does
+//     transformation from the barnsley fern to get an idea what each one does
 void barnsley_transform(camera& cam, scene& world, int n, int ttype){
 
     std::vector<vec> pts(n);
@@ -182,7 +280,7 @@ void barnsley_transform(camera& cam, scene& world, int n, int ttype){
         world.add_object(balls[i], 1);
     }
 
-    for (int i = 0; i < 600; ++i){
+    for (int i = 0; i < 200; ++i){
         world.update(i);
         cam.encode_frame(world);
     }
@@ -200,9 +298,7 @@ void barnsley(camera& cam, scene& world, int n, int bin_size){
 
     // First, generate random point.
 
-    //vec pt = {0, 0};
-    //vec pt = {rand()%100/100.0, rand()%100/100.0};
-    vec pt = {99,74};
+    vec pt = {0, 0};
 
     // Implementing barnsley fern
     for (int i = 0; i < n; ++i){
@@ -247,14 +343,30 @@ int main(){
     camera cam(vec{1920, 1080});
     scene world = scene({1920, 1080}, {0, 0, 0, 1});
     double a_test[1][6] = {{1,2,3,4,5,6}};
+    world.bg_clr = {1,1,1,1};
 
     vec pt = vec{1,1};
     pt = apply_affine(pt, a_test[0]);
 
     cam.add_encoder<video_encoder>("/tmp/video.mp4", cam.size, 60);
-    //barnsley(cam, world, 10000, 100);
+    //barnsley(cam, world, 100000, 1000);
     //barnsley_quadtransform(cam, world, 1000);
     //barnsley_transform(cam, world, 1000, 0);
-    barnsley_twiddle(cam, world, 1000, 0, 0);
+    barnsley_fern_transform(cam, world, 100000, 3);
+    //barnsley_twiddle(cam, world, 10000, 1, 0);
     cam.clear_encoders();
+/*
+    std::string filebase = "/tmp/video";
+    std::string fileend = ".mp4";
+    for (int i = 0; i < 4; ++i){
+        for (int j = 0; j < 6; ++j){
+            std::string filename = filebase + std::to_string(i)
+                                   + std::to_string(j) + fileend;
+            std::cout << filename << '\n';
+            cam.add_encoder<video_encoder>(filename, cam.size, 60);
+            barnsley_twiddle(cam, world, 10000, i, j);
+            cam.clear_encoders();
+        }
+    }
+*/
 }
