@@ -1,4 +1,4 @@
-using CUDAnative, CUDAdrv, CuArrays, Test
+using CUDA, Test
 
 function kernel_vadd(a, b, c)
     i = (blockIdx().x-1) * blockDim().x + threadIdx().x
@@ -7,9 +7,9 @@ function kernel_vadd(a, b, c)
     return nothing
 end
 
-function main()
+@testset "Basic GPU addition" begin
 
-    res =1024
+    res = 1024
 
     # CUDAdrv functionality: generate and upload data
     a = round.(rand(Float32, (1024, 1024)) * 100)
@@ -31,5 +31,4 @@ function main()
     @test a+b ≈ c
 end
 
-main()
 #GC.gc()
