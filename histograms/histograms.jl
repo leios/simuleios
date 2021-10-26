@@ -4,12 +4,12 @@ using CUDAKernels
 using KernelAbstractions
 
 # Function to use as a baseline for CPU metrics
-function histogram(values)
-    histogram = zeros(Int, maximum(values))
-    for i = 1:length(values)
-        histogram[values[i]] += 1
+function histogram(input)
+    histogram_output = zeros(Int, maximum(input))
+    for i = 1:length(input)
+        histogram_output[input[i]] += 1
     end
-    return histogram
+    return histogram_output
 end
 
 # This is for a 1D histogram, for n-dim binning, we need to think a bit more
@@ -21,69 +21,83 @@ end
 #     2. lid doesn't make sense on the CPU with only 4 cores.
 #     3. fix error with jl_apply_type for GPU
 #     4. Think about svectors
-@kernel function histogram_tag_kernel!(histogram, values)
+#     5. dynamic shmem allocation is not allowed, so use threadsize or a const
+#     6. We need to find a way to do a coalesced write to global memory
+#         - I think this will be easier on the GPU when more threads are avail
+@kernel function histogram_tag_kernel!(histogram_output, input)
     tid = @index(Global, Linear)
-    lid = @index(Local, Linear)
+    #lid = @index(Local, Linear)
 
-    shared_histogram = @localmem Int32 length(histogram)
-
-    if tid == 1
-        @print("LENGTH OF SHARED HIST: ", length(shared_histogram), "\n")
-    end
+    #shared_histogram = @localmem Int32 length(histogram_output)
+    shared_histogram = @localmem Int64 128
 
     # Note: this is 4 for CPU
-    @print("LID is: ", lid, '\n')
+    #@print("LID is: ", lid, '\n')
+    @print("TID is: ", tid, '\n')
 
     # TODO: anything but this!
-    if lid <= length(histogram)
-        @inbounds shared_histogram[lid] = 0
+    if tid <= 128
+        @inbounds shared_histogram[tid] = 0
     end
 
     @synchronize()
 
-    #@print("values are: ", values[tid], "\n")
+    #@print("values are: ", input[tid], "\n")
 
-    if tid < length(values)
-        @inbounds shared_histogram[values[tid]] += 1
+    if tid < length(histogram_output)
+        @print("CHECK\n")
+    end 
+
+    if tid <= length(input)
+        @inbounds temp = shared_histogram[input[tid]]
+        @inbounds shared_histogram[input[tid]] = temp + 1
+        @print("input is: ", input[tid], '\n')
+        @print("hist is: ", shared_histogram[input[tid]], "\n\n")
     end 
 
     @synchronize()
 
-    if tid <= length(histogram)
-        #@print("histogram values: ", shared_histogram[tid], '\n')
-        @inbounds histogram[tid] += shared_histogram[lid]
+    @print(length(histogram_output), '\n')
+
+    if tid <= length(histogram_output)
+        @print("histogram values: ", shared_histogram[tid], '\n')
+        @inbounds histogram_output[input[tid]] += shared_histogram[input[tid]]
     end
+
+    @synchronize()
 end
 
-function histogram_tag(values; numcores = 4, numthreads = 256)
+function histogram_tag(input; numcores = 4, numthreads = 256)
     # I don't know how maximum is optimized on the GPU
-    histogram = zeros(Int32, maximum(values))
-    if isa(values, Array)
-        event = histogram_tag!(histogram, values;
+    histogram_output = zeros(Int64, maximum(input))
+    if isa(input, Array)
+        event = histogram_tag!(histogram_output, input;
                                numcores = numcores, numthreads = numthreads)
+        wait(event)
     else
-        event = histogram_tag!(CuArray(histogram), values;
+        event = histogram_tag!(CuArray(histogram_output), input;
                                numcores = numcores, numthreads = numthreads)
+        wait(event)
     end
-    wait(event)
-    return histogram
+    return histogram_output
 end
 
-function histogram_tag!(histogram, values; numcores = 4, numthreads = 256)
+function histogram_tag!(histogram_output, input;
+                        numcores = 4, numthreads = 256)
 
-    if isa(values, Array)
+    if isa(input, Array)
         kernel! = histogram_tag_kernel!(CPU(), numcores)
     else
         kernel! = histogram_tag_kernel!(CUDADevice(), numthreads)
     end
 
-    kernel!(histogram, values, ndrange=size(values))
+    kernel!(histogram_output, input, ndrange=size(input))
 end
 
 #=
 @testset "histogram tests" begin
 
-    a = [Int32(rand(1:128)) for i = 1:1000]
+    a = [Int64(rand(1:128)) for i = 1:1000]
     final_histogram = histogram(a)
 
     CPU_tag_histogram = histogram_tag(a)
