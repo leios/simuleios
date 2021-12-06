@@ -127,3 +127,27 @@ function cartesian_box_muller!(input_pts, output_pts, sigma, mu;
 
     kernel!(input_pts, output_pts, sigma, mu, ndrange=size(input_pts)[1])
 end
+
+function main()
+
+    input_pts = create_rand_dist(4096^2,[0,1])
+    output_pts = create_rand_dist(4096^2,[0,1])
+
+    wait(cartesian_box_muller!(input_pts, output_pts, 1, 0))
+    @time wait(cartesian_box_muller!(input_pts, output_pts, 1, 0))
+    wait(polar_box_muller!(input_pts, output_pts, 1, 0))
+    @time wait(polar_box_muller!(input_pts, output_pts, 1, 0))
+
+    if has_cuda_gpu()
+        input_pts = create_rand_dist(4096^2,[0,1], AT = CuArray)
+        output_pts = create_rand_dist(4096^2,[0,1], AT = CuArray)
+
+        wait(cartesian_box_muller!(input_pts, output_pts, 1, 0))
+        CUDA.@time wait(cartesian_box_muller!(input_pts, output_pts, 1, 0))
+        wait(polar_box_muller!(input_pts, output_pts, 1, 0))
+        CUDA.@time wait(polar_box_muller!(input_pts, output_pts, 1, 0))
+    end
+
+end
+
+main()
