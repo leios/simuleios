@@ -50,11 +50,10 @@ end
 
         if input[tid] >= min_element && input[tid] <= max_element
             bin = input[tid]-min_element+1
-            #bin = CartesianIndex((input[tid]-min_element+1)%warpsize,
-            #                     floor(Int, (input[tid]-min_element)/warpsize)+1)
-            #@print(bin, '\t', tid, '\t', min_element,'\t',cols,'\t',input[tid],'\n')
+
             tagged = UInt32(255)
-            while shared_histogram[bin] != tagged
+            #while shared_histogram[bin] != tagged
+            while true
                 # Storing the value in 27 bits and erasing the first 5
                 val = shared_histogram[bin] & 0x07FFFFFF
 
@@ -62,26 +61,13 @@ end
                 tagged = ((tid & 0x1f) << 27) | val+1
                 shared_histogram[bin] = tagged
                 #@synchronize()
+                shared_histogram[bin] != tagged || break
             end
-            shared_histogram[bin] = shared_histogram[bin] & 0x07FFFFFF
-#=
-            for i = 1:size(shared_histogram)[2]
-                shared_min = 0
-                shared_max = 0
-                @inbounds tag_bin!(shared_histogram[:,i],
-                                   input,
-                                   shared_min,
-                                   shared_max,
-                                   tid, lid)
-            end
-=#
-            #@inbounds shared_histogram[input[tid]-min_element+1] += 1
-            #@inbounds shared_histogram[bin] += 1
-            
+
         end
 
         @synchronize()
-        @inbounds histogram_output[lid+min_element-1] += shared_histogram[lid]
+        @inbounds histogram_output[lid+min_element-1] += shared_histogram[lid] & 0x07FFFFFF
         @inbounds shared_histogram[lid] = 0
     end
 
