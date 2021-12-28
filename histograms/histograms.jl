@@ -26,14 +26,15 @@ end
     @uniform warpsize = Int(32)
 
     # currently fails on the CPU
-    @uniform elem = input[tid]
+    #@uniform elem = input[tid]
 
     @uniform gs = @groupsize()[1]
     @uniform N = length(input)
     @uniform cols = ceil(Int, gs/warpsize)
 
     #shared_histogram = @localmem UInt32 (warpsize, cols)
-    shared_histogram = @localmem UInt32 (32, ceil(Int, gs/warpsize))
+    #shared_histogram = @localmem UInt32 (32, ceil(Int, gs/warpsize))
+    shared_histogram = @localmem UInt32 (gs)
 
     # Setting shared_histogram to 0
     @inbounds shared_histogram[lid] = 0
@@ -44,26 +45,25 @@ end
     for min_element = 1:gs:N
         max_element = min_element + gs - 1
         if max_element > N
-            max_element = N - min_element + 1
+            max_element = N
         end
 
-        if elem >= min_element && elem <= max_element
-            bin = elem-min_element+1
-            #bin = CartesianIndex((elem-min_element+1)%warpsize,
-            #                     floor(Int, (elem-min_element)/warpsize)+1)
-#=
-            @print(bin, '\t', tid, '\t', min_element,'\t',cols,'\t',elem,'\n')
-            tagged = UInt32(0)
+        if input[tid] >= min_element && input[tid] <= max_element
+            bin = input[tid]-min_element+1
+            #bin = CartesianIndex((input[tid]-min_element+1)%warpsize,
+            #                     floor(Int, (input[tid]-min_element)/warpsize)+1)
+            #@print(bin, '\t', tid, '\t', min_element,'\t',cols,'\t',input[tid],'\n')
+            tagged = UInt32(255)
             while shared_histogram[bin] != tagged
                 # Storing the value in 27 bits and erasing the first 5
                 val = shared_histogram[bin] & 0x07FFFFFF
 
                 # tagging first 5
-                tagged = (tid << 27) | val+1
+                tagged = ((tid & 0x1f) << 27) | val+1
                 shared_histogram[bin] = tagged
-                @synchronize()
+                #@synchronize()
             end
-=#
+            shared_histogram[bin] = shared_histogram[bin] & 0x07FFFFFF
 #=
             for i = 1:size(shared_histogram)[2]
                 shared_min = 0
@@ -76,7 +76,7 @@ end
             end
 =#
             #@inbounds shared_histogram[input[tid]-min_element+1] += 1
-            @inbounds shared_histogram[bin] += 1
+            #@inbounds shared_histogram[bin] += 1
             
         end
 
