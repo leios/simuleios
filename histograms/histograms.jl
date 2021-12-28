@@ -12,6 +12,9 @@ function create_histogram(input)
     return histogram_output
 end
 
+function tag_bin!(shared_histogram, input, shared_min, shared_max, tid, lid)
+end
+
 # This is for a 1D histogram, for n-dim binning, we need to think a bit more
 # The problem here is that the @synchronize calls are only synchronizing across
 #     blocks, while we need a way to combine all the shmem histograms together 
@@ -20,10 +23,17 @@ end
     tid = @index(Global, Linear)
     lid = @index(Local, Linear)
 
+    @uniform warpsize = Int(32)
+
+    # currently fails on the CPU
+    @uniform elem = input[tid]
+
     @uniform gs = @groupsize()[1]
     @uniform N = length(input)
+    @uniform cols = ceil(Int, gs/warpsize)
 
-    shared_histogram = @localmem Int64 gs
+    #shared_histogram = @localmem UInt32 (warpsize, cols)
+    shared_histogram = @localmem UInt32 (32, ceil(Int, gs/warpsize))
 
     # Setting shared_histogram to 0
     @inbounds shared_histogram[lid] = 0
@@ -37,8 +47,37 @@ end
             max_element = N - min_element + 1
         end
 
-        if input[tid] >= min_element && input[tid] <= max_element
-            @inbounds shared_histogram[input[tid]-min_element+1] += 1
+        if elem >= min_element && elem <= max_element
+            bin = elem-min_element+1
+            #bin = CartesianIndex((elem-min_element+1)%warpsize,
+            #                     floor(Int, (elem-min_element)/warpsize)+1)
+#=
+            @print(bin, '\t', tid, '\t', min_element,'\t',cols,'\t',elem,'\n')
+            tagged = UInt32(0)
+            while shared_histogram[bin] != tagged
+                # Storing the value in 27 bits and erasing the first 5
+                val = shared_histogram[bin] & 0x07FFFFFF
+
+                # tagging first 5
+                tagged = (tid << 27) | val+1
+                shared_histogram[bin] = tagged
+                @synchronize()
+            end
+=#
+#=
+            for i = 1:size(shared_histogram)[2]
+                shared_min = 0
+                shared_max = 0
+                @inbounds tag_bin!(shared_histogram[:,i],
+                                   input,
+                                   shared_min,
+                                   shared_max,
+                                   tid, lid)
+            end
+=#
+            #@inbounds shared_histogram[input[tid]-min_element+1] += 1
+            @inbounds shared_histogram[bin] += 1
+            
         end
 
         @synchronize()
@@ -51,13 +90,13 @@ end
 function histogram_tag(input; numcores = 4, numthreads = 256)
     # I don't know how maximum is optimized on the GPU
     if isa(input, Array)
-        histogram_output = zeros(Int64, maximum(input))
+        histogram_output = zeros(UInt32, maximum(input))
         event = histogram_tag!(histogram_output, input;
                                numcores = numcores, numthreads = numthreads)
         wait(event)
         return histogram_output
     else
-        histogram_output = CuArray(zeros(Int64, maximum(input)))
+        histogram_output = CuArray(zeros(UInt32, maximum(input)))
         event = histogram_tag!(histogram_output, input;
                                numcores = numcores, numthreads = numthreads)
         wait(event)
@@ -80,7 +119,7 @@ end
 #=
 @testset "histogram tests" begin
 
-    a = [Int64(rand(1:128)) for i = 1:1000]
+    a = [UInt32(rand(1:128)) for i = 1:1000]
     final_histogram = histogram(a)
 
     CPU_tag_histogram = histogram_tag(a)
