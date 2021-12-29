@@ -29,8 +29,8 @@ end
     #@uniform elem = input[tid]
 
     @uniform gs = @groupsize()[1]
-    @uniform N = length(input)
-    @uniform cols = ceil(Int, gs/warpsize)
+    @uniform N = length(histogram_output)
+    #@uniform cols = ceil(Int, gs/warpsize)
 
     #shared_histogram = @localmem UInt32 (warpsize, cols)
     #shared_histogram = @localmem UInt32 (32, ceil(Int, gs/warpsize))
@@ -48,27 +48,29 @@ end
             max_element = N
         end
 
-        if input[tid] >= min_element && input[tid] <= max_element
-            bin = input[tid]-min_element+1
+        bin = input[tid]
+        if bin >= min_element && bin <= max_element
+            bin -= min_element-1
 
-            tagged = UInt32(255)
+            tagged = 0xffffffff
             #while shared_histogram[bin] != tagged
             while true
                 # Storing the value in 27 bits and erasing the first 5
-                val = shared_histogram[bin] & 0x07FFFFFF
+                val = shared_histogram[bin] & 0x07ffffff
 
                 # tagging first 5
-                tagged = ((tid & 0x1f) << 27) | val+1
+                tagged = ((lid % 32 ) << 27) | (val+1)
+
                 shared_histogram[bin] = tagged
-                #@synchronize()
+                @synchronize()
                 shared_histogram[bin] != tagged || break
             end
 
+            @inbounds histogram_output[lid + min_element - 1] += shared_histogram[lid] & 0x07FFFFFF
+            @inbounds shared_histogram[lid] = 0
         end
 
-        @synchronize()
-        @inbounds histogram_output[lid+min_element-1] += shared_histogram[lid] & 0x07FFFFFF
-        @inbounds shared_histogram[lid] = 0
+        #@synchronize()
     end
 
 end
