@@ -1,47 +1,36 @@
-using KernelAbstractions, CUDA, CUDAKernels
+#using KernelAbstractions, CUDA, CUDAKernels
 
-macro nif(N, condition, operation...)
-    # Handle the final "else"
-    ex = esc(Base.Cartesian.inlineanonymous(length(operation) > 1 ? operation[2] : operation[1] , N))
-    # Make the nested if statements
-    for i = N-1:-1:1
-        ex = Expr(:if, esc(Base.Cartesian.inlineanonymous(condition,i)), esc(Base.Cartesian.inlineanonymous(operation[1],i)), ex)
-    end
-    ex
-end
+function U(args...) end
 
-macro nif(N::Symbol, condition, operation...)
-    # Handle the final "else"
-
-    #ex = esc(Base.Cartesian.inlineanonymous(length(operation) > 1 ? operation[2] : operation[1] , eval(N)))
-    # Make the nested if statements
-    for i = eval(N)-1:-1:1
-        ex = Expr(:if, esc(Base.Cartesian.inlineanonymous(condition,i)), esc(Base.Cartesian.inlineanonymous(operation[1],i)), ex)
-    end
-    ex
-end
-
-#function select_f(tuple_thingy, tuple_size
-
-@kernel function f_test_kernel!(input, tuple_thingy::NTuple{N,Any}) where N
-    tid = @index(Global, Linear)
-
-    @print(N)
-
-    meh = tid%tuple_size+1
-
-    Base.Cartesian.@nif(N, d->meh == d, d->input[tid] = tuple_thingy[d](tid), d->@print(d,'\t',meh))
-    #@nif(4, d->meh == d, d->input[tid] = tuple_thingy[d](tid), d->@print(d,'\t',meh))
-    #Base.Cartesian.@nif(tuple_size, d->meh == d, d->println("OK: ", d,'\t',meh), d->println(d,'\t',meh))
-#=
-    for i = 1:tuple_size
-        if meh == i
-            input[tid] = tuple_thingy[i](tid)
+# use repr to go from expr -> string
+# think about recursive unions (barnsley + sierpinski)
+function generate_H(expr)
+    fnum = length(expr.args)-1
+    fx_string = "function H(val, fid)\n"
+    for i = 1:fnum
+        temp_string = ""
+        if i == 1
+            temp_string = "if fid == "*string(i)*" eval("*repr(expr.args[i+1])*")(val)\n"
+        else
+            temp_string = "elseif fid == "*string(i)*" eval("*repr(expr.args[i+1])*")(val)\n"
         end
+        fx_string *= temp_string
     end
-=#
+
+    fx_string *= "else error('Function not found!')\n"
+    fx_string *= "end\n"
+    fx_string *= "end"
+
+    H = Meta.parse(replace(fx_string, "'" => '"'))
+
+    println(fx_string)
+    println(H)
+
+    return eval(H)
+
 end
 
+#=
 function test!(input, tuple_thingy::NTuple{N,Any}; numcores = 4, numthreads = 256) where N
 
     if isa(input, Array)
@@ -68,3 +57,4 @@ wait(test!(input, tuple_thingy))
 
 d_input = CuArray(zeros(1024))
 wait(test!(d_input, tuple_thingy))
+=#
