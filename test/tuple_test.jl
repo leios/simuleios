@@ -1,4 +1,4 @@
-#using KernelAbstractions, CUDA, CUDAKernels
+using KernelAbstractions, CUDA, CUDAKernels
 
 function U(args...) end
 
@@ -10,9 +10,13 @@ function generate_H(expr)
     for i = 1:fnum
         temp_string = ""
         if i == 1
-            temp_string = "if fid == "*string(i)*" eval("*repr(expr.args[i+1])*")(val)\n"
+            f_str = repr(expr.args[i+1])[2:end]
+            println(f_str)
+            temp_string = "if fid == "*string(i)*" "*f_str*"(val)\n"
         else
-            temp_string = "elseif fid == "*string(i)*" eval("*repr(expr.args[i+1])*")(val)\n"
+            f_str = repr(expr.args[i+1])[2:end]
+            println(f_str)
+            temp_string = "elseif fid == "*string(i)*" "*f_str*"(val)\n"
         end
         fx_string *= temp_string
     end
@@ -30,8 +34,17 @@ function generate_H(expr)
 
 end
 
-#=
-function test!(input, tuple_thingy::NTuple{N,Any}; numcores = 4, numthreads = 256) where N
+@kernel function f_test_kernel!(input, H, fnum)
+    tid = @index(Global, Linear)
+
+    #@print(N)
+
+    meh = tid%fnum+1
+
+    input[tid] = H(tid, meh)
+end
+
+function test!(input, H, fnum; numcores = 4, numthreads = 256)
 
     if isa(input, Array)
         kernel! = f_test_kernel!(CPU(), numcores)
@@ -39,22 +52,25 @@ function test!(input, tuple_thingy::NTuple{N,Any}; numcores = 4, numthreads = 25
         kernel! = f_test_kernel!(CUDADevice(), numthreads)
     end
 
-    kernel!(input, tuple_thingy, ndrange=size(input)[1])
+    kernel!(input, H, fnum, ndrange=size(input)[1])
 
 end
 
-function f(x)
+@inline function f(x)
     x+1
 end
-g(x) = x+2
-h(x) = x+3
+@inline g(x) = x+2
+@inline h(x) = x+3
+
+fxs = :(U(f,g,h))
+
+H = generate_H(fxs)
 
 input = zeros(1024)
 tuple_thingy = (f,g,h)
 tuple_size = 3
 
-wait(test!(input, tuple_thingy))
+wait(test!(input, H, 3))
 
 d_input = CuArray(zeros(1024))
-wait(test!(d_input, tuple_thingy))
-=#
+wait(test!(d_input, H,3))
