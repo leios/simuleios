@@ -50,19 +50,6 @@ def create_new_material (passedName,passedColor):
         tempMat.use_nodes = True
         tempMat.node_tree.nodes["Principled BSDF"].inputs[3].default_value = passedColor
         tempMat.node_tree.nodes["Principled BSDF"].inputs[19].default_value = passedColor
-        '''
-        tempMat.diffuse_color = passedcolor
-        #tempMat.diffuse_shader = 'LAMBERT'
-        #tempMat.diffuse_intensity = 1.0
-        #tempMat.specular_color = (0.9,0.9,0.9)
-        #tempMat.specular_shader = 'COOKTORR'
-        #tempMat.specular_intensity = 0.5
-        #tempMat.use_transparency=False
-        #tempMat.alpha = 0.5
-        #tempMat.ambient = 0.3
-        #tempMat.emit = 0.2
-        #tempMat.keyframe_insert(data_path="diffuse_color", frame=1, index=-1)
-        '''
     return tempMat
 
 # places new sphere at given location
