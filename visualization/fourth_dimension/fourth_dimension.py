@@ -44,33 +44,25 @@ def project(point, val):
     return temp[0], temp[1], temp[2]
 
 # Creates sphere material
-def create_new_material (passedName,passedcolor):
+def create_new_material (passedName,passedColor):
     tempMat = bpy.data.materials.new(passedName)
     if tempMat != None:
-        tempMat.diffuse_color = passedcolor
-        tempMat.diffuse_shader = 'LAMBERT'
-        tempMat.diffuse_intensity = 1.0
-        tempMat.specular_color = (0.9,0.9,0.9)
-        tempMat.specular_shader = 'COOKTORR'
-        tempMat.specular_intensity = 0.5
-        tempMat.use_transparency=False
-        tempMat.alpha = 0.5
-        tempMat.ambient = 0.3
-        tempMat.emit = 0.2
-        tempMat.keyframe_insert(data_path="diffuse_color", frame=1, index=-1)
+        tempMat.use_nodes = True
+        tempMat.node_tree.nodes["Principled BSDF"].inputs[3].default_value = passedColor
+        tempMat.node_tree.nodes["Principled BSDF"].inputs[19].default_value = passedColor
     return tempMat
 
 # places new sphere at given location
 def new_sphere(diam, x, y, z, r, g, b, id):
     temp_sphere = bpy.ops.mesh.primitive_uv_sphere_add(segments = 32, 
                                                        ring_count = 16,
-                                                       size = diam,
+                                                       radius = diam,
                                                        location = (x, y, z),
                                                        rotation = (0, 0, 0))
     ob = bpy.context.active_object
     ob.name = str(id)
     me = ob.data
-    color = (r, g, b)
+    color = (r, g, b,1)
     mat = create_new_material(ob.name, color)
     me.materials.append(mat)
     return temp_sphere
@@ -80,17 +72,15 @@ def place_duplicates(x, y, z, id, obid):
     ob = bpy.data.objects[obid]
     obs = []
     sce = bpy.context.scene
-        
+
     copy = ob.copy()
     copy.location = x,y,z
     copy.data = copy.data.copy()
     copy.name = str(id)
     obs.append(copy)
-    
+
     for ob in obs:
-        sce.objects.link(ob)
-    
-    #sce.update()
+        sce.collection.objects.link(ob)
 
 # function to place spheres in blender
 # colors based on the sphere's velocity
@@ -202,10 +192,11 @@ def cage_set(Box_length, x, y, z, id, make_frame):
     return ccube
 
 # Removes objects in scene
+# Removes objects in scene
 def remove_obj( scene ):
-    for ob in scene.objects: 
+    for ob in scene.objects:
         if ob.name !='Camera' and ob.name != 'Lamp':
-            scene.objects.unlink( ob )
+            del ob
 
 #defining our scene
 def def_scene(box_length, bgcolor):
@@ -285,7 +276,7 @@ def def_scene(box_length, bgcolor):
     #bpy.data.cameras['Camera'].ortho_scale = 21.0
 
     # change lamp position
-    bpy.data.objects["Lamp"].location = (0,0,5)
+    bpy.data.objects["Light"].location = (0,0,5)
 
     # Scene resolution
     scene.render.resolution_x = 1366*3
@@ -296,7 +287,12 @@ def def_scene(box_length, bgcolor):
     remove_obj( scene )
 
     # sets background to be black
-    bpy.data.worlds['World'].horizon_color = (0,0,0)
+    world = bpy.data.worlds['World']
+    world.use_nodes = True
+
+    # changing these values does affect the render.
+    bg = world.node_tree.nodes['Background']
+    bg.inputs[0].default_value = (0.0, 0.0, 0.0, 1.0)
 
     return scene
 
@@ -316,7 +312,7 @@ def add_lines(connectome):
         bpy.data.curves["bc" + str(i[0])].splines[0].bezier_points[1].co = \
             bpy.context.scene.objects[str(i[2])].location
         bpy.data.curves["bc" + str(i[0])].splines[0].bezier_points[1].handle_left_type = 'VECTOR'
-        color = (1, 1, 1)
+        color = (1, 1, 1,1)
         mat = create_new_material("bc" + str(i[0]), color)
         bpy.data.curves["bc" + str(i[0])].materials.append(mat)
         bpy.data.curves["bc" + str(i[0])].splines[0].resolution_u = 1
@@ -508,8 +504,12 @@ def visualize_fourth_dimension(res1, res2, rot_res):
         place_duplicates(i.projx, i.projy, i.projz, count, "original");
         count += 1
 
-    bpy.data.objects["original"].hide = True
+    bpy.data.objects["Cube"].hide_set(True)
+    bpy.data.objects["Cube"].hide_render = True
+    bpy.data.objects["original"].hide_set(True)
     bpy.data.objects["original"].hide_render = True
+    bpy.data.objects["Light"].hide_set(True)
+    bpy.data.objects["Light"].hide_render = True
 
     connectome = create_tesseract_connectome(2)
     add_lines(connectome)
@@ -550,10 +550,13 @@ def visualize_fourth_dimension(res1, res2, rot_res):
 
     for i in range(res1,res1+res2):
         for j in range(0,8):
+            val = 1.1
+            '''
             if i < (res2 - res1)*0.5:
                 val = 5 - 4 * (i - res1) / ((res2 - res1)*0.5)
             else:
                 val = 1 + 4 * (i-res1-((res2 - res1)*0.5)) / ((res2 - res1)*0.5)
+            '''
             #final_cube[j] = single_rotation_xy(curr_cube[j], np.pi/rot_res,val)
             #init_cube[j] = single_rotation_xy(init_cube[j], np.pi/rot_res, val)
             final_cube[j] = double_rotation(curr_cube[j], np.pi / rot_res, val)
@@ -591,19 +594,23 @@ def cube_slice(res):
         place_duplicates(i.projx, i.projy, i.projz, count, "original");
         count += 1
 
-    bpy.data.objects["original"].hide = True
+    bpy.data.objects["original"].hide_set(True)
     bpy.data.objects["original"].hide_render = True
+    bpy.data.objects["Light"].hide_set(True)
+    bpy.data.objects["Light"].hide_render = True
+    #bpy.data.objects["original"].hide = True
+    #bpy.data.objects["original"].hide_render = True
 
     plane = bpy.ops.mesh.primitive_plane_add(location=(0,0,-0.5),
-                                             radius = 1)
+                                             size = 1)
 
     #mat = bpy.data.materials.new("Plane")
     #ob = bpy.context.object
     #me = ob.data
 
-    mat = create_new_material("Plane", (0,0,1))
-    mat.use_transparency = True
-    mat.alpha = 0.5
+    mat = create_new_material("Plane", (0,0,1,1))
+    #mat.use_transparency = True
+    #mat.alpha = 0.5
     bpy.data.objects["Plane"].data.materials.append(mat)
 
     connectome = create_connectome(2)
@@ -642,7 +649,7 @@ def project_cube(res):
     #ob = bpy.context.object
     #me = ob.data
 
-    mat = create_new_material("Plane", (1,1,1))
+    mat = create_new_material("Plane", (1,1,1,1))
     bpy.data.objects["Plane"].data.materials.append(mat)
 
     connectome = create_connectome(2)
@@ -650,27 +657,25 @@ def project_cube(res):
 
     for i in range (0,res):
         # updating plane pos
-        mat = bpy.data.objects["Lamp"]
+        mat = bpy.data.objects["Light"]
         mat.keyframe_insert(data_path="location", \
             frame=(i), index=-1)
-        bpy.context.scene.objects["Lamp"].location =  \
+        bpy.context.scene.objects["Light"].location =  \
             (0,0,5 - 3*i / (res-1))
-        bpy.context.scene.objects["Lamp"].keyframe_insert(
+        bpy.context.scene.objects["Light"].keyframe_insert(
             data_path='location', frame=(i))
 
 
 
-num = 100
+num = 10
 scene = bpy.context.scene
 scene = def_scene(10,scene)
 remove_obj(scene)
-#cube_slice(100)
-project_cube(100)
-#visualize_fourth_dimension(1, 1000, 1000)
+#cube_slice(10)
+#project_cube(100)
+visualize_fourth_dimension(1, 10, 10)
 
-# Adding in extra function for determinant visualization
-#num = vis_determinant(6.0, num)
 bpy.data.scenes["Scene"].frame_end = num
-scene.update()
+#scene.update()
 render_movie(scene)
 #print (array)
