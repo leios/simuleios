@@ -1,0 +1,154 @@
+@include "QB/chaos.qbl"
+@include "QB/output.qbl"
+
+quibble_point_2D rotate_about_origin(quibble_point_2D pt, float theta){
+
+    float v1 = pt.x*cos(theta) - pt.y*sin(theta);
+    float v2 = pt.x*sin(theta) + pt.y*cos(theta);
+
+    return qb_point_2D(v1, v2);
+
+}
+
+quibble_point_2D raindrop(quibble_point_2D pt){
+     pt.x *= 0.5;
+     pt.y *= 0.5;
+     if (pt.y < 0){
+         pt.y *= 2;
+         pt.x *= (1+pt.y)*cos(M_PI*pt.y);
+         pt.y *= 2;
+     }
+     // pt.y += 0.5;
+     return pt;
+}
+
+quibble_point_2D pacman(quibble_point_2D pt){
+    if (pt.x > 0 && pt.y < 0){
+        pt = rotate_about_origin(pt, -0.25*M_PI);
+        //pt.x += pt.y;
+    } else if(pt.x > 0 && pt.y > 0){
+        pt = rotate_about_origin(pt, 0.25*M_PI);
+        //pt.x += -pt.y;
+    }
+
+    return pt;
+}
+
+__verse drizzle(quibble_point_2D pt, quibble_pcolor_rgba8888 clr |
+                int drop_num = 50;){
+
+    pt = raindrop(pt);
+    quibble_point_2D out_pt = pt;
+    quibble_pcolor_rgba8888 out_clr = clr;
+
+    int drop_idx = (int)floor(fpcg32(&qstate)*drop_num);
+    quibble_pcg_state qstate2 = pcg32_init(drop_idx);
+
+    float drop_x = cam.world_size_x*fpcg32(&qstate2) - 0.5*cam.world_size_x;
+    float drop_y = cam.world_size_y*fpcg32(&qstate2) - 0.5*cam.world_size_y;
+
+    float drop_scale_factor = 0.1*(1 + 0.3*fpcg32(&qstate2));
+    float stretch_factor = 1 + (1 * (fpcg32(&qstate2)));
+    float priority = 0.5 + (0.5 * (fpcg32(&qstate2)));
+    
+    out_pt.x = drop_scale_factor * out_pt.x + drop_x;
+    out_pt.y = drop_scale_factor * out_pt.y + drop_y;
+    out_pt.y *= stretch_factor;
+
+    out_clr.priority = qb_color_clamp(priority, 0, 1);
+
+    histogram_output_prgba8888(out_pt, out_clr, cam, qpix);
+
+}
+
+quibble_pcolor_rgba8888 sdf_texture(quibble_point_2D pt){
+/*
+    float ratio = 1; 
+    float priority = 0.3;
+    float line_thickness = 0.005;
+    float line_distance = 0.125;
+
+    if (fabs(fmod(pt.x, line_distance)) - line_thickness <= 0){
+        ratio = 0.4;
+        priority = 0.4;
+    }
+
+    if (fabs(fmod(pt.y, line_distance)) - line_thickness <= 0){
+        ratio = 0.4;
+        priority = 0.4;
+    }
+
+    quibble_pcolor_rgba8888 texture_color = 
+        qb_pcolor_rgba8888(ratio, ratio, ratio, 1, priority);
+*/
+
+    quibble_pcolor_rgba8888 texture_color = 
+        qb_pcolor_rgba8888(1,1,1, 0, 0.5);
+
+    float radius = 0.5;
+    float sdf_value = sqrt(pt.x*pt.x + pt.y*pt.y)-radius;
+
+    if (sdf_value < 0){
+        // Pink
+        //texture_color.red = qb_color_clamp(1, 0, 1);
+        //texture_color.green = qb_color_clamp(0.4, 0, 1);
+        //texture_color.blue = qb_color_clamp(1, 0, 1);
+
+        // Yellow
+        //texture_color.red = qb_color_clamp(1, 0, 1);
+        //texture_color.green = qb_color_clamp(0.9, 0, 1);
+        //texture_color.blue = qb_color_clamp(0, 0, 1);
+
+        // Blue
+        texture_color.red = qb_color_clamp(0.2, 0, 1);
+        texture_color.green = qb_color_clamp(0.733, 0, 1);
+        texture_color.blue = qb_color_clamp(1, 0, 1);
+        texture_color.alpha = qb_color_clamp(1, 0, 1);
+    }
+
+    return texture_color;
+}
+
+quibble_pcolor_rgba8888 grid_texture(quibble_point_2D pt){
+    float ratio = 1;
+    float priority = 0.3;
+    float line_thickness = 0.005;
+    float line_distance = 0.125;
+
+    if (fabs(fmod(pt.x, line_distance)) - line_thickness <= 0){
+        ratio = 0.4;
+        priority = 0.4;
+    }
+
+    if (fabs(fmod(pt.y, line_distance)) - line_thickness <= 0){
+        ratio = 0.4;
+        priority = 0.4;
+    }
+
+    return qb_pcolor_rgba8888(ratio, ratio, ratio, 1, priority);
+}
+
+__poem sdfcfs(quibble_pixels_prgba8888 qpix,
+              quibble_simple_camera qcam){
+
+    // Drawing a white background first
+    quibble_point_2D pt = qb_find_point_location(_idx, qcam);
+    quibble_pcolor_rgba8888 qcolor = qb_pcolor_rgba8888(1,1,1,1,0.1);
+    histogram_output_prgba8888(pt, qcolor, qcam, qpix);
+
+    int num_ignore = 20;
+
+    @SCALL rectangle_chaos(100, qcam, qcolor |
+                           scale_x = 0.6; scale_y = 0.6;){
+        if (_i > num_ignore){
+            //qcolor = grid_texture(_pt);
+            qcolor = sdf_texture(_pt);
+            //qcolor = qb_pcolor_rgba8888(0,0,0,1,0.5);
+            //pt = pacman(_pt);
+            //pt = raindrop(_pt);
+            @VCALL drizzle(_pt, qcolor | drop_num = 100;);
+            //histogram_output_prgba8888(pt, qcolor, cam, qpix);
+        }
+    }
+}
+
